@@ -1,0 +1,10 @@
+[package]
+name = "scale-visitor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
+thiserror = "1.0.24"
+bitvec = { version = "1.0.0", default-features = false, features = ["alloc"] }
