@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::TypeDef;
-use scale_info::{form::PortableForm, PortableRegistry, TypeDefBitSequence, TypeDefPrimitive};
+use scale_info::{form::PortableForm, PortableRegistry, TypeDef, TypeDefBitSequence, TypeDefPrimitive};
 
 /// An error that can occur when we try to encode or decode to a SCALE bit sequence type.
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]

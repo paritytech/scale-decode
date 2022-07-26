@@ -3,6 +3,11 @@ name = "scale-visitor"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+# Signal that the target architecture is 32bit. Enabled internally
+# if pointer_width != "64", but can be enabled here for testing.
+32bit_target = []
+
 [dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
