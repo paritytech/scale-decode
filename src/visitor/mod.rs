@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! The [`Visitor`] trait and associated types.
+
 mod array;
 mod bit_sequence;
 mod composite;
@@ -28,6 +30,8 @@ use crate::bit_sequence::{
     BitSequenceError
 };
 
+/// Types used in the [`Visitor`] trait to represent different things
+/// that can be decoded from the input.
 pub mod types {
     pub use super::array::Array;
     pub use super::bit_sequence::{ BitSequence, BitSequenceValue };
@@ -38,48 +42,80 @@ pub mod types {
     pub use super::variant::Variant;
 }
 
+/// An implementation of the [`Visitor`] trait can be passed to the [`crate::decode()`]
+/// function, and is handed back values as they are encountered. It's up to the implementation
+/// to decide what to do with these values.
 pub trait Visitor: Sized {
+    /// The type of the value to hand back from the [`crate::decode`] function.
     type Value;
+    /// The error type (which we must be able to convert [`DecodeError`]s into, to
+    /// handle any internal errors that crop up trying to decode things).
     type Error: From<DecodeError>;
 
+    /// Called when a bool is seen in the input bytes.
     fn visit_bool(self, value: bool) -> Result<Self::Value, Self::Error>;
+    /// Called when a bool is seen in the input bytes.
     fn visit_char(self, value: char) -> Result<Self::Value, Self::Error>;
+    /// Called when a u8 is seen in the input bytes.
     fn visit_u8(self, value: u8) -> Result<Self::Value, Self::Error>;
+    /// Called when a u16 is seen in the input bytes.
     fn visit_u16(self, value: u16) -> Result<Self::Value, Self::Error>;
+    /// Called when a u32 is seen in the input bytes.
     fn visit_u32(self, value: u32) -> Result<Self::Value, Self::Error>;
+    /// Called when a u64 is seen in the input bytes.
     fn visit_u64(self, value: u64) -> Result<Self::Value, Self::Error>;
+    /// Called when a u128 is seen in the input bytes.
     fn visit_u128(self, value: u128) -> Result<Self::Value, Self::Error>;
+    /// Called when a u256 is seen in the input bytes.
     fn visit_u256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
+    /// Called when an i8 is seen in the input bytes.
     fn visit_i8(self, value: i8) -> Result<Self::Value, Self::Error>;
+    /// Called when an i16 is seen in the input bytes.
     fn visit_i16(self, value: i16) -> Result<Self::Value, Self::Error>;
+    /// Called when an i32 is seen in the input bytes.
     fn visit_i32(self, value: i32) -> Result<Self::Value, Self::Error>;
+    /// Called when an i64 is seen in the input bytes.
     fn visit_i64(self, value: i64) -> Result<Self::Value, Self::Error>;
+    /// Called when an i128 is seen in the input bytes.
     fn visit_i128(self, value: i128) -> Result<Self::Value, Self::Error>;
+    /// Called when an i256 is seen in the input bytes.
     fn visit_i256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
+    /// Called when a sequence of values is seen in the input bytes.
     fn visit_sequence(self, value: &mut types::Sequence<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when a composite value is seen in the input bytes.
     fn visit_composite(self, value: &mut types::Composite<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when a tuple of values is seen in the input bytes.
     fn visit_tuple(self, value: &mut types::Tuple<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when a string value is seen in the input bytes.
     fn visit_str(self, value: &types::Str<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when a variant is seen in the input bytes.
     fn visit_variant(self, value: &mut types::Variant<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when an array is seen in the input bytes.
     fn visit_array(self, value: &mut types::Array<'_>) -> Result<Self::Value, Self::Error>;
+    /// Called when a bit sequence is seen in the input bytes.
     fn visit_bitsequence(self, value: &mut types::BitSequence<'_>) -> Result<Self::Value, Self::Error>;
 
     // Default implementations for visiting compact values just delegate and
     // ignore the compactness, but they are here if decoders would like to know
     // that the thing was compact encoded:
 
+    /// Called when a compact encoded u8 is seen in the input bytes.
     fn visit_compact_u8(self, value: u8) -> Result<Self::Value, Self::Error> {
         self.visit_u8(value)
     }
+    /// Called when a compact encoded u16 is seen in the input bytes.
     fn visit_compact_u16(self, value: u16) -> Result<Self::Value, Self::Error> {
         self.visit_u16(value)
     }
+    /// Called when a compact encoded u32 is seen in the input bytes.
     fn visit_compact_u32(self, value: u32) -> Result<Self::Value, Self::Error> {
         self.visit_u32(value)
     }
+    /// Called when a compact encoded u64 is seen in the input bytes.
     fn visit_compact_u64(self, value: u64) -> Result<Self::Value, Self::Error> {
         self.visit_u64(value)
     }
+    /// Called when a compact encoded u128 is seen in the input bytes.
     fn visit_compact_u128(self, value: u128) -> Result<Self::Value, Self::Error> {
         self.visit_u128(value)
     }

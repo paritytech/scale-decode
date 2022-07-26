@@ -24,7 +24,7 @@ use super::{
     IgnoreVisitor,
 };
 
-// This enables a visitor to decode information out of a composite type.
+/// This represents a composite type.
 pub struct Composite<'a> {
     bytes: &'a [u8],
     fields: &'a [Field<PortableForm>],
@@ -49,15 +49,19 @@ impl <'a> Composite<'a> {
         }
         Ok(())
     }
+    /// The number of items in this composite type.
     pub fn len(&self) -> usize {
         self.len
     }
+    /// The number of un-decoded items remaining in this composite type.
     pub fn remaining(&self) -> usize {
         self.fields.len()
     }
+    /// The name of the next field we'll decode when [`Composite::decode_item()`] is called.
     pub fn next_field_name(&self) -> Option<&str> {
         self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
     }
+    /// Decode the next field in the composite type by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
         if self.fields.is_empty() {
             return Err(DecodeError::NothingLeftToDecode.into())

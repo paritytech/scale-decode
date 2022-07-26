@@ -22,7 +22,7 @@ use super::{
     IgnoreVisitor,
 };
 
-// This enables a visitor to decode information out of composite or variant fields.
+/// This represents a tuple of values.
 pub struct Tuple<'a> {
     bytes: &'a [u8],
     fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
@@ -47,12 +47,15 @@ impl <'a> Tuple<'a> {
         }
         Ok(())
     }
+    /// The number of items in the tuple.
     pub fn len(&self) -> usize {
         self.len
     }
+    /// The number of un-decoded items remaining in the tuple.
     pub fn remaining(&self) -> usize {
         self.fields.len()
     }
+    /// Decode the next item from the tuple by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
         if self.fields.is_empty() {
             return Err(DecodeError::NothingLeftToDecode.into())

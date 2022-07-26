@@ -22,7 +22,7 @@ use super::{
     Visitor,
 };
 
-// This enables a visitor to decode information out of a variant type.
+/// A representation of the a variant type.
 pub struct Variant<'a> {
     variant: &'a scale_info::Variant<PortableForm>,
     fields: Composite<'a>
@@ -41,18 +41,27 @@ impl <'a> Variant<'a> {
     pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
         self.fields.skip_rest()
     }
+    /// The name of the variant.
     pub fn name(&self) -> &str {
         self.variant.name()
     }
+    /// The index of the variant.
+    pub fn index(&self) -> u8 {
+        self.variant.index()
+    }
+    /// The number of fields in the variant.
     pub fn len(&self) -> usize {
         self.fields.len()
     }
+    /// The number of un-decoded fields remaining in the variant.
     pub fn remaining(&self) -> usize {
         self.fields.remaining()
     }
+    /// The name of the next field to be decoded, if it has one.
     pub fn next_field_name(&self) -> Option<&str> {
         self.fields.next_field_name()
     }
+    /// Decode the next field in the variant by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
         self.fields.decode_item(visitor)
     }

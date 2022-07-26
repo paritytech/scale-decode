@@ -21,8 +21,8 @@ use super::{
     DecodeError,
 };
 
-/// This represents a string, but defers proper decoding of it to the visitor to avoid work
-/// unless it's needed.
+/// This represents a string, but defers proper decoding of it until it's asked for,
+/// and avoids allocating.
 pub struct Str<'a> {
     len: usize,
     bytes: &'a [u8]
@@ -40,12 +40,15 @@ impl <'a> Str<'a> {
             bytes: str_bytes
         })
     }
+    /// The length of the string.
     pub fn len(&self) -> usize {
         self.len
     }
+    /// return a string, failing if the bytes could not be properly utf8-decoded.
     pub fn as_str(&self) -> Result<&'a str, DecodeError> {
         std::str::from_utf8(self.bytes).map_err(DecodeError::InvalidStr)
     }
+    /// Return the raw bytes representing this string.
     pub fn as_bytes(&self) -> &'a [u8] {
         self.bytes
     }

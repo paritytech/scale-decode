@@ -55,12 +55,15 @@ impl <'a> Sequence<'a> {
         }
         Ok(())
     }
+    /// The length of the sequence.
     pub fn len(&self) -> usize {
         self.len
     }
+    /// The number of un-decoded items remaining in the sequence.
     pub fn remaining(&self) -> usize {
         self.remaining
     }
+    /// Decode an item from the sequence by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
         if self.remaining == 0 {
             return Err(DecodeError::NothingLeftToDecode.into())

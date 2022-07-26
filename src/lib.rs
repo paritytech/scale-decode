@@ -13,7 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// #![deny(missing_docs)]
+//! This crate is concerned with decoding arbitrary values from some
+//! SCALE encoded bytes, given a type ID and type registry that defines
+//! the expected shape that the bytes should be decoded into.
+//!
+//! In order to allow the user to decode bytes into any shape they like,
+//! you must implement a [`visitor::Visitor`] trait, which is handed
+//! values back and has the opportunity to transform them into some
+//! output representation of your choice (or fail with an error of your
+//! choice). This Visitor is passed to the [`decode`] method, whose job it
+//! is to look at the type information provided and pass values of those
+//! types to the Visitor, or fail if the bytes do not match the expected
+//! shape.
+
+#![deny(missing_docs)]
 
 // BitVec only supports u64 BitStore if `target_pointer_width = "64"`.
 // Turn this into a feature so it can be tested, and use to avoid using

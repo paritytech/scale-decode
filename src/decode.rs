@@ -33,9 +33,10 @@ use crate::visitor::{
     }
 };
 
-/// Decode data according to the [`TypeId`] provided.
+/// Decode data according to the type ID and [`PortableRegistry`] provided.
 /// The provided pointer to the data slice will be moved forwards as needed
-/// depending on what was decoded.
+/// depending on what was decoded, and a method on the provided [`Visitor`]
+/// will be called depending on the type that needs to be decoded.
 pub fn decode<'a, V: Visitor>(
     data: &mut &'a [u8],
     ty_id: u32,

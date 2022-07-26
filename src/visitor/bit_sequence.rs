@@ -61,6 +61,8 @@ impl <'a> BitSequence<'a> {
     pub (crate) fn bytes(&self) -> &'a [u8] {
         self.bytes
     }
+    /// Decode the bit sequence, returning an enum that represents the type of bit sequence that
+    /// was actually seen in the input.
     pub fn decode_bitsequence(&mut self) -> Result<BitSequenceValue, DecodeError> {
         if self.decoded {
             return Err(DecodeError::NothingLeftToDecode);
@@ -94,12 +96,20 @@ impl <'a> BitSequence<'a> {
 
 /// A decoded BitVec.
 pub enum BitSequenceValue {
+    /// A bit sequence with a store type of `u8` and an order of `Lsb0`
     U8Lsb0(BitVec::<u8, Lsb0>),
+    /// A bit sequence with a store type of `u8` and an order of `Msb0`
     U8Msb0(BitVec::<u8, Msb0>),
+    /// A bit sequence with a store type of `u16` and an order of `Lsb0`
     U16Lsb0(BitVec::<u16, Lsb0>),
+    /// A bit sequence with a store type of `u16` and an order of `Msb0`
     U16Msb0(BitVec::<u16, Msb0>),
+    /// A bit sequence with a store type of `u32` and an order of `Lsb0`
     U32Lsb0(BitVec::<u32, Lsb0>),
+    /// A bit sequence with a store type of `u32` and an order of `Msb0`
     U32Msb0(BitVec::<u32, Msb0>),
+    /// A bit sequence with a store type of `u64` and an order of `Lsb0`
     U64Lsb0(BitVec::<u64, Lsb0>),
+    /// A bit sequence with a store type of `u64` and an order of `Msb0`
     U64Msb0(BitVec::<u64, Msb0>),
 }
