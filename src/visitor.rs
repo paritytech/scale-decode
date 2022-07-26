@@ -1,3 +1,7 @@
+use codec::{
+    Compact,
+    Decode,
+};
 use scale_info::{
     PortableRegistry,
     Field,
@@ -8,7 +12,7 @@ pub trait Visitor {
     type Value;
     type Error: From<DecodeError>;
 
-    fn visit_bool(self, bool: bool) -> Result<Self::Value, Self::Error>;
+    fn visit_bool(self, value: bool) -> Result<Self::Value, Self::Error>;
     fn visit_char(self, value: char) -> Result<Self::Value, Self::Error>;
     fn visit_u8(self, value: u8) -> Result<Self::Value, Self::Error>;
     fn visit_u16(self, value: u16) -> Result<Self::Value, Self::Error>;
@@ -22,17 +26,47 @@ pub trait Visitor {
     fn visit_i64(self, value: i64) -> Result<Self::Value, Self::Error>;
     fn visit_i128(self, value: i128) -> Result<Self::Value, Self::Error>;
     fn visit_i256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
-    fn visit_sequence(self, items: &mut Sequence<'_>) -> Result<Self::Value, Self::Error>;
-    fn visit_composite(self, items: &mut Fields<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_sequence(self, value: &mut Sequence<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_composite(self, value: &mut Fields<'_>) -> Result<Self::Value, Self::Error>;
     fn visit_tuple(self, value: &mut Tuple<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_str(self, value: &Str<'_>) -> Result<Self::Value, Self::Error>;
 
     // fn visit_variant(self, name: &str, fields: &mut Items<'_>) -> Result<Self::Value, Self::Error>;
     // fn visit_array(self, value: Array<'_>) -> Result<Self::Value, Self::Error>;
     // fn visit_compact(self, value: u32) -> Result<Self::Value, Self::Error>;
-    // fn visit_str(self, value: Str<'_>) -> Result<Self::Value, Self::Error>;
 
     // // A weird one; want to avoid decoding into bitsequence if we can but let's see.
     // fn visit_bitsequence(self, value: BitSequence<'_>) -> Result<Self::Value, Self::Error>;
+}
+
+/// This represents a string, but defers proper decoding of it to the visitor to avoid work
+/// unless it's needed.
+pub struct Str<'a> {
+    len: usize,
+    bytes: &'a [u8]
+}
+
+impl <'a> Str<'a> {
+    pub (crate) fn new_from(bytes: &mut &'a [u8]) -> Result<Self, DecodeError> {
+        // Strings are just encoded the same as bytes; a length prefix and then
+        // the raw bytes. Pluck these out but don't do any further work.
+        let len = <Compact<u32>>::decode(bytes)?.0 as usize;
+        let str_bytes = &bytes[..len];
+        *bytes = &bytes[len..];
+        Ok(Str {
+            len: len,
+            bytes: str_bytes
+        })
+    }
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    pub fn as_str(&self) -> Result<&'a str, DecodeError> {
+        std::str::from_utf8(self.bytes).map_err(DecodeError::InvalidStr)
+    }
+    pub fn as_bytes(&self) -> &'a [u8] {
+        self.bytes
+    }
 }
 
 // This enables a visitor to decode information out of composite or variant fields.
@@ -200,6 +234,9 @@ pub enum DecodeError {
 	// #[error("Cannot decode bit sequence: {0}")]
 	// BitSequenceError(BitSequenceError),
 
+    /// Failure to decode bytes into a string.
+    #[error("Could not decode string: {0}")]
+    InvalidStr(#[from] std::str::Utf8Error),
 	/// We could not convert the [`u32`] that we found into a valid [`char`].
 	#[error("{0} is expected to be a valid char, but is not")]
 	InvalidChar(u32),
@@ -227,55 +264,58 @@ impl Visitor for IgnoreVisitor {
     type Value = ();
     type Error = DecodeError;
 
-    fn visit_bool(self, bool: bool) -> Result<Self::Value, Self::Error> {
+    fn visit_bool(self, _value: bool) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_char(self, value: char) -> Result<Self::Value, Self::Error> {
+    fn visit_char(self, _value: char) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u8(self, value: u8) -> Result<Self::Value, Self::Error> {
+    fn visit_u8(self, _value: u8) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u16(self, value: u16) -> Result<Self::Value, Self::Error> {
+    fn visit_u16(self, _value: u16) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u32(self, value: u32) -> Result<Self::Value, Self::Error> {
+    fn visit_u32(self, _value: u32) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u64(self, value: u64) -> Result<Self::Value, Self::Error> {
+    fn visit_u64(self, _value: u64) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u128(self, value: u128) -> Result<Self::Value, Self::Error> {
+    fn visit_u128(self, _value: u128) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u256(self, value: &[u8]) -> Result<Self::Value, Self::Error> {
+    fn visit_u256(self, _value: &[u8]) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i8(self, value: i8) -> Result<Self::Value, Self::Error> {
+    fn visit_i8(self, _value: i8) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i16(self, value: i16) -> Result<Self::Value, Self::Error> {
+    fn visit_i16(self, _value: i16) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i32(self, value: i32) -> Result<Self::Value, Self::Error> {
+    fn visit_i32(self, _value: i32) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i64(self, value: i64) -> Result<Self::Value, Self::Error> {
+    fn visit_i64(self, _value: i64) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i128(self, value: i128) -> Result<Self::Value, Self::Error> {
+    fn visit_i128(self, _value: i128) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i256(self, value: &[u8]) -> Result<Self::Value, Self::Error> {
+    fn visit_i256(self, _value: &[u8]) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_sequence(self, items: &mut Sequence<'_>) -> Result<Self::Value, Self::Error> {
+    fn visit_sequence(self, _value: &mut Sequence<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_composite(self, items: &mut Fields<'_>) -> Result<Self::Value, Self::Error> {
+    fn visit_composite(self, _value: &mut Fields<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_tuple(self, value: &mut Tuple<'_>) -> Result<Self::Value, Self::Error> {
+    fn visit_tuple(self, _value: &mut Tuple<'_>) -> Result<Self::Value, Self::Error> {
+        Ok(())
+    }
+    fn visit_str(self, _value: &Str<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
 }

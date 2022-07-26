@@ -13,11 +13,12 @@ use scale_info::{
 	TypeDefComposite, TypeDefPrimitive, TypeDefSequence, TypeDefTuple, TypeDefVariant,
 };
 
-pub use visitor::{
+use visitor::{
     Visitor,
     Fields,
     Sequence,
     Tuple,
+    Str,
     IgnoreVisitor,
     DecodeError,
 };
@@ -172,7 +173,7 @@ fn decode_primitive_value<V: Visitor>(
 	ty: &TypeDefPrimitive,
     visitor: V,
 ) -> Result<V::Value, V::Error> {
-	let val = match ty {
+	match ty {
 		TypeDefPrimitive::Bool => {
             let b = bool::decode(data).map_err(|e| e.into())?;
             visitor.visit_bool(b)
@@ -183,7 +184,12 @@ fn decode_primitive_value<V: Visitor>(
             let c = char::from_u32(val).ok_or(DecodeError::InvalidChar(val))?;
             visitor.visit_char(c)
 		}
-		TypeDefPrimitive::Str => Primitive::String(String::decode(data)?), // todo avoid allocating
+		TypeDefPrimitive::Str => {
+            // Avoid allocating; don't decode into a String. instead, pull the bytes
+            // and let the visitor decide whether to use them or not.
+            let mut s = Str::new_from(data)?;
+            visitor.visit_str(&mut s)
+        },
 		TypeDefPrimitive::U8 => {
             let n = u8::decode(data).map_err(|e| e.into())?;
             visitor.visit_u8(n)
@@ -236,8 +242,7 @@ fn decode_primitive_value<V: Visitor>(
             let n = <[u8; 32]>::decode(data).map_err(|e| e.into())?;
             visitor.visit_i256(&n)
         },
-	};
-	Ok(val)
+	}
 }
 
 // fn decode_compact_value<V: Visitor>(
