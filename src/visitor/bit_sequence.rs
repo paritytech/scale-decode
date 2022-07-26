@@ -15,6 +15,7 @@
 
 use codec::{
     Decode,
+    Compact,
 };
 use crate::bit_sequence::{
     BitOrderTy,
@@ -50,11 +51,27 @@ impl <'a> BitSequence<'a> {
         }
     }
     pub (crate) fn skip_if_not_decoded(&mut self) -> Result<(), DecodeError> {
-        // One day we may be able to optimise this to avoid allocating, but at the moment
-        // it's a bit of a pain to work with BitVecs, and easier just to lean on the existing
-        // decode logic for them:
         if !self.decoded {
-            self.decode_bitsequence()?;
+            // A bitvec is a compact encoded length, which is the number of
+            // items of whatever the store type that are to follow. So, pluck
+            // the length out and then skip over a number of bytes corresponding
+            // to that number of store type items.
+            let data = &mut self.bytes;
+            let items_len = <Compact<u64>>::decode(data)?.0 as usize;
+            let byte_len = match self.store {
+                BitStoreTy::U8 => items_len,
+                BitStoreTy::U16 => items_len * 2,
+                BitStoreTy::U32 => items_len * 4,
+                BitStoreTy::U64 => items_len * 8,
+            };
+
+            if byte_len > data.len() {
+                return Err(DecodeError::Eof)
+            }
+
+            // We only modify the bytes here when we're sure nothing will go wrong.
+            self.bytes = *data;
+            self.bytes = &self.bytes[byte_len..];
         }
         Ok(())
     }
