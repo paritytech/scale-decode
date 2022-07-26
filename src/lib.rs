@@ -15,8 +15,10 @@ use scale_info::{
 
 use visitor::{
     Visitor,
-    Fields,
+    Composite,
+    Variant,
     Sequence,
+    Array,
     Tuple,
     Str,
     IgnoreVisitor,
@@ -77,7 +79,14 @@ fn decode_composite_value<'a, V: Visitor>(
 	types: &'a PortableRegistry,
     visitor: V,
 ) -> Result<V::Value, V::Error> {
-    decode_fields(data, ty.fields(), types, visitor)
+    let mut items = Composite::new(data, ty.fields(), types);
+    let res = visitor.visit_composite(&mut items);
+
+    // Skip over any bytes that the visitor chose not to decode:
+    items.skip_rest()?;
+    *data = items.bytes();
+
+    res
 }
 
 fn decode_variant_value<'a, V: Visitor>(
@@ -96,22 +105,13 @@ fn decode_variant_value<'a, V: Visitor>(
 		.find(|v| v.index() == index)
 		.ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
 
-	decode_fields(data, variant.fields(), types, visitor)
-}
-
-/// Variant and Composite types both have fields; this will decode them into values.
-fn decode_fields<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	fields: &'a [Field<PortableForm>],
-	types: &'a PortableRegistry,
-    visitor: V,
-) -> Result<V::Value, V::Error> {
-    let mut items = Fields::new(data, fields, types);
-    let res = visitor.visit_composite(&mut items);
+	let composite = Composite::new(data, variant.fields(), types);
+    let mut variant = Variant::new(variant, composite);
+    let res = visitor.visit_variant(&mut variant);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip_rest()?;
-    *data = items.bytes();
+    variant.skip_rest()?;
+    *data = variant.bytes();
 
     res
 }
@@ -142,12 +142,13 @@ fn decode_array_value<'a, V: Visitor>(
     visitor: V,
 ) -> Result<V::Value, V::Error> {
     let len = ty.len() as usize;
-    let mut items = Sequence::new(data, ty.type_param().id(), len, types);
-    let res = visitor.visit_sequence(&mut items);
+    let seq = Sequence::new(data, ty.type_param().id(), len, types);
+    let mut arr = Array::new(seq);
+    let res = visitor.visit_array(&mut arr);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip_rest()?;
-    *data = items.bytes();
+    arr.skip_rest()?;
+    *data = arr.bytes();
 
 	res
 }

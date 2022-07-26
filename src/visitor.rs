@@ -27,14 +27,13 @@ pub trait Visitor {
     fn visit_i128(self, value: i128) -> Result<Self::Value, Self::Error>;
     fn visit_i256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
     fn visit_sequence(self, value: &mut Sequence<'_>) -> Result<Self::Value, Self::Error>;
-    fn visit_composite(self, value: &mut Fields<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_composite(self, value: &mut Composite<'_>) -> Result<Self::Value, Self::Error>;
     fn visit_tuple(self, value: &mut Tuple<'_>) -> Result<Self::Value, Self::Error>;
     fn visit_str(self, value: &Str<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_variant(self, value: &mut Variant<'_>) -> Result<Self::Value, Self::Error>;
+    fn visit_array(self, value: &mut Array<'_>) -> Result<Self::Value, Self::Error>;
 
-    // fn visit_variant(self, name: &str, fields: &mut Items<'_>) -> Result<Self::Value, Self::Error>;
-    // fn visit_array(self, value: Array<'_>) -> Result<Self::Value, Self::Error>;
     // fn visit_compact(self, value: u32) -> Result<Self::Value, Self::Error>;
-
     // // A weird one; want to avoid decoding into bitsequence if we can but let's see.
     // fn visit_bitsequence(self, value: BitSequence<'_>) -> Result<Self::Value, Self::Error>;
 }
@@ -117,21 +116,21 @@ impl <'a> Tuple<'a> {
     }
 }
 
-// This enables a visitor to decode information out of composite or variant fields.
-pub struct Fields<'a> {
+// This enables a visitor to decode information out of a composite type.
+pub struct Composite<'a> {
     bytes: &'a [u8],
     fields: &'a [Field<PortableForm>],
     types: &'a PortableRegistry,
     len: usize,
 }
 
-impl <'a> Fields<'a> {
+impl <'a> Composite<'a> {
     pub (crate) fn new(
         bytes: &'a [u8],
         fields: &'a [Field<PortableForm>],
         types: &'a PortableRegistry,
-    ) -> Fields<'a> {
-        Fields { len: fields.len(), bytes, fields, types }
+    ) -> Composite<'a> {
+        Composite { len: fields.len(), bytes, fields, types }
     }
     pub (crate) fn bytes(&self) -> &'a [u8] {
         self.bytes
@@ -168,7 +167,43 @@ impl <'a> Fields<'a> {
     }
 }
 
-/// This enables a visitor to decode items from array or sequence types.
+// This enables a visitor to decode information out of a variant type.
+pub struct Variant<'a> {
+    variant: &'a scale_info::Variant<PortableForm>,
+    fields: Composite<'a>
+}
+
+impl <'a> Variant<'a> {
+    pub (crate) fn new(
+        variant: &'a scale_info::Variant<PortableForm>,
+        fields: Composite<'a>,
+    ) -> Variant<'a> {
+        Variant { variant, fields }
+    }
+    pub (crate) fn bytes(&self) -> &'a [u8] {
+        self.fields.bytes()
+    }
+    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+        self.fields.skip_rest()
+    }
+    pub fn name(&self) -> &str {
+        self.variant.name()
+    }
+    pub fn len(&self) -> usize {
+        self.fields.len()
+    }
+    pub fn remaining(&self) -> usize {
+        self.fields.remaining()
+    }
+    pub fn next_field_name(&self) -> Option<&str> {
+        self.fields.next_field_name()
+    }
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+        self.fields.decode_item(visitor)
+    }
+}
+
+/// This enables a visitor to decode items from a sequence type.
 pub struct Sequence<'a> {
     bytes: &'a [u8],
     type_id: u32,
@@ -219,6 +254,32 @@ impl <'a> Sequence<'a> {
         self.bytes = *b;
         self.remaining -= 1;
         res
+    }
+}
+
+/// This enables a visitor to decode items from an array type.
+pub struct Array<'a> {
+    seq: Sequence<'a>
+}
+
+impl <'a> Array<'a> {
+    pub (crate) fn new(seq: Sequence<'a>) -> Self {
+        Array { seq }
+    }
+    pub (crate) fn bytes(&self) -> &'a [u8] {
+        self.seq.bytes()
+    }
+    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+        self.seq.skip_rest()
+    }
+    pub fn len(&self) -> usize {
+        self.seq.len()
+    }
+    pub fn remaining(&self) -> usize {
+        self.seq.remaining()
+    }
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+        self.seq.decode_item(visitor)
     }
 }
 
@@ -309,13 +370,19 @@ impl Visitor for IgnoreVisitor {
     fn visit_sequence(self, _value: &mut Sequence<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_composite(self, _value: &mut Fields<'_>) -> Result<Self::Value, Self::Error> {
+    fn visit_composite(self, _value: &mut Composite<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
     fn visit_tuple(self, _value: &mut Tuple<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
     fn visit_str(self, _value: &Str<'_>) -> Result<Self::Value, Self::Error> {
+        Ok(())
+    }
+    fn visit_array(self, _value: &mut Array<'_>) -> Result<Self::Value, Self::Error> {
+        Ok(())
+    }
+    fn visit_variant(self, _value: &mut Variant<'_>) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
 }
