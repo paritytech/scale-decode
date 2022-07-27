@@ -1,7 +1,17 @@
 [package]
 name = "scale-decode"
 version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
+
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/paritytech/scale-decode"
+documentation = "https://docs.rs/scale-decode"
+homepage = "https://www.parity.io/"
+description = "Decode SCALE encoded bytes into arbitrary types at runtime"
+keywords = ["parity", "scale", "decoding"]
+include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
 [features]
 # Signal that the target architecture is 32bit. Enabled internally
