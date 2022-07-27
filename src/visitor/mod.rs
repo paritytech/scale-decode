@@ -42,7 +42,7 @@ pub mod types {
 /// function, and is handed back values as they are encountered. It's up to the implementation
 /// to decide what to do with these values.
 pub trait Visitor: Sized {
-	/// The type of the value to hand back from the [`crate::decode`] function.
+	/// The type of the value to hand back from the [`crate::decode()`] function.
 	type Value;
 	/// The error type (which we must be able to convert [`DecodeError`]s into, to
 	/// handle any internal errors that crop up trying to decode things).
@@ -120,7 +120,7 @@ pub trait Visitor: Sized {
 	}
 }
 
-/// An error decoding SCALE bytes into a [`Value`].
+/// An error decoding SCALE bytes.
 #[derive(Debug, Clone, thiserror::Error, PartialEq)]
 pub enum DecodeError {
 	/// We ran into an error trying to decode a bit sequence.

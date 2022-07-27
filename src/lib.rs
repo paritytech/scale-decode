@@ -21,7 +21,7 @@
 //! you must implement a [`visitor::Visitor`] trait, which is handed
 //! values back and has the opportunity to transform them into some
 //! output representation of your choice (or fail with an error of your
-//! choice). This Visitor is passed to the [`decode`] method, whose job it
+//! choice). This Visitor is passed to the [`decode()`] method, whose job it
 //! is to look at the type information provided and pass values of those
 //! types to the Visitor, or fail if the bytes do not match the expected
 //! shape.
