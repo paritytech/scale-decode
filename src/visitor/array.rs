@@ -13,37 +13,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{
-    sequence::Sequence,
-    DecodeError,
-    Visitor,
-};
+use super::{sequence::Sequence, DecodeError, Visitor};
 
 /// This represents an array type.
 pub struct Array<'a> {
-    seq: Sequence<'a>
+	seq: Sequence<'a>,
 }
 
-impl <'a> Array<'a> {
-    pub (crate) fn new(seq: Sequence<'a>) -> Self {
-        Array { seq }
-    }
-    pub (crate) fn bytes(&self) -> &'a [u8] {
-        self.seq.bytes()
-    }
-    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-        self.seq.skip_rest()
-    }
-    /// The length of the array.
-    pub fn len(&self) -> usize {
-        self.seq.len()
-    }
-    /// The number of un-decoded items remaining in the array.
-    pub fn remaining(&self) -> usize {
-        self.seq.remaining()
-    }
-    /// Decode the next item from the array by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
-        self.seq.decode_item(visitor)
-    }
+impl<'a> Array<'a> {
+	pub(crate) fn new(seq: Sequence<'a>) -> Self {
+		Array { seq }
+	}
+	pub(crate) fn bytes(&self) -> &'a [u8] {
+		self.seq.bytes()
+	}
+	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+		self.seq.skip_rest()
+	}
+	/// The length of the array.
+	pub fn len(&self) -> usize {
+		self.seq.len()
+	}
+	/// The number of un-decoded items remaining in the array.
+	pub fn remaining(&self) -> usize {
+		self.seq.remaining()
+	}
+	/// Decode the next item from the array by providing a visitor to handle it.
+	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+		self.seq.decode_item(visitor)
+	}
 }

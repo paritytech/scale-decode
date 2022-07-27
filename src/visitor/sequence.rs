@@ -13,68 +13,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use scale_info::{
-    PortableRegistry,
-};
-use super::{
-    DecodeError,
-    Visitor,
-    IgnoreVisitor,
-};
+use super::{DecodeError, IgnoreVisitor, Visitor};
+use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from a sequence type.
 pub struct Sequence<'a> {
-    bytes: &'a [u8],
-    type_id: u32,
-    len: usize,
-    types: &'a PortableRegistry,
-    remaining: usize,
+	bytes: &'a [u8],
+	type_id: u32,
+	len: usize,
+	types: &'a PortableRegistry,
+	remaining: usize,
 }
 
-impl <'a> Sequence<'a> {
-    pub (crate) fn new(
-        bytes: &'a [u8],
-        type_id: u32,
-        len: usize,
-        types: &'a PortableRegistry,
-    ) -> Sequence<'a> {
-        Sequence {
-            bytes,
-            type_id,
-            len,
-            types,
-            remaining: len
-        }
-    }
-    pub (crate) fn bytes(&self) -> &'a [u8] {
-        self.bytes
-    }
-    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-        while self.remaining() > 0 {
-            self.decode_item(IgnoreVisitor)?;
-        }
-        Ok(())
-    }
-    /// The length of the sequence.
-    pub fn len(&self) -> usize {
-        self.len
-    }
-    /// The number of un-decoded items remaining in the sequence.
-    pub fn remaining(&self) -> usize {
-        self.remaining
-    }
-    /// Decode an item from the sequence by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
-        if self.remaining == 0 {
-            return Ok(None)
-        }
+impl<'a> Sequence<'a> {
+	pub(crate) fn new(
+		bytes: &'a [u8],
+		type_id: u32,
+		len: usize,
+		types: &'a PortableRegistry,
+	) -> Sequence<'a> {
+		Sequence { bytes, type_id, len, types, remaining: len }
+	}
+	pub(crate) fn bytes(&self) -> &'a [u8] {
+		self.bytes
+	}
+	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+		while self.remaining() > 0 {
+			self.decode_item(IgnoreVisitor)?;
+		}
+		Ok(())
+	}
+	/// The length of the sequence.
+	pub fn len(&self) -> usize {
+		self.len
+	}
+	/// The number of un-decoded items remaining in the sequence.
+	pub fn remaining(&self) -> usize {
+		self.remaining
+	}
+	/// Decode an item from the sequence by providing a visitor to handle it.
+	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+		if self.remaining == 0 {
+			return Ok(None);
+		}
 
-        let b = &mut self.bytes;
-        // Don't return here; decrement bytes and remaining properly first and then return, so that
-        // calling decode_item again works as expected.
-        let res = crate::decode::decode(b, self.type_id, self.types, visitor);
-        self.bytes = *b;
-        self.remaining -= 1;
-        res.map(Some)
-    }
+		let b = &mut self.bytes;
+		// Don't return here; decrement bytes and remaining properly first and then return, so that
+		// calling decode_item again works as expected.
+		let res = crate::decode::decode(b, self.type_id, self.types, visitor);
+		self.bytes = *b;
+		self.remaining -= 1;
+		res.map(Some)
+	}
 }

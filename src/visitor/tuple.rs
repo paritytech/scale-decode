@@ -13,64 +13,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use scale_info::{
-    PortableRegistry,
-};
-use super::{
-    DecodeError,
-    Visitor,
-    IgnoreVisitor,
-};
+use super::{DecodeError, IgnoreVisitor, Visitor};
+use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
 pub struct Tuple<'a> {
-    bytes: &'a [u8],
-    fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-    types: &'a PortableRegistry,
-    len: usize,
+	bytes: &'a [u8],
+	fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+	types: &'a PortableRegistry,
+	len: usize,
 }
 
-impl <'a> Tuple<'a> {
-    pub (crate) fn new(
-        bytes: &'a [u8],
-        fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-        types: &'a PortableRegistry,
-    ) -> Tuple<'a> {
-        Tuple { len: fields.len(), bytes, fields, types }
-    }
-    pub (crate) fn bytes(&self) -> &'a [u8] {
-        self.bytes
-    }
-    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-        while !self.fields.is_empty() {
-            self.decode_item(IgnoreVisitor)?;
-        }
-        Ok(())
-    }
-    /// The number of items in the tuple.
-    pub fn len(&self) -> usize {
-        self.len
-    }
-    /// The number of un-decoded items remaining in the tuple.
-    pub fn remaining(&self) -> usize {
-        self.fields.len()
-    }
-    /// Decode the next item from the tuple by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
-        if self.fields.is_empty() {
-            return Ok(None)
-        }
+impl<'a> Tuple<'a> {
+	pub(crate) fn new(
+		bytes: &'a [u8],
+		fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+		types: &'a PortableRegistry,
+	) -> Tuple<'a> {
+		Tuple { len: fields.len(), bytes, fields, types }
+	}
+	pub(crate) fn bytes(&self) -> &'a [u8] {
+		self.bytes
+	}
+	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+		while !self.fields.is_empty() {
+			self.decode_item(IgnoreVisitor)?;
+		}
+		Ok(())
+	}
+	/// The number of items in the tuple.
+	pub fn len(&self) -> usize {
+		self.len
+	}
+	/// The number of un-decoded items remaining in the tuple.
+	pub fn remaining(&self) -> usize {
+		self.fields.len()
+	}
+	/// Decode the next item from the tuple by providing a visitor to handle it.
+	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+		if self.fields.is_empty() {
+			return Ok(None);
+		}
 
-        let field = &self.fields[0];
-        let b = &mut self.bytes;
+		let field = &self.fields[0];
+		let b = &mut self.bytes;
 
-        // Don't return here; decrement bytes properly first and then return, so that
-        // calling decode_item again works as expected.
-        let res = crate::decode::decode(b, field.id(), self.types, visitor);
+		// Don't return here; decrement bytes properly first and then return, so that
+		// calling decode_item again works as expected.
+		let res = crate::decode::decode(b, field.id(), self.types, visitor);
 
-        self.fields = &self.fields[1..];
-        self.bytes = *b;
+		self.fields = &self.fields[1..];
+		self.bytes = *b;
 
-        res.map(Some)
-    }
+		res.map(Some)
+	}
 }

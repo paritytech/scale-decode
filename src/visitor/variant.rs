@@ -13,52 +13,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use scale_info::{
-    form::PortableForm,
-};
-use super::{
-    composite::Composite,
-    DecodeError,
-    Visitor,
-};
+use super::{composite::Composite, DecodeError, Visitor};
+use scale_info::form::PortableForm;
 
 /// A representation of the a variant type.
 pub struct Variant<'a> {
-    variant: &'a scale_info::Variant<PortableForm>,
-    fields: Composite<'a>
+	variant: &'a scale_info::Variant<PortableForm>,
+	fields: Composite<'a>,
 }
 
-impl <'a> Variant<'a> {
-    pub (crate) fn new(
-        variant: &'a scale_info::Variant<PortableForm>,
-        fields: Composite<'a>,
-    ) -> Variant<'a> {
-        Variant { variant, fields }
-    }
-    pub (crate) fn bytes(&self) -> &'a [u8] {
-        self.fields.bytes()
-    }
-    pub (crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-        self.fields.skip_rest()
-    }
-    /// The name of the variant.
-    pub fn name(&self) -> &str {
-        self.variant.name()
-    }
-    /// The index of the variant.
-    pub fn index(&self) -> u8 {
-        self.variant.index()
-    }
-    /// The number of fields in the variant.
-    pub fn len(&self) -> usize {
-        self.fields.len()
-    }
-    /// The number of un-decoded fields remaining in the variant.
-    pub fn remaining(&self) -> usize {
-        self.fields.remaining()
-    }
-    /// Decode the next field in the variant by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
-        self.fields.decode_item(visitor)
-    }
+impl<'a> Variant<'a> {
+	pub(crate) fn new(
+		variant: &'a scale_info::Variant<PortableForm>,
+		fields: Composite<'a>,
+	) -> Variant<'a> {
+		Variant { variant, fields }
+	}
+	pub(crate) fn bytes(&self) -> &'a [u8] {
+		self.fields.bytes()
+	}
+	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+		self.fields.skip_rest()
+	}
+	/// The name of the variant.
+	pub fn name(&self) -> &str {
+		self.variant.name()
+	}
+	/// The index of the variant.
+	pub fn index(&self) -> u8 {
+		self.variant.index()
+	}
+	/// The number of fields in the variant.
+	pub fn len(&self) -> usize {
+		self.fields.len()
+	}
+	/// The number of un-decoded fields remaining in the variant.
+	pub fn remaining(&self) -> usize {
+		self.fields.remaining()
+	}
+	/// Decode the next field in the variant by providing a visitor to handle it.
+	pub fn decode_item<V: Visitor>(
+		&mut self,
+		visitor: V,
+	) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
+		self.fields.decode_item(visitor)
+	}
 }
