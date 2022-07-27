@@ -63,7 +63,6 @@ impl <'a> BitSequence<'a> {
             // How many bytes needed to store those bits?
             let number_of_bytes = number_of_bytes_needed(number_of_bits, self.store);
 
-println!("ITEMS {number_of_bits}, bytes {number_of_bytes}");
             if number_of_bytes > data.len() {
                 return Err(DecodeError::Eof)
             }
