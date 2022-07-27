@@ -31,7 +31,7 @@ use scale_info::form::PortableForm;
 pub mod types {
 	pub use super::array::Array;
 	pub use super::bit_sequence::{BitSequence, BitSequenceValue};
-	pub use super::composite::Composite;
+	pub use super::composite::{Composite, CompositeValue};
 	pub use super::sequence::Sequence;
 	pub use super::str::Str;
 	pub use super::tuple::Tuple;

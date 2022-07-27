@@ -30,13 +30,13 @@ impl<'a> Array<'a> {
 	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
 		self.seq.skip_rest()
 	}
-	/// The length of the array.
+	/// The number of un-decoded items left in the array.
 	pub fn len(&self) -> usize {
 		self.seq.len()
 	}
-	/// The number of un-decoded items remaining in the array.
-	pub fn remaining(&self) -> usize {
-		self.seq.remaining()
+	/// Are there any un-decoded items remaining in the array.
+	pub fn is_empty(&self) -> bool {
+		self.seq.is_empty()
 	}
 	/// Decode the next item from the array by providing a visitor to handle it.
 	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {

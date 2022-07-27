@@ -43,19 +43,19 @@ impl<'a> Variant<'a> {
 	pub fn index(&self) -> u8 {
 		self.variant.index()
 	}
-	/// The number of fields in the variant.
+	/// The number of un-decoded fields in the variant.
 	pub fn len(&self) -> usize {
 		self.fields.len()
 	}
-	/// The number of un-decoded fields remaining in the variant.
-	pub fn remaining(&self) -> usize {
-		self.fields.remaining()
+	/// Are there any un-decoded fields remaining in the variant.
+	pub fn is_empty(&self) -> bool {
+		self.fields.is_empty()
 	}
 	/// Decode the next field in the variant by providing a visitor to handle it.
 	pub fn decode_item<V: Visitor>(
 		&mut self,
 		visitor: V,
-	) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
+	) -> Result<Option<super::composite::CompositeValue<'a, V::Value>>, V::Error> {
 		self.fields.decode_item(visitor)
 	}
 }

@@ -21,7 +21,6 @@ pub struct Composite<'a> {
 	bytes: &'a [u8],
 	fields: &'a [Field<PortableForm>],
 	types: &'a PortableRegistry,
-	len: usize,
 }
 
 impl<'a> Composite<'a> {
@@ -30,7 +29,7 @@ impl<'a> Composite<'a> {
 		fields: &'a [Field<PortableForm>],
 		types: &'a PortableRegistry,
 	) -> Composite<'a> {
-		Composite { len: fields.len(), bytes, fields, types }
+		Composite { bytes, fields, types }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {
 		self.bytes
@@ -41,19 +40,19 @@ impl<'a> Composite<'a> {
 		}
 		Ok(())
 	}
-	/// The number of items in this composite type.
-	pub fn len(&self) -> usize {
-		self.len
-	}
 	/// The number of un-decoded items remaining in this composite type.
-	pub fn remaining(&self) -> usize {
+	pub fn len(&self) -> usize {
 		self.fields.len()
+	}
+	/// Are there any un-decoded items remaining in this composite type.
+	pub fn is_empty(&self) -> bool {
+		self.fields.is_empty()
 	}
 	/// Decode the next field in the composite type by providing a visitor to handle it.
 	pub fn decode_item<V: Visitor>(
 		&mut self,
 		visitor: V,
-	) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
+	) -> Result<Option<CompositeValue<'a, V::Value>>, V::Error> {
 		if self.fields.is_empty() {
 			return Ok(None);
 		}
@@ -72,3 +71,6 @@ impl<'a> Composite<'a> {
 		res.map(|val| Some((field_name, val)))
 	}
 }
+
+/// A tuple of a name for the field (which may or may not exist) and a value.
+pub type CompositeValue<'a, Value> = (Option<&'a str>, Value);

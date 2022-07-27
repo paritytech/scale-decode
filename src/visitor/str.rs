@@ -30,11 +30,15 @@ impl<'a> Str<'a> {
 		let len = <Compact<u32>>::decode(bytes)?.0 as usize;
 		let str_bytes = &bytes[..len];
 		*bytes = &bytes[len..];
-		Ok(Str { len: len, bytes: str_bytes })
+		Ok(Str { len, bytes: str_bytes })
 	}
 	/// The length of the string.
 	pub fn len(&self) -> usize {
 		self.len
+	}
+	/// Is the string zero bytes long?
+	pub fn is_empty(&self) -> bool {
+		self.len == 0
 	}
 	/// return a string, failing if the bytes could not be properly utf8-decoded.
 	pub fn as_str(&self) -> Result<&'a str, DecodeError> {

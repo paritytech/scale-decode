@@ -20,7 +20,6 @@ use scale_info::PortableRegistry;
 pub struct Sequence<'a> {
 	bytes: &'a [u8],
 	type_id: u32,
-	len: usize,
 	types: &'a PortableRegistry,
 	remaining: usize,
 }
@@ -32,24 +31,24 @@ impl<'a> Sequence<'a> {
 		len: usize,
 		types: &'a PortableRegistry,
 	) -> Sequence<'a> {
-		Sequence { bytes, type_id, len, types, remaining: len }
+		Sequence { bytes, type_id, types, remaining: len }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {
 		self.bytes
 	}
 	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-		while self.remaining() > 0 {
+		while self.remaining > 0 {
 			self.decode_item(IgnoreVisitor)?;
 		}
 		Ok(())
 	}
-	/// The length of the sequence.
+	/// The number of un-decoded items remaining in this sequence.
 	pub fn len(&self) -> usize {
-		self.len
-	}
-	/// The number of un-decoded items remaining in the sequence.
-	pub fn remaining(&self) -> usize {
 		self.remaining
+	}
+	/// Are there any un-decoded items remaining in this sequence.
+	pub fn is_empty(&self) -> bool {
+		self.remaining == 0
 	}
 	/// Decode an item from the sequence by providing a visitor to handle it.
 	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {

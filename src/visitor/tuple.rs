@@ -21,7 +21,6 @@ pub struct Tuple<'a> {
 	bytes: &'a [u8],
 	fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
 	types: &'a PortableRegistry,
-	len: usize,
 }
 
 impl<'a> Tuple<'a> {
@@ -30,7 +29,7 @@ impl<'a> Tuple<'a> {
 		fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
 		types: &'a PortableRegistry,
 	) -> Tuple<'a> {
-		Tuple { len: fields.len(), bytes, fields, types }
+		Tuple { bytes, fields, types }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {
 		self.bytes
@@ -41,13 +40,13 @@ impl<'a> Tuple<'a> {
 		}
 		Ok(())
 	}
-	/// The number of items in the tuple.
-	pub fn len(&self) -> usize {
-		self.len
-	}
 	/// The number of un-decoded items remaining in the tuple.
-	pub fn remaining(&self) -> usize {
+	pub fn len(&self) -> usize {
 		self.fields.len()
+	}
+	/// Are there any un-decoded items remaining in the tuple.
+	pub fn is_empty(&self) -> bool {
+		self.fields.is_empty()
 	}
 	/// Decode the next item from the tuple by providing a visitor to handle it.
 	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {

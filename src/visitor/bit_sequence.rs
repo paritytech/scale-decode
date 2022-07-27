@@ -81,9 +81,11 @@ impl<'a> BitSequence<'a> {
 			(BitStoreTy::U64, BitOrderTy::Msb0) => BitSequenceValue::U64Msb0(BitVec::decode(data)?),
 			#[cfg(feature = "32bit_target")]
 			(BitStoreTy::U64, _) => {
-				return Err(DecodeError::BitSequenceError(BitSequenceError::StoreTypeNotSupported(
-					"u64 (pointer-width on this compile target is not 64)".into(),
-				)))
+				return Err(DecodeError::BitSequenceError(
+					crate::bit_sequence::BitSequenceError::StoreTypeNotSupported(
+						"u64 (pointer-width on this compile target is not 64)".into(),
+					),
+				))
 			}
 		};
 		self.bytes = *data;
@@ -103,7 +105,7 @@ fn number_of_bytes_needed(number_of_bits: usize, store: BitStoreTy) -> usize {
 	// This nifty code works out the number of bytes needed to
 	// store the number of bits given.
 	let number_of_bits_rounded_up =
-		number_of_bits + (store_width_bits - 1) & !(store_width_bits - 1);
+		(number_of_bits + (store_width_bits - 1)) & !(store_width_bits - 1);
 
 	// Round to the number of bytes needed.
 	number_of_bits_rounded_up / 8

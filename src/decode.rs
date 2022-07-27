@@ -35,7 +35,7 @@ pub fn decode<'a, V: Visitor>(
 	types: &'a PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
-	let ty = types.resolve(ty_id).ok_or_else(|| DecodeError::TypeIdNotFound(ty_id))?;
+	let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
 
 	match ty.type_def() {
 		TypeDef::Composite(inner) => decode_composite_value(data, inner, types, visitor),
@@ -164,8 +164,8 @@ fn decode_primitive_value<V: Visitor>(
 		TypeDefPrimitive::Str => {
 			// Avoid allocating; don't decode into a String. instead, pull the bytes
 			// and let the visitor decide whether to use them or not.
-			let mut s = Str::new_from(data)?;
-			visitor.visit_str(&mut s)
+			let s = Str::new_from(data)?;
+			visitor.visit_str(&s)
 		}
 		TypeDefPrimitive::U8 => {
 			let n = u8::decode(data).map_err(|e| e.into())?;
@@ -276,7 +276,7 @@ fn decode_compact_value<V: Visitor>(
 			}
 			// For now, we give up if we have been asked for any other type:
 			_cannot_decode_from => {
-				return Err(DecodeError::CannotDecodeCompactIntoType(inner.clone()).into())
+				Err(DecodeError::CannotDecodeCompactIntoType(inner.clone()).into())
 			}
 		}
 	}
