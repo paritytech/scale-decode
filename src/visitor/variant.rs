@@ -57,12 +57,8 @@ impl <'a> Variant<'a> {
     pub fn remaining(&self) -> usize {
         self.fields.remaining()
     }
-    /// The name of the next field to be decoded, if it has one.
-    pub fn next_field_name(&self) -> Option<&str> {
-        self.fields.next_field_name()
-    }
     /// Decode the next field in the variant by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
         self.fields.decode_item(visitor)
     }
 }

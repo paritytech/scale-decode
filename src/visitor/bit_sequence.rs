@@ -53,25 +53,24 @@ impl <'a> BitSequence<'a> {
     pub (crate) fn skip_if_not_decoded(&mut self) -> Result<(), DecodeError> {
         if !self.decoded {
             // A bitvec is a compact encoded length, which is the number of
-            // items of whatever the store type that are to follow. So, pluck
-            // the length out and then skip over a number of bytes corresponding
-            // to that number of store type items.
+            // bits in the bitvec. Based on the store type we turn that into a number
+            // of bytes we need to skip over.
             let data = &mut self.bytes;
-            let items_len = <Compact<u64>>::decode(data)?.0 as usize;
-            let byte_len = match self.store {
-                BitStoreTy::U8 => items_len,
-                BitStoreTy::U16 => items_len * 2,
-                BitStoreTy::U32 => items_len * 4,
-                BitStoreTy::U64 => items_len * 8,
-            };
 
-            if byte_len > data.len() {
+            // Number of bits stored.
+            let number_of_bits = <Compact<u64>>::decode(data)?.0 as usize;
+
+            // How many bytes needed to store those bits?
+            let number_of_bytes = number_of_bytes_needed(number_of_bits, self.store);
+
+println!("ITEMS {number_of_bits}, bytes {number_of_bytes}");
+            if number_of_bytes > data.len() {
                 return Err(DecodeError::Eof)
             }
 
             // We only modify the bytes here when we're sure nothing will go wrong.
             self.bytes = *data;
-            self.bytes = &self.bytes[byte_len..];
+            self.bytes = &self.bytes[number_of_bytes..];
         }
         Ok(())
     }
@@ -111,7 +110,24 @@ impl <'a> BitSequence<'a> {
     }
 }
 
+fn number_of_bytes_needed(number_of_bits: usize, store: BitStoreTy) -> usize {
+    let store_width_bits: usize = match store {
+        BitStoreTy::U8 => 8,
+        BitStoreTy::U16 => 16,
+        BitStoreTy::U32 => 32,
+        BitStoreTy::U64 => 64,
+    };
+
+    // This nifty code works out the number of bytes needed to
+    // store the number of bits given.
+    let number_of_bits_rounded_up = number_of_bits + (store_width_bits-1) & !(store_width_bits-1);
+
+    // Round to the number of bytes needed.
+    number_of_bits_rounded_up / 8
+}
+
 /// A decoded BitVec.
+#[derive(Clone, PartialEq, Debug)]
 pub enum BitSequenceValue {
     /// A bit sequence with a store type of `u8` and an order of `Lsb0`
     U8Lsb0(BitVec::<u8, Lsb0>),
@@ -129,4 +145,90 @@ pub enum BitSequenceValue {
     U64Lsb0(BitVec::<u64, Lsb0>),
     /// A bit sequence with a store type of `u64` and an order of `Msb0`
     U64Msb0(BitVec::<u64, Msb0>),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bitvec::bitvec;
+    use codec::Encode;
+
+    fn encode_decode_bitseq<Bits: Encode>(bits: Bits, store: BitStoreTy, order: BitOrderTy) {
+        let bytes = bits.encode();
+
+        // Test skipping works:
+        let mut seq = BitSequence::new(store, order, &bytes);
+        seq.skip_if_not_decoded().expect("can skip bitseq without error");
+        assert_eq!(seq.bytes().len(), 0,  "No bytes should remain after skipping over");
+
+        // Test actual decoding works:
+        let mut seq = BitSequence::new(store, order, &bytes);
+        let new_bytes = match seq.decode_bitsequence().expect("can decode bytes") {
+            BitSequenceValue::U8Lsb0(new_bits) if store == BitStoreTy::U8 && order == BitOrderTy::Lsb0 => new_bits.encode(),
+            BitSequenceValue::U8Msb0(new_bits) if store == BitStoreTy::U8 && order == BitOrderTy::Msb0 => new_bits.encode(),
+            BitSequenceValue::U16Lsb0(new_bits) if store == BitStoreTy::U16 && order == BitOrderTy::Lsb0 => new_bits.encode(),
+            BitSequenceValue::U16Msb0(new_bits) if store == BitStoreTy::U16 && order == BitOrderTy::Msb0 => new_bits.encode(),
+            BitSequenceValue::U32Lsb0(new_bits) if store == BitStoreTy::U32 && order == BitOrderTy::Lsb0 => new_bits.encode(),
+            BitSequenceValue::U32Msb0(new_bits) if store == BitStoreTy::U32 && order == BitOrderTy::Msb0 => new_bits.encode(),
+            BitSequenceValue::U64Lsb0(new_bits) if store == BitStoreTy::U64 && order == BitOrderTy::Lsb0 => new_bits.encode(),
+            BitSequenceValue::U64Msb0(new_bits) if store == BitStoreTy::U64 && order == BitOrderTy::Msb0 => new_bits.encode(),
+            v => panic!("Value {v:?} was unexpected given store {store:?} and order {order:?}")
+        };
+
+        assert_eq!(bytes, new_bytes, "Original encoded bytes don't line up to decoded bytes");
+    }
+
+    #[test]
+    fn can_decode() {
+        encode_decode_bitseq(bitvec![u8, Lsb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U8, BitOrderTy::Lsb0);
+        encode_decode_bitseq(bitvec![u16, Lsb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U16, BitOrderTy::Lsb0);
+        encode_decode_bitseq(bitvec![u32, Lsb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U32, BitOrderTy::Lsb0);
+        encode_decode_bitseq(bitvec![u64, Lsb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U64, BitOrderTy::Lsb0);
+
+        encode_decode_bitseq(bitvec![u8, Msb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U8, BitOrderTy::Msb0);
+        encode_decode_bitseq(bitvec![u16, Msb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U16, BitOrderTy::Msb0);
+        encode_decode_bitseq(bitvec![u32, Msb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U32, BitOrderTy::Msb0);
+        encode_decode_bitseq(bitvec![u64, Msb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U64, BitOrderTy::Msb0);
+    }
+
+    #[test]
+    fn number_of_bits() {
+        let tests = vec![
+            // u8
+            (0, BitStoreTy::U8, 0),
+            (1, BitStoreTy::U8, 1),
+            (7, BitStoreTy::U8, 1),
+            (8, BitStoreTy::U8, 1),
+            (9, BitStoreTy::U8, 2),
+            (16, BitStoreTy::U8, 2),
+            (17, BitStoreTy::U8, 3),
+            // u16
+            (0, BitStoreTy::U16, 0),
+            (1, BitStoreTy::U16, 2),
+            (15, BitStoreTy::U16, 2),
+            (16, BitStoreTy::U16, 2),
+            (17, BitStoreTy::U16, 4),
+            (32, BitStoreTy::U16, 4),
+            (33, BitStoreTy::U16, 6),
+            // u32
+            (0, BitStoreTy::U32, 0),
+            (1, BitStoreTy::U32, 4),
+            (31, BitStoreTy::U32, 4),
+            (32, BitStoreTy::U32, 4),
+            (33, BitStoreTy::U32, 8),
+            (64, BitStoreTy::U32, 8),
+            (65, BitStoreTy::U32, 12),
+            // u64
+            (0, BitStoreTy::U64, 0),
+            (1, BitStoreTy::U64, 8),
+            (64, BitStoreTy::U64, 8),
+            (65, BitStoreTy::U64, 16),
+            (128, BitStoreTy::U64, 16),
+            (129, BitStoreTy::U64, 24),
+        ];
+        for (bits, store, expected) in tests {
+            assert_eq!(number_of_bytes_needed(bits, store), expected, "bits: {bits}, store: {store:?}, expected: {expected}");
+        }
+    }
+
 }

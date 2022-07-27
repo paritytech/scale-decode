@@ -56,19 +56,21 @@ impl <'a> Tuple<'a> {
         self.fields.len()
     }
     /// Decode the next item from the tuple by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
         if self.fields.is_empty() {
-            return Err(DecodeError::NothingLeftToDecode.into())
+            return Ok(None)
         }
 
         let field = &self.fields[0];
-        self.fields = &self.fields[1..];
-
         let b = &mut self.bytes;
+
         // Don't return here; decrement bytes properly first and then return, so that
         // calling decode_item again works as expected.
         let res = crate::decode::decode(b, field.id(), self.types, visitor);
+
+        self.fields = &self.fields[1..];
         self.bytes = *b;
-        res
+
+        res.map(Some)
     }
 }

@@ -76,13 +76,13 @@ pub fn get_bitsequence_details(
 	Ok((bit_store_out, bit_order_out))
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BitOrderTy {
 	Lsb0,
 	Msb0,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum BitStoreTy {
 	U8,
 	U16,

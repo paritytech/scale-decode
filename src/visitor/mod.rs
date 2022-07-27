@@ -67,7 +67,7 @@ pub trait Visitor: Sized {
     /// Called when a u128 is seen in the input bytes.
     fn visit_u128(self, value: u128) -> Result<Self::Value, Self::Error>;
     /// Called when a u256 is seen in the input bytes.
-    fn visit_u256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
+    fn visit_u256(self, value: &[u8; 32]) -> Result<Self::Value, Self::Error>;
     /// Called when an i8 is seen in the input bytes.
     fn visit_i8(self, value: i8) -> Result<Self::Value, Self::Error>;
     /// Called when an i16 is seen in the input bytes.
@@ -79,7 +79,7 @@ pub trait Visitor: Sized {
     /// Called when an i128 is seen in the input bytes.
     fn visit_i128(self, value: i128) -> Result<Self::Value, Self::Error>;
     /// Called when an i256 is seen in the input bytes.
-    fn visit_i256(self, value: &[u8]) -> Result<Self::Value, Self::Error>;
+    fn visit_i256(self, value: &[u8; 32]) -> Result<Self::Value, Self::Error>;
     /// Called when a sequence of values is seen in the input bytes.
     fn visit_sequence(self, value: &mut types::Sequence<'_>) -> Result<Self::Value, Self::Error>;
     /// Called when a composite value is seen in the input bytes.
@@ -181,7 +181,7 @@ impl Visitor for IgnoreVisitor {
     fn visit_u128(self, _value: u128) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_u256(self, _value: &[u8]) -> Result<Self::Value, Self::Error> {
+    fn visit_u256(self, _value: &[u8; 32]) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
     fn visit_i8(self, _value: i8) -> Result<Self::Value, Self::Error> {
@@ -199,7 +199,7 @@ impl Visitor for IgnoreVisitor {
     fn visit_i128(self, _value: i128) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
-    fn visit_i256(self, _value: &[u8]) -> Result<Self::Value, Self::Error> {
+    fn visit_i256(self, _value: &[u8; 32]) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
     fn visit_sequence(self, _value: &mut types::Sequence<'_>) -> Result<Self::Value, Self::Error> {

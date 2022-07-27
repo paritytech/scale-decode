@@ -64,9 +64,9 @@ impl <'a> Sequence<'a> {
         self.remaining
     }
     /// Decode an item from the sequence by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
         if self.remaining == 0 {
-            return Err(DecodeError::NothingLeftToDecode.into())
+            return Ok(None)
         }
 
         let b = &mut self.bytes;
@@ -75,6 +75,6 @@ impl <'a> Sequence<'a> {
         let res = crate::decode::decode(b, self.type_id, self.types, visitor);
         self.bytes = *b;
         self.remaining -= 1;
-        res
+        res.map(Some)
     }
 }

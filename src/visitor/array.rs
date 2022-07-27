@@ -43,7 +43,7 @@ impl <'a> Array<'a> {
         self.seq.remaining()
     }
     /// Decode the next item from the array by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
         self.seq.decode_item(visitor)
     }
 }

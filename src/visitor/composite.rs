@@ -57,24 +57,23 @@ impl <'a> Composite<'a> {
     pub fn remaining(&self) -> usize {
         self.fields.len()
     }
-    /// The name of the next field we'll decode when [`Composite::decode_item()`] is called.
-    pub fn next_field_name(&self) -> Option<&str> {
-        self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
-    }
     /// Decode the next field in the composite type by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<V::Value, V::Error> {
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<(Option<&'a str>, V::Value)>, V::Error> {
         if self.fields.is_empty() {
-            return Err(DecodeError::NothingLeftToDecode.into())
+            return Ok(None)
         }
 
         let field = &self.fields[0];
-        self.fields = &self.fields[1..];
-
+        let field_name = self.fields.get(0).and_then(|f| f.name().map(|n| &**n));
         let b = &mut self.bytes;
+
         // Don't return here; decrement bytes properly first and then return, so that
         // calling decode_item again works as expected.
         let res = crate::decode::decode(b, field.ty().id(), self.types, visitor);
+
         self.bytes = *b;
-        res
+        self.fields = &self.fields[1..];
+
+        res.map(|val| Some((field_name, val)))
     }
 }
