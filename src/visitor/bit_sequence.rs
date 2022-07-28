@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use super::DecodeError;
-use crate::bit_sequence::{BitOrderTy, BitStoreTy};
+use crate::utils::bit_sequence::{BitOrderTy, BitStoreTy};
 use bitvec::{
 	order::{Lsb0, Msb0},
 	vec::BitVec,
