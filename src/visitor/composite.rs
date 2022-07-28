@@ -40,8 +40,7 @@ impl<'a, 'b> Composite<'a, 'b> {
 		}
 		Ok(())
 	}
-	/// Do any of the fields in this composite type have names? Either all of them
-	/// should be named, or none of them should be.
+	/// The yet-to-be-decoded fields still present in this composite type.
 	pub fn fields(&self) -> &'b [Field<PortableForm>] {
 		self.fields
 	}
