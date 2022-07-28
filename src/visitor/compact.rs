@@ -48,6 +48,16 @@ pub enum CompactLocation<'b> {
 	Primitive(TypeId),
 }
 
+impl<'b> CompactLocation<'b> {
+	/// Return the Primitive type of this location, if one exists.
+	pub fn as_primitive(self) -> Option<TypeId> {
+		match self {
+			CompactLocation::Primitive(t) => Some(t),
+			_ => None,
+		}
+	}
+}
+
 // Default values for locations are never handed back, but they are
 // stored on the StackArray in the "unused" positions. We could avoid needing
 // this with some unsafe code.
