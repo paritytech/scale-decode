@@ -39,11 +39,11 @@ enum Value {
 	CompactU64(u64),
 	CompactU128(u128),
 	Sequence(Vec<Value>),
-	Composite(Vec<(Option<String>, Value)>),
+	Composite(Vec<(String, Value)>),
 	Tuple(Vec<Value>),
 	Str(String),
 	Array(Vec<Value>),
-	Variant(String, Vec<(Option<String>, Value)>),
+	Variant(String, Vec<(String, Value)>),
 	BitSequence(visitor::BitSequenceValue),
 }
 
@@ -148,8 +148,8 @@ impl visitor::Visitor for ValueVisitor {
 		_type_id: TypeId,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
-		while let Some((name, val)) = value.decode_item(ValueVisitor)? {
-			vals.push((name.map(|s| s.to_owned()), val));
+		while let Some((name, val)) = value.decode_item_with_name(ValueVisitor)? {
+			vals.push((name.to_owned(), val));
 		}
 		Ok(Value::Composite(vals))
 	}
@@ -173,8 +173,9 @@ impl visitor::Visitor for ValueVisitor {
 		_type_id: TypeId,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
-		while let Some((name, val)) = value.decode_item(ValueVisitor)? {
-			vals.push((name.map(|s| s.to_owned()), val));
+		let fields = value.fields();
+		while let Some((name, val)) = fields.decode_item_with_name(ValueVisitor)? {
+			vals.push((name.to_owned(), val));
 		}
 		Ok(Value::Variant(value.name().to_owned(), vals))
 	}
@@ -221,8 +222,8 @@ fn main() {
 		Value::Variant(
 			"Bar".to_owned(),
 			vec![
-				(Some("hi".to_string()), Value::Str("hello".to_string())),
-				(Some("other".to_string()), Value::U128(123)),
+				("hi".to_string(), Value::Str("hello".to_string())),
+				("other".to_string(), Value::U128(123)),
 			],
 		)
 	)

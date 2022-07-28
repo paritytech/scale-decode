@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{composite::Composite, DecodeError, Visitor};
+use super::{composite::Composite, DecodeError};
 use scale_info::form::PortableForm;
 
 /// A representation of the a variant type.
@@ -43,19 +43,8 @@ impl<'a, 'b> Variant<'a, 'b> {
 	pub fn index(&self) -> u8 {
 		self.variant.index()
 	}
-	/// The number of un-decoded fields in the variant.
-	pub fn len(&self) -> usize {
-		self.fields.len()
-	}
-	/// Are there any un-decoded fields remaining in the variant.
-	pub fn is_empty(&self) -> bool {
-		self.fields.is_empty()
-	}
-	/// Decode the next field in the variant by providing a visitor to handle it.
-	pub fn decode_item<V: Visitor>(
-		&mut self,
-		visitor: V,
-	) -> Result<Option<super::composite::CompositeValue<'b, V::Value>>, V::Error> {
-		self.fields.decode_item(visitor)
+	/// Access the variant fields.
+	pub fn fields(&mut self) -> &mut Composite<'a, 'b> {
+		&mut self.fields
 	}
 }

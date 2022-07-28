@@ -16,26 +16,43 @@
 use super::TypeId;
 
 /// This represents a compact encoded type.
-pub struct Compact<'c, T> {
+pub struct Compact<'b, 'c, T> {
 	val: T,
-	inner_type_ids: &'c [TypeId],
+	locations: &'c [CompactLocation<'b>],
 }
 
-impl<'c, T: Copy> Compact<'c, T> {
-	pub(crate) fn new(val: T, inner_type_ids: &'c [TypeId]) -> Compact<'c, T> {
-		Compact { val, inner_type_ids }
+impl<'b, 'c, T: Copy> Compact<'b, 'c, T> {
+	pub(crate) fn new(val: T, locations: &'c [CompactLocation<'b>]) -> Compact<'b, 'c, T> {
+		Compact { val, locations }
 	}
 	/// Return the value that was compact-encoded
 	pub fn value(&self) -> T {
 		self.val
 	}
-	/// The type ID returned in the compact visitor functions is always the
-	/// one corresponding to the outermost `Compact` value. This returns all
-	/// of the other Type IDs encountered down to, and including the one for the
-	/// value itself (which should be an ID pointing to some primitive type).
-	///
-	/// It will always have a length of at least 1, for this reason.
-	pub fn type_ids(&self) -> &'c [TypeId] {
-		self.inner_type_ids
+	/// Compact values can be nested inside named or unnamed fields in structs.
+	/// This provides back a slice of
+	pub fn locations(&self) -> &'c [CompactLocation<'b>] {
+		self.locations
+	}
+}
+
+/// A pointer to what the compact value is contained within.
+#[derive(Clone, Copy, Debug)]
+pub enum CompactLocation<'b> {
+	/// We're in an unnamed composite (struct) with the type ID given.
+	UnnamedComposite(TypeId),
+	/// We're in a named composite (struct) with the type ID given, and the compact
+	/// value lives inside the field with the given name.
+	NamedComposite(TypeId, &'b str),
+	/// We're at a primitive type with the type ID given; the compact value itself.
+	Primitive(TypeId),
+}
+
+// Default values for locations are never handed back, but they are
+// stored on the StackArray in the "unused" positions. We could avoid needing
+// this with some unsafe code.
+impl<'a> Default for CompactLocation<'a> {
+	fn default() -> Self {
+		CompactLocation::Primitive(TypeId::default())
 	}
 }

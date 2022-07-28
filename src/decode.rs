@@ -15,8 +15,8 @@
 
 use crate::utils::{bit_sequence::get_bitsequence_details, stack_vec::StackVec};
 use crate::visitor::{
-	Array, BitSequence, Compact, Composite, DecodeError, Sequence, Str, Tuple, TypeId, Variant,
-	Visitor,
+	Array, BitSequence, Compact, CompactLocation, Composite, DecodeError, Sequence, Str, Tuple,
+	TypeId, Variant, Visitor,
 };
 use codec::{self, Decode};
 use scale_info::{
@@ -231,19 +231,21 @@ fn decode_primitive_value<V: Visitor>(
 	}
 }
 
-fn decode_compact_value<V: Visitor>(
+fn decode_compact_value<'b, V: Visitor>(
 	data: &mut &[u8],
 	ty_id: TypeId,
 	ty: &TypeDefCompact<PortableForm>,
-	types: &PortableRegistry,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
-	fn decode_compact<V: Visitor>(
+	#[allow(clippy::too_many_arguments)]
+	fn decode_compact<'b, V: Visitor>(
 		data: &mut &[u8],
 		outermost_ty_id: TypeId,
-		mut inner_ty_ids: StackVec<TypeId, 8>,
-		inner: &scale_info::Type<PortableForm>,
-		types: &PortableRegistry,
+		current_type_id: TypeId,
+		mut locations: StackVec<CompactLocation<'b>, 8>,
+		inner: &'b scale_info::Type<PortableForm>,
+		types: &'b PortableRegistry,
 		visitor: V,
 		depth: usize,
 	) -> Result<V::Value, V::Error> {
@@ -251,28 +253,33 @@ fn decode_compact_value<V: Visitor>(
 		match inner.type_def() {
 			// It's obvious how to decode basic primitive unsigned types, since we have impls for them.
 			TypeDef::Primitive(U8) => {
+				locations.push(CompactLocation::Primitive(current_type_id));
 				let n = codec::Compact::<u8>::decode(data).map_err(|e| e.into())?.0;
-				let c = Compact::new(n, inner_ty_ids.as_slice());
+				let c = Compact::new(n, locations.as_slice());
 				visitor.visit_compact_u8(c, outermost_ty_id)
 			}
 			TypeDef::Primitive(U16) => {
+				locations.push(CompactLocation::Primitive(current_type_id));
 				let n = codec::Compact::<u16>::decode(data).map_err(|e| e.into())?.0;
-				let c = Compact::new(n, inner_ty_ids.as_slice());
+				let c = Compact::new(n, locations.as_slice());
 				visitor.visit_compact_u16(c, outermost_ty_id)
 			}
 			TypeDef::Primitive(U32) => {
+				locations.push(CompactLocation::Primitive(current_type_id));
 				let n = codec::Compact::<u32>::decode(data).map_err(|e| e.into())?.0;
-				let c = Compact::new(n, inner_ty_ids.as_slice());
+				let c = Compact::new(n, locations.as_slice());
 				visitor.visit_compact_u32(c, outermost_ty_id)
 			}
 			TypeDef::Primitive(U64) => {
+				locations.push(CompactLocation::Primitive(current_type_id));
 				let n = codec::Compact::<u64>::decode(data).map_err(|e| e.into())?.0;
-				let c = Compact::new(n, inner_ty_ids.as_slice());
+				let c = Compact::new(n, locations.as_slice());
 				visitor.visit_compact_u64(c, outermost_ty_id)
 			}
 			TypeDef::Primitive(U128) => {
+				locations.push(CompactLocation::Primitive(current_type_id));
 				let n = codec::Compact::<u128>::decode(data).map_err(|e| e.into())?.0;
-				let c = Compact::new(n, inner_ty_ids.as_slice());
+				let c = Compact::new(n, locations.as_slice());
 				visitor.visit_compact_u128(c, outermost_ty_id)
 			}
 			// A struct with exactly 1 field containing one of the above types can be sensibly compact encoded/decoded.
@@ -283,20 +290,27 @@ fn decode_compact_value<V: Visitor>(
 
 				// What type is the 1 field that we are able to decode?
 				let field = &composite.fields()[0];
+
+				// Record this composite location.
+				match field.name() {
+					Some(name) => {
+						locations.push(CompactLocation::NamedComposite(current_type_id, &**name))
+					}
+					None => locations.push(CompactLocation::UnnamedComposite(current_type_id)),
+				}
+
 				let field_type_id = field.ty().id();
 				let inner_ty = types
 					.resolve(field_type_id)
 					.ok_or(DecodeError::TypeIdNotFound(field_type_id))?;
-
-				// Push the type of the next thing we find to the list.
-				inner_ty_ids.push(TypeId(field_type_id));
 
 				// Decode this inner type via compact decoding. This can recurse, in case
 				// the inner type is also a 1-field composite type.
 				decode_compact(
 					data,
 					outermost_ty_id,
-					inner_ty_ids,
+					TypeId(field_type_id),
+					locations,
 					inner_ty,
 					types,
 					visitor,
@@ -314,15 +328,12 @@ fn decode_compact_value<V: Visitor>(
 	let inner_ty_id = ty.type_param().id();
 
 	// Attempt to compact-decode this inner type.
-	let inner = types
-		.resolve(inner_ty_id)
-		.ok_or_else(|| DecodeError::TypeIdNotFound(ty.type_param().id()))?;
+	let inner = types.resolve(inner_ty_id).ok_or(DecodeError::TypeIdNotFound(inner_ty_id))?;
 
 	// Track any inner type IDs we encounter.
-	let mut inner_ty_ids = StackVec::<TypeId, 8>::new();
-	inner_ty_ids.push(TypeId(inner_ty_id));
+	let locations = StackVec::<CompactLocation, 8>::new();
 
-	decode_compact(data, ty_id, inner_ty_ids, inner, types, visitor, 0)
+	decode_compact(data, ty_id, TypeId(inner_ty_id), locations, inner, types, visitor, 0)
 }
 
 fn decode_bit_sequence_value<V: Visitor>(

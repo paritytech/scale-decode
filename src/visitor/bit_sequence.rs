@@ -132,6 +132,23 @@ pub enum BitSequenceValue {
 	U64Msb0(BitVec<u64, Msb0>),
 }
 
+impl BitSequenceValue {
+	/// Convert whatever bit sequence is returned to one with a store type of `u8`
+	/// and an order type of `Lsb0`.
+	pub fn to_u8_lsb0(self) -> BitVec<u8, Lsb0> {
+		match self {
+			BitSequenceValue::U8Lsb0(b) => b,
+			BitSequenceValue::U8Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U16Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U16Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U32Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U32Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U64Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U64Msb0(b) => b.iter().by_vals().collect(),
+		}
+	}
+}
+
 #[cfg(test)]
 mod test {
 	use super::*;

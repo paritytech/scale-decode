@@ -67,18 +67,35 @@ mod test {
 		I64(i64),
 		I128(i128),
 		I256([u8; 32]),
-		CompactU8(usize, u8),
-		CompactU16(usize, u16),
-		CompactU32(usize, u32),
-		CompactU64(usize, u64),
-		CompactU128(usize, u128),
+		CompactU8(Vec<Loc>, u8),
+		CompactU16(Vec<Loc>, u16),
+		CompactU32(Vec<Loc>, u32),
+		CompactU64(Vec<Loc>, u64),
+		CompactU128(Vec<Loc>, u128),
 		Sequence(Vec<Value>),
-		Composite(Vec<(Option<String>, Value)>),
+		Composite(Vec<(String, Value)>),
 		Tuple(Vec<Value>),
 		Str(String),
 		Array(Vec<Value>),
-		Variant(String, Vec<(Option<String>, Value)>),
+		Variant(String, Vec<(String, Value)>),
 		BitSequence(crate::visitor::BitSequenceValue),
+	}
+
+	#[derive(Clone, Debug, PartialEq)]
+	enum Loc {
+		Unnamed,
+		Named(String),
+		Primitive,
+	}
+
+	impl<'a> From<crate::visitor::CompactLocation<'a>> for Loc {
+		fn from(l: crate::visitor::CompactLocation) -> Self {
+			match l {
+				visitor::CompactLocation::UnnamedComposite(_) => Loc::Unnamed,
+				visitor::CompactLocation::NamedComposite(_, s) => Loc::Named(s.to_owned()),
+				visitor::CompactLocation::Primitive(_) => Loc::Primitive,
+			}
+		}
 	}
 
 	struct ValueVisitor;
@@ -141,35 +158,40 @@ mod test {
 			value: visitor::Compact<u8>,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU8(value.type_ids().len(), value.value()))
+			let locs = value.locations().iter().map(|&l| l.into()).collect();
+			Ok(Value::CompactU8(locs, value.value()))
 		}
 		fn visit_compact_u16(
 			self,
 			value: visitor::Compact<u16>,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU16(value.type_ids().len(), value.value()))
+			let locs = value.locations().iter().map(|&l| l.into()).collect();
+			Ok(Value::CompactU16(locs, value.value()))
 		}
 		fn visit_compact_u32(
 			self,
 			value: visitor::Compact<u32>,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU32(value.type_ids().len(), value.value()))
+			let locs = value.locations().iter().map(|&l| l.into()).collect();
+			Ok(Value::CompactU32(locs, value.value()))
 		}
 		fn visit_compact_u64(
 			self,
 			value: visitor::Compact<u64>,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU64(value.type_ids().len(), value.value()))
+			let locs = value.locations().iter().map(|&l| l.into()).collect();
+			Ok(Value::CompactU64(locs, value.value()))
 		}
 		fn visit_compact_u128(
 			self,
 			value: visitor::Compact<u128>,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU128(value.type_ids().len(), value.value()))
+			let locs = value.locations().iter().map(|&l| l.into()).collect();
+			Ok(Value::CompactU128(locs, value.value()))
 		}
 		fn visit_sequence(
 			self,
@@ -188,8 +210,8 @@ mod test {
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
-			while let Some((name, val)) = value.decode_item(ValueVisitor)? {
-				vals.push((name.map(|s| s.to_owned()), val));
+			while let Some((name, val)) = value.decode_item_with_name(ValueVisitor)? {
+				vals.push((name.to_owned(), val));
 			}
 			Ok(Value::Composite(vals))
 		}
@@ -217,8 +239,9 @@ mod test {
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
-			while let Some((name, val)) = value.decode_item(ValueVisitor)? {
-				vals.push((name.map(|s| s.to_owned()), val));
+			let fields = value.fields();
+			while let Some((name, val)) = fields.decode_item_with_name(ValueVisitor)? {
+				vals.push((name.to_owned(), val));
 			}
 			Ok(Value::Variant(value.name().to_owned(), vals))
 		}
@@ -280,11 +303,11 @@ mod test {
 		encode_decode_check(123u32, Value::U32(123));
 		encode_decode_check(123u64, Value::U64(123));
 		encode_decode_check(123u128, Value::U128(123));
-		encode_decode_check(codec::Compact(123u8), Value::CompactU8(1, 123));
-		encode_decode_check(codec::Compact(123u16), Value::CompactU16(1, 123));
-		encode_decode_check(codec::Compact(123u32), Value::CompactU32(1, 123));
-		encode_decode_check(codec::Compact(123u64), Value::CompactU64(1, 123));
-		encode_decode_check(codec::Compact(123u128), Value::CompactU128(1, 123));
+		encode_decode_check(codec::Compact(123u8), Value::CompactU8(vec![Loc::Primitive], 123));
+		encode_decode_check(codec::Compact(123u16), Value::CompactU16(vec![Loc::Primitive], 123));
+		encode_decode_check(codec::Compact(123u32), Value::CompactU32(vec![Loc::Primitive], 123));
+		encode_decode_check(codec::Compact(123u64), Value::CompactU64(vec![Loc::Primitive], 123));
+		encode_decode_check(codec::Compact(123u128), Value::CompactU128(vec![Loc::Primitive], 123));
 		encode_decode_check(true, Value::Bool(true));
 		encode_decode_check(false, Value::Bool(false));
 		encode_decode_check_explicit_info::<char, _>('c' as u32, Value::Char('c'));
@@ -319,7 +342,7 @@ mod test {
 			codec::Compact(MyWrapper { inner: 123 }),
 			// Currently we ignore any composite types and just give back
 			// the compact value directly:
-			Value::CompactU32(2, 123),
+			Value::CompactU32(vec![Loc::Named("inner".to_owned()), Loc::Primitive], 123),
 		);
 	}
 
@@ -353,7 +376,7 @@ mod test {
 			codec::Compact(MyWrapper(123)),
 			// Currently we ignore any composite types and just give back
 			// the compact value directly:
-			Value::CompactU32(2, 123),
+			Value::CompactU32(vec![Loc::Unnamed, Loc::Primitive], 123),
 		);
 	}
 
@@ -383,15 +406,15 @@ mod test {
 
 		encode_decode_check(
 			MyEnum::Foo(true),
-			Value::Variant("Foo".to_owned(), vec![(None, Value::Bool(true))]),
+			Value::Variant("Foo".to_owned(), vec![(String::new(), Value::Bool(true))]),
 		);
 		encode_decode_check(
 			MyEnum::Bar { hi: "hello".to_string(), other: 123 },
 			Value::Variant(
 				"Bar".to_owned(),
 				vec![
-					(Some("hi".to_string()), Value::Str("hello".to_string())),
-					(Some("other".to_string()), Value::U128(123)),
+					("hi".to_string(), Value::Str("hello".to_string())),
+					("other".to_string(), Value::U128(123)),
 				],
 			),
 		);
@@ -412,18 +435,18 @@ mod test {
 		encode_decode_check(
 			Unnamed(true, "James".into(), vec![1, 2, 3]),
 			Value::Composite(vec![
-				(None, Value::Bool(true)),
-				(None, Value::Str("James".to_string())),
-				(None, Value::Sequence(vec![Value::U8(1), Value::U8(2), Value::U8(3)])),
+				(String::new(), Value::Bool(true)),
+				(String::new(), Value::Str("James".to_string())),
+				(String::new(), Value::Sequence(vec![Value::U8(1), Value::U8(2), Value::U8(3)])),
 			]),
 		);
 		encode_decode_check(
 			Named { is_valid: true, name: "James".into(), bytes: vec![1, 2, 3] },
 			Value::Composite(vec![
-				(Some("is_valid".to_string()), Value::Bool(true)),
-				(Some("name".to_string()), Value::Str("James".to_string())),
+				("is_valid".to_string(), Value::Bool(true)),
+				("name".to_string(), Value::Str("James".to_string())),
 				(
-					Some("bytes".to_string()),
+					"bytes".to_string(),
 					Value::Sequence(vec![Value::U8(1), Value::U8(2), Value::U8(3)]),
 				),
 			]),
