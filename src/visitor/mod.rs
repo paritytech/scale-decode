@@ -77,21 +77,21 @@ pub trait Visitor: Sized {
 	/// Called when an i256 is seen in the input bytes.
 	fn visit_i256(self, value: &[u8; 32]) -> Result<Self::Value, Self::Error>;
 	/// Called when a sequence of values is seen in the input bytes.
-	fn visit_sequence(self, value: &mut types::Sequence<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_sequence(self, value: &mut types::Sequence) -> Result<Self::Value, Self::Error>;
 	/// Called when a composite value is seen in the input bytes.
-	fn visit_composite(self, value: &mut types::Composite<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_composite(self, value: &mut types::Composite) -> Result<Self::Value, Self::Error>;
 	/// Called when a tuple of values is seen in the input bytes.
-	fn visit_tuple(self, value: &mut types::Tuple<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_tuple(self, value: &mut types::Tuple) -> Result<Self::Value, Self::Error>;
 	/// Called when a string value is seen in the input bytes.
-	fn visit_str(self, value: &types::Str<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_str(self, value: &types::Str) -> Result<Self::Value, Self::Error>;
 	/// Called when a variant is seen in the input bytes.
-	fn visit_variant(self, value: &mut types::Variant<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_variant(self, value: &mut types::Variant) -> Result<Self::Value, Self::Error>;
 	/// Called when an array is seen in the input bytes.
-	fn visit_array(self, value: &mut types::Array<'_>) -> Result<Self::Value, Self::Error>;
+	fn visit_array(self, value: &mut types::Array) -> Result<Self::Value, Self::Error>;
 	/// Called when a bit sequence is seen in the input bytes.
 	fn visit_bitsequence(
 		self,
-		value: &mut types::BitSequence<'_>,
+		value: &mut types::BitSequence,
 	) -> Result<Self::Value, Self::Error>;
 
 	// Default implementations for visiting compact values just delegate and
@@ -99,23 +99,28 @@ pub trait Visitor: Sized {
 	// that the thing was compact encoded:
 
 	/// Called when a compact encoded u8 is seen in the input bytes.
-	fn visit_compact_u8(self, value: u8) -> Result<Self::Value, Self::Error> {
+	/// The `depth` is how many structs this composite value is nested inside.
+	fn visit_compact_u8(self, _depth: usize, value: u8) -> Result<Self::Value, Self::Error> {
 		self.visit_u8(value)
 	}
 	/// Called when a compact encoded u16 is seen in the input bytes.
-	fn visit_compact_u16(self, value: u16) -> Result<Self::Value, Self::Error> {
+	/// The `depth` is how many structs this composite value is nested inside.
+	fn visit_compact_u16(self, _depth: usize, value: u16) -> Result<Self::Value, Self::Error> {
 		self.visit_u16(value)
 	}
 	/// Called when a compact encoded u32 is seen in the input bytes.
-	fn visit_compact_u32(self, value: u32) -> Result<Self::Value, Self::Error> {
+	/// The `depth` is how many structs this composite value is nested inside.
+	fn visit_compact_u32(self, _depth: usize, value: u32) -> Result<Self::Value, Self::Error> {
 		self.visit_u32(value)
 	}
 	/// Called when a compact encoded u64 is seen in the input bytes.
-	fn visit_compact_u64(self, value: u64) -> Result<Self::Value, Self::Error> {
+	/// The `depth` is how many structs this composite value is nested inside.
+	fn visit_compact_u64(self, _depth: usize, value: u64) -> Result<Self::Value, Self::Error> {
 		self.visit_u64(value)
 	}
 	/// Called when a compact encoded u128 is seen in the input bytes.
-	fn visit_compact_u128(self, value: u128) -> Result<Self::Value, Self::Error> {
+	/// The `depth` is how many structs this composite value is nested inside.
+	fn visit_compact_u128(self, _depth: usize, value: u128) -> Result<Self::Value, Self::Error> {
 		self.visit_u128(value)
 	}
 }
@@ -201,30 +206,30 @@ impl Visitor for IgnoreVisitor {
 	fn visit_i256(self, _value: &[u8; 32]) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
-	fn visit_sequence(self, _value: &mut types::Sequence<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_sequence(self, _value: &mut types::Sequence) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
 	fn visit_composite(
 		self,
-		_value: &mut types::Composite<'_>,
+		_value: &mut types::Composite,
 	) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
-	fn visit_tuple(self, _value: &mut types::Tuple<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_tuple(self, _value: &mut types::Tuple) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
-	fn visit_str(self, _value: &types::Str<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_str(self, _value: &types::Str) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
-	fn visit_array(self, _value: &mut types::Array<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_array(self, _value: &mut types::Array) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
-	fn visit_variant(self, _value: &mut types::Variant<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_variant(self, _value: &mut types::Variant) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}
 	fn visit_bitsequence(
 		self,
-		_value: &mut types::BitSequence<'_>,
+		_value: &mut types::BitSequence,
 	) -> Result<Self::Value, Self::Error> {
 		Ok(())
 	}

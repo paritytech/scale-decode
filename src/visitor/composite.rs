@@ -17,18 +17,18 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
-pub struct Composite<'a> {
+pub struct Composite<'a, 'b> {
 	bytes: &'a [u8],
-	fields: &'a [Field<PortableForm>],
-	types: &'a PortableRegistry,
+	fields: &'b [Field<PortableForm>],
+	types: &'b PortableRegistry,
 }
 
-impl<'a> Composite<'a> {
+impl<'a, 'b> Composite<'a, 'b> {
 	pub(crate) fn new(
 		bytes: &'a [u8],
-		fields: &'a [Field<PortableForm>],
-		types: &'a PortableRegistry,
-	) -> Composite<'a> {
+		fields: &'b [Field<PortableForm>],
+		types: &'b PortableRegistry,
+	) -> Composite<'a, 'b> {
 		Composite { bytes, fields, types }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {
@@ -52,7 +52,7 @@ impl<'a> Composite<'a> {
 	pub fn decode_item<V: Visitor>(
 		&mut self,
 		visitor: V,
-	) -> Result<Option<CompositeValue<'a, V::Value>>, V::Error> {
+	) -> Result<Option<CompositeValue<'b, V::Value>>, V::Error> {
 		if self.fields.is_empty() {
 			return Ok(None);
 		}
@@ -73,4 +73,4 @@ impl<'a> Composite<'a> {
 }
 
 /// A tuple of a name for the field (which may or may not exist) and a value.
-pub type CompositeValue<'a, Value> = (Option<&'a str>, Value);
+pub type CompositeValue<'b, Value> = (Option<&'b str>, Value);

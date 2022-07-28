@@ -96,24 +96,24 @@ impl visitor::Visitor for ValueVisitor {
 	fn visit_i256(self, value: &[u8; 32]) -> Result<Self::Value, Self::Error> {
 		Ok(Value::I256(*value))
 	}
-	fn visit_compact_u8(self, value: u8) -> Result<Self::Value, Self::Error> {
+	fn visit_compact_u8(self, _depth: usize, value: u8) -> Result<Self::Value, Self::Error> {
 		Ok(Value::CompactU8(value))
 	}
-	fn visit_compact_u16(self, value: u16) -> Result<Self::Value, Self::Error> {
+	fn visit_compact_u16(self, _depth: usize, value: u16) -> Result<Self::Value, Self::Error> {
 		Ok(Value::CompactU16(value))
 	}
-	fn visit_compact_u32(self, value: u32) -> Result<Self::Value, Self::Error> {
+	fn visit_compact_u32(self, _depth: usize, value: u32) -> Result<Self::Value, Self::Error> {
 		Ok(Value::CompactU32(value))
 	}
-	fn visit_compact_u64(self, value: u64) -> Result<Self::Value, Self::Error> {
+	fn visit_compact_u64(self, _depth: usize, value: u64) -> Result<Self::Value, Self::Error> {
 		Ok(Value::CompactU64(value))
 	}
-	fn visit_compact_u128(self, value: u128) -> Result<Self::Value, Self::Error> {
+	fn visit_compact_u128(self, _depth: usize, value: u128) -> Result<Self::Value, Self::Error> {
 		Ok(Value::CompactU128(value))
 	}
 	fn visit_sequence(
 		self,
-		value: &mut visitor::types::Sequence<'_>,
+		value: &mut visitor::types::Sequence,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
 		while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -123,7 +123,7 @@ impl visitor::Visitor for ValueVisitor {
 	}
 	fn visit_composite(
 		self,
-		value: &mut visitor::types::Composite<'_>,
+		value: &mut visitor::types::Composite,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
 		while let Some((name, val)) = value.decode_item(ValueVisitor)? {
@@ -133,7 +133,7 @@ impl visitor::Visitor for ValueVisitor {
 	}
 	fn visit_tuple(
 		self,
-		value: &mut visitor::types::Tuple<'_>,
+		value: &mut visitor::types::Tuple,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
 		while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -141,12 +141,12 @@ impl visitor::Visitor for ValueVisitor {
 		}
 		Ok(Value::Tuple(vals))
 	}
-	fn visit_str(self, value: &visitor::types::Str<'_>) -> Result<Self::Value, Self::Error> {
+	fn visit_str(self, value: &visitor::types::Str) -> Result<Self::Value, Self::Error> {
 		Ok(Value::Str(value.as_str()?.to_owned()))
 	}
 	fn visit_variant(
 		self,
-		value: &mut visitor::types::Variant<'_>,
+		value: &mut visitor::types::Variant,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
 		while let Some((name, val)) = value.decode_item(ValueVisitor)? {
@@ -156,7 +156,7 @@ impl visitor::Visitor for ValueVisitor {
 	}
 	fn visit_array(
 		self,
-		value: &mut visitor::types::Array<'_>,
+		value: &mut visitor::types::Array,
 	) -> Result<Self::Value, Self::Error> {
 		let mut vals = vec![];
 		while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -166,7 +166,7 @@ impl visitor::Visitor for ValueVisitor {
 	}
 	fn visit_bitsequence(
 		self,
-		value: &mut visitor::types::BitSequence<'_>,
+		value: &mut visitor::types::BitSequence,
 	) -> Result<Self::Value, Self::Error> {
 		Ok(Value::BitSequence(value.decode_bitsequence()?))
 	}

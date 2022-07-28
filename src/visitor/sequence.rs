@@ -17,20 +17,20 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from a sequence type.
-pub struct Sequence<'a> {
+pub struct Sequence<'a, 'b> {
 	bytes: &'a [u8],
 	type_id: u32,
-	types: &'a PortableRegistry,
+	types: &'b PortableRegistry,
 	remaining: usize,
 }
 
-impl<'a> Sequence<'a> {
+impl<'a, 'b> Sequence<'a, 'b> {
 	pub(crate) fn new(
 		bytes: &'a [u8],
 		type_id: u32,
 		len: usize,
-		types: &'a PortableRegistry,
-	) -> Sequence<'a> {
+		types: &'b PortableRegistry,
+	) -> Sequence<'a, 'b> {
 		Sequence { bytes, type_id, types, remaining: len }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {

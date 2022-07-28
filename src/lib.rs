@@ -67,11 +67,11 @@ mod test {
 		I64(i64),
 		I128(i128),
 		I256([u8; 32]),
-		CompactU8(u8),
-		CompactU16(u16),
-		CompactU32(u32),
-		CompactU64(u64),
-		CompactU128(u128),
+		CompactU8(usize, u8),
+		CompactU16(usize, u16),
+		CompactU32(usize, u32),
+		CompactU64(usize, u64),
+		CompactU128(usize, u128),
 		Sequence(Vec<Value>),
 		Composite(Vec<(Option<String>, Value)>),
 		Tuple(Vec<Value>),
@@ -128,24 +128,24 @@ mod test {
 		fn visit_i256(self, value: &[u8; 32]) -> Result<Self::Value, Self::Error> {
 			Ok(Value::I256(*value))
 		}
-		fn visit_compact_u8(self, value: u8) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU8(value))
+		fn visit_compact_u8(self, depth: usize, value: u8) -> Result<Self::Value, Self::Error> {
+			Ok(Value::CompactU8(depth, value))
 		}
-		fn visit_compact_u16(self, value: u16) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU16(value))
+		fn visit_compact_u16(self, depth: usize, value: u16) -> Result<Self::Value, Self::Error> {
+			Ok(Value::CompactU16(depth, value))
 		}
-		fn visit_compact_u32(self, value: u32) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU32(value))
+		fn visit_compact_u32(self, depth: usize, value: u32) -> Result<Self::Value, Self::Error> {
+			Ok(Value::CompactU32(depth, value))
 		}
-		fn visit_compact_u64(self, value: u64) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU64(value))
+		fn visit_compact_u64(self, depth: usize, value: u64) -> Result<Self::Value, Self::Error> {
+			Ok(Value::CompactU64(depth, value))
 		}
-		fn visit_compact_u128(self, value: u128) -> Result<Self::Value, Self::Error> {
-			Ok(Value::CompactU128(value))
+		fn visit_compact_u128(self, depth: usize, value: u128) -> Result<Self::Value, Self::Error> {
+			Ok(Value::CompactU128(depth, value))
 		}
 		fn visit_sequence(
 			self,
-			value: &mut visitor::types::Sequence<'_>,
+			value: &mut visitor::types::Sequence,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
 			while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -155,7 +155,7 @@ mod test {
 		}
 		fn visit_composite(
 			self,
-			value: &mut visitor::types::Composite<'_>,
+			value: &mut visitor::types::Composite,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
 			while let Some((name, val)) = value.decode_item(ValueVisitor)? {
@@ -165,7 +165,7 @@ mod test {
 		}
 		fn visit_tuple(
 			self,
-			value: &mut visitor::types::Tuple<'_>,
+			value: &mut visitor::types::Tuple,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
 			while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -173,12 +173,12 @@ mod test {
 			}
 			Ok(Value::Tuple(vals))
 		}
-		fn visit_str(self, value: &visitor::types::Str<'_>) -> Result<Self::Value, Self::Error> {
+		fn visit_str(self, value: &visitor::types::Str) -> Result<Self::Value, Self::Error> {
 			Ok(Value::Str(value.as_str()?.to_owned()))
 		}
 		fn visit_variant(
 			self,
-			value: &mut visitor::types::Variant<'_>,
+			value: &mut visitor::types::Variant,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
 			while let Some((name, val)) = value.decode_item(ValueVisitor)? {
@@ -188,7 +188,7 @@ mod test {
 		}
 		fn visit_array(
 			self,
-			value: &mut visitor::types::Array<'_>,
+			value: &mut visitor::types::Array,
 		) -> Result<Self::Value, Self::Error> {
 			let mut vals = vec![];
 			while let Some(val) = value.decode_item(ValueVisitor)? {
@@ -198,7 +198,7 @@ mod test {
 		}
 		fn visit_bitsequence(
 			self,
-			value: &mut visitor::types::BitSequence<'_>,
+			value: &mut visitor::types::BitSequence,
 		) -> Result<Self::Value, Self::Error> {
 			Ok(Value::BitSequence(value.decode_bitsequence()?))
 		}
@@ -242,11 +242,11 @@ mod test {
 		encode_decode_check(123u32, Value::U32(123));
 		encode_decode_check(123u64, Value::U64(123));
 		encode_decode_check(123u128, Value::U128(123));
-		encode_decode_check(Compact(123u8), Value::CompactU8(123));
-		encode_decode_check(Compact(123u16), Value::CompactU16(123));
-		encode_decode_check(Compact(123u32), Value::CompactU32(123));
-		encode_decode_check(Compact(123u64), Value::CompactU64(123));
-		encode_decode_check(Compact(123u128), Value::CompactU128(123));
+		encode_decode_check(Compact(123u8), Value::CompactU8(0, 123));
+		encode_decode_check(Compact(123u16), Value::CompactU16(0, 123));
+		encode_decode_check(Compact(123u32), Value::CompactU32(0, 123));
+		encode_decode_check(Compact(123u64), Value::CompactU64(0, 123));
+		encode_decode_check(Compact(123u128), Value::CompactU128(0, 123));
 		encode_decode_check(true, Value::Bool(true));
 		encode_decode_check(false, Value::Bool(false));
 		encode_decode_check_explicit_info::<char, _>('c' as u32, Value::Char('c'));
@@ -281,7 +281,7 @@ mod test {
 			Compact(MyWrapper { inner: 123 }),
 			// Currently we ignore any composite types and just give back
 			// the compact value directly:
-			Value::CompactU32(123),
+			Value::CompactU32(1, 123),
 		);
 	}
 
@@ -315,7 +315,7 @@ mod test {
 			Compact(MyWrapper(123)),
 			// Currently we ignore any composite types and just give back
 			// the compact value directly:
-			Value::CompactU32(123),
+			Value::CompactU32(1, 123),
 		);
 	}
 

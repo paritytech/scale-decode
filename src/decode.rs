@@ -29,10 +29,10 @@ use scale_info::{
 /// The provided pointer to the data slice will be moved forwards as needed
 /// depending on what was decoded, and a method on the provided [`Visitor`]
 /// will be called depending on the type that needs to be decoded.
-pub fn decode<'a, V: Visitor>(
-	data: &mut &'a [u8],
+pub fn decode<V: Visitor>(
+	data: &mut &[u8],
 	ty_id: u32,
-	types: &'a PortableRegistry,
+	types: &PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
 	let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
@@ -49,10 +49,10 @@ pub fn decode<'a, V: Visitor>(
 	}
 }
 
-fn decode_composite_value<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	ty: &'a TypeDefComposite<PortableForm>,
-	types: &'a PortableRegistry,
+fn decode_composite_value<'b, V: Visitor>(
+	data: &mut &[u8],
+	ty: &'b TypeDefComposite<PortableForm>,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
 	let mut items = Composite::new(data, ty.fields(), types);
@@ -65,10 +65,10 @@ fn decode_composite_value<'a, V: Visitor>(
 	res
 }
 
-fn decode_variant_value<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	ty: &'a TypeDefVariant<PortableForm>,
-	types: &'a PortableRegistry,
+fn decode_variant_value<'b, V: Visitor>(
+	data: &mut &[u8],
+	ty: &'b TypeDefVariant<PortableForm>,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
 	let index = *data.get(0).ok_or(DecodeError::Eof)?;
@@ -92,10 +92,10 @@ fn decode_variant_value<'a, V: Visitor>(
 	res
 }
 
-fn decode_sequence_value<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	ty: &'a TypeDefSequence<PortableForm>,
-	types: &'a PortableRegistry,
+fn decode_sequence_value<'b, V: Visitor>(
+	data: &mut &[u8],
+	ty: &'b TypeDefSequence<PortableForm>,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
 	// We assume that the sequence is preceeded by a compact encoded length, so that
@@ -111,10 +111,10 @@ fn decode_sequence_value<'a, V: Visitor>(
 	res
 }
 
-fn decode_array_value<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	ty: &'a TypeDefArray<PortableForm>,
-	types: &'a PortableRegistry,
+fn decode_array_value<'b, V: Visitor>(
+	data: &mut &[u8],
+	ty: &'b TypeDefArray<PortableForm>,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
 	let len = ty.len() as usize;
@@ -129,13 +129,13 @@ fn decode_array_value<'a, V: Visitor>(
 	res
 }
 
-fn decode_tuple_value<'a, V: Visitor>(
-	data: &mut &'a [u8],
-	ty: &'a TypeDefTuple<PortableForm>,
-	types: &'a PortableRegistry,
+fn decode_tuple_value<'b, V: Visitor>(
+	data: &mut &[u8],
+	ty: &'b TypeDefTuple<PortableForm>,
+	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
-	let mut items = Tuple::new(data, ty.fields(), types);
+	let mut items = Tuple::new(*data, ty.fields(), types);
 	let res = visitor.visit_tuple(&mut items);
 
 	// Skip over any bytes that the visitor chose not to decode:
@@ -233,29 +233,30 @@ fn decode_compact_value<V: Visitor>(
 		inner: &scale_info::Type<PortableForm>,
 		types: &PortableRegistry,
 		visitor: V,
+		depth: usize,
 	) -> Result<V::Value, V::Error> {
 		use TypeDefPrimitive::*;
 		match inner.type_def() {
 			// It's obvious how to decode basic primitive unsigned types, since we have impls for them.
 			TypeDef::Primitive(U8) => {
 				let n = Compact::<u8>::decode(data).map_err(|e| e.into())?.0;
-				visitor.visit_compact_u8(n)
+				visitor.visit_compact_u8(depth, n)
 			}
 			TypeDef::Primitive(U16) => {
 				let n = Compact::<u16>::decode(data).map_err(|e| e.into())?.0;
-				visitor.visit_compact_u16(n)
+				visitor.visit_compact_u16(depth, n)
 			}
 			TypeDef::Primitive(U32) => {
 				let n = Compact::<u32>::decode(data).map_err(|e| e.into())?.0;
-				visitor.visit_compact_u32(n)
+				visitor.visit_compact_u32(depth, n)
 			}
 			TypeDef::Primitive(U64) => {
 				let n = Compact::<u64>::decode(data).map_err(|e| e.into())?.0;
-				visitor.visit_compact_u64(n)
+				visitor.visit_compact_u64(depth, n)
 			}
 			TypeDef::Primitive(U128) => {
 				let n = Compact::<u128>::decode(data).map_err(|e| e.into())?.0;
-				visitor.visit_compact_u128(n)
+				visitor.visit_compact_u128(depth, n)
 			}
 			// A struct with exactly 1 field containing one of the above types can be sensibly compact encoded/decoded.
 			TypeDef::Composite(composite) => {
@@ -272,7 +273,7 @@ fn decode_compact_value<V: Visitor>(
 
 				// Decode this inner type via compact decoding. This can recurse, in case
 				// the inner type is also a 1-field composite type.
-				decode_compact(data, inner_ty, types, visitor)
+				decode_compact(data, inner_ty, types, visitor, depth + 1)
 			}
 			// For now, we give up if we have been asked for any other type:
 			_cannot_decode_from => {
@@ -285,7 +286,7 @@ fn decode_compact_value<V: Visitor>(
 	let inner = types
 		.resolve(ty.type_param().id())
 		.ok_or_else(|| DecodeError::TypeIdNotFound(ty.type_param().id()))?;
-	decode_compact(data, inner, types, visitor)
+	decode_compact(data, inner, types, visitor, 0)
 }
 
 fn decode_bit_sequence_value<V: Visitor>(
