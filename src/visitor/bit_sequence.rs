@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use super::DecodeError;
-use crate::bit_sequence::{BitOrderTy, BitStoreTy};
+use crate::utils::bit_sequence::{BitOrderTy, BitStoreTy};
 use bitvec::{
 	order::{Lsb0, Msb0},
 	vec::BitVec,
@@ -82,7 +82,7 @@ impl<'a> BitSequence<'a> {
 			#[cfg(feature = "32bit_target")]
 			(BitStoreTy::U64, _) => {
 				return Err(DecodeError::BitSequenceError(
-					crate::bit_sequence::BitSequenceError::StoreTypeNotSupported(
+					crate::utils::bit_sequence::BitSequenceError::StoreTypeNotSupported(
 						"u64 (pointer-width on this compile target is not 64)".into(),
 					),
 				))
@@ -130,6 +130,23 @@ pub enum BitSequenceValue {
 	U64Lsb0(BitVec<u64, Lsb0>),
 	/// A bit sequence with a store type of `u64` and an order of `Msb0`
 	U64Msb0(BitVec<u64, Msb0>),
+}
+
+impl BitSequenceValue {
+	/// Convert whatever bit sequence is returned to one with a store type of `u8`
+	/// and an order type of `Lsb0`.
+	pub fn to_u8_lsb0(self) -> BitVec<u8, Lsb0> {
+		match self {
+			BitSequenceValue::U8Lsb0(b) => b,
+			BitSequenceValue::U8Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U16Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U16Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U32Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U32Msb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U64Lsb0(b) => b.iter().by_vals().collect(),
+			BitSequenceValue::U64Msb0(b) => b.iter().by_vals().collect(),
+		}
+	}
 }
 
 #[cfg(test)]

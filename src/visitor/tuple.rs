@@ -17,18 +17,18 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
-pub struct Tuple<'a> {
+pub struct Tuple<'a, 'b> {
 	bytes: &'a [u8],
-	fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-	types: &'a PortableRegistry,
+	fields: &'b [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+	types: &'b PortableRegistry,
 }
 
-impl<'a> Tuple<'a> {
+impl<'a, 'b> Tuple<'a, 'b> {
 	pub(crate) fn new(
 		bytes: &'a [u8],
-		fields: &'a [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-		types: &'a PortableRegistry,
-	) -> Tuple<'a> {
+		fields: &'b [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+		types: &'b PortableRegistry,
+	) -> Tuple<'a, 'b> {
 		Tuple { bytes, fields, types }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {

@@ -16,12 +16,12 @@
 use super::{sequence::Sequence, DecodeError, Visitor};
 
 /// This represents an array type.
-pub struct Array<'a> {
-	seq: Sequence<'a>,
+pub struct Array<'a, 'b> {
+	seq: Sequence<'a, 'b>,
 }
 
-impl<'a> Array<'a> {
-	pub(crate) fn new(seq: Sequence<'a>) -> Self {
+impl<'a, 'b> Array<'a, 'b> {
+	pub(crate) fn new(seq: Sequence<'a, 'b>) -> Self {
 		Array { seq }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {

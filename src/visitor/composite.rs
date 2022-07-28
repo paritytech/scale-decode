@@ -17,18 +17,18 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
-pub struct Composite<'a> {
+pub struct Composite<'a, 'b> {
 	bytes: &'a [u8],
-	fields: &'a [Field<PortableForm>],
-	types: &'a PortableRegistry,
+	fields: &'b [Field<PortableForm>],
+	types: &'b PortableRegistry,
 }
 
-impl<'a> Composite<'a> {
+impl<'a, 'b> Composite<'a, 'b> {
 	pub(crate) fn new(
 		bytes: &'a [u8],
-		fields: &'a [Field<PortableForm>],
-		types: &'a PortableRegistry,
-	) -> Composite<'a> {
+		fields: &'b [Field<PortableForm>],
+		types: &'b PortableRegistry,
+	) -> Composite<'a, 'b> {
 		Composite { bytes, fields, types }
 	}
 	pub(crate) fn bytes(&self) -> &'a [u8] {
@@ -40,25 +40,27 @@ impl<'a> Composite<'a> {
 		}
 		Ok(())
 	}
-	/// The number of un-decoded items remaining in this composite type.
-	pub fn len(&self) -> usize {
-		self.fields.len()
-	}
-	/// Are there any un-decoded items remaining in this composite type.
-	pub fn is_empty(&self) -> bool {
-		self.fields.is_empty()
+	/// Do any of the fields in this composite type have names? Either all of them
+	/// should be named, or none of them should be.
+	pub fn fields(&self) -> &'b [Field<PortableForm>] {
+		self.fields
 	}
 	/// Decode the next field in the composite type by providing a visitor to handle it.
-	pub fn decode_item<V: Visitor>(
+	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+		self.decode_item_with_name(visitor).map(|o| o.map(|(_n, v)| v))
+	}
+	/// Decode the next field in the composite type by providing a visitor to handle it.
+	/// The name of the field will be returned too, or an empty string if it doesn't exist.
+	pub fn decode_item_with_name<V: Visitor>(
 		&mut self,
 		visitor: V,
-	) -> Result<Option<CompositeValue<'a, V::Value>>, V::Error> {
+	) -> Result<Option<(&'b str, V::Value)>, V::Error> {
 		if self.fields.is_empty() {
 			return Ok(None);
 		}
 
 		let field = &self.fields[0];
-		let field_name = self.fields.get(0).and_then(|f| f.name().map(|n| &**n));
+		let field_name = self.fields.get(0).and_then(|f| f.name().map(|n| &**n)).unwrap_or("");
 		let b = &mut self.bytes;
 
 		// Don't return here; decrement bytes properly first and then return, so that
@@ -71,6 +73,3 @@ impl<'a> Composite<'a> {
 		res.map(|val| Some((field_name, val)))
 	}
 }
-
-/// A tuple of a name for the field (which may or may not exist) and a value.
-pub type CompositeValue<'a, Value> = (Option<&'a str>, Value);
