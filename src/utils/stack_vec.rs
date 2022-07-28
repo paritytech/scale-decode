@@ -30,7 +30,7 @@ impl<T: Default + Copy, const N: usize> StackVec<T, N> {
 	pub fn as_slice(&self) -> &[T] {
 		match &self.inner {
 			StackVecInner::Stack { len, items } => &items[0..*len],
-			StackVecInner::Heap { items } => &items,
+			StackVecInner::Heap { items } => items,
 		}
 	}
 	pub fn push(&mut self, item: T) {

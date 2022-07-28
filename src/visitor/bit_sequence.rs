@@ -82,7 +82,7 @@ impl<'a> BitSequence<'a> {
 			#[cfg(feature = "32bit_target")]
 			(BitStoreTy::U64, _) => {
 				return Err(DecodeError::BitSequenceError(
-					crate::bit_sequence::BitSequenceError::StoreTypeNotSupported(
+					crate::utils::bit_sequence::BitSequenceError::StoreTypeNotSupported(
 						"u64 (pointer-width on this compile target is not 64)".into(),
 					),
 				))
