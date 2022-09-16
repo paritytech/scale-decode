@@ -20,9 +20,11 @@ include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
 [dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 thiserror = "1.0.24"
-bitvec = { version = "1.0.0", default-features = false, features = ["alloc"] }
+scale-bits = { version = "0.2.0" }
 
 [dev-dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std", "derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
+bitvec = "1"

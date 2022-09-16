@@ -24,12 +24,11 @@ mod str;
 mod tuple;
 mod variant;
 
-use crate::utils::bit_sequence::BitSequenceError;
 use scale_info::form::PortableForm;
 
 pub use self::str::Str;
 pub use array::Array;
-pub use bit_sequence::{BitSequence, BitSequenceValue};
+pub use bit_sequence::BitSequence;
 pub use compact::{Compact, CompactLocation};
 pub use composite::Composite;
 pub use sequence::Sequence;
@@ -152,7 +151,7 @@ pub trait Visitor: Sized {
 }
 
 /// An error decoding SCALE bytes.
-#[derive(Debug, Clone, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
 pub enum DecodeError {
 	/// We ran into an error trying to decode a bit sequence.
 	#[error("Cannot decode bit sequence: {0}")]
@@ -182,6 +181,9 @@ pub enum DecodeError {
 	#[error("No fields left to decode")]
 	NothingLeftToDecode,
 }
+
+/// An error that can occur trying to decode a bit sequence.
+pub type BitSequenceError = scale_bits::scale::format::FromMetadataError;
 
 /// The ID of the type being decoded.
 #[derive(Clone, Copy, Debug, Default)]

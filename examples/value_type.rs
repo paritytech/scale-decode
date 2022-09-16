@@ -44,7 +44,7 @@ enum Value {
 	Str(String),
 	Array(Vec<Value>),
 	Variant(String, Vec<(String, Value)>),
-	BitSequence(visitor::BitSequenceValue),
+	BitSequence(scale_bits::Bits),
 }
 
 // Implement the `Visitor` trait to define how to go from SCALE
@@ -195,7 +195,8 @@ impl visitor::Visitor for ValueVisitor {
 		value: &mut visitor::BitSequence,
 		_type_id: TypeId,
 	) -> Result<Self::Value, Self::Error> {
-		Ok(Value::BitSequence(value.decode_bitsequence()?))
+		let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
+		Ok(Value::BitSequence(bools?))
 	}
 }
 

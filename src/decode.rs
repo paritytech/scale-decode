@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::utils::{bit_sequence::get_bitsequence_details, stack_vec::StackVec};
+use crate::utils::stack_vec::StackVec;
 use crate::visitor::{
 	Array, BitSequence, Compact, CompactLocation, Composite, DecodeError, Sequence, Str, Tuple,
 	TypeId, Variant, Visitor,
@@ -76,7 +76,7 @@ fn decode_variant_value<'b, V: Visitor>(
 	types: &'b PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
-	let index = *data.get(0).ok_or(DecodeError::Eof)?;
+	let index = *data.first().ok_or(DecodeError::Eof)?;
 	*data = &data[1..];
 
 	// Does a variant exist with the index we're looking for?
@@ -343,15 +343,14 @@ fn decode_bit_sequence_value<V: Visitor>(
 	types: &PortableRegistry,
 	visitor: V,
 ) -> Result<V::Value, V::Error> {
-	let (store, order) =
-		get_bitsequence_details(ty, types).map_err(DecodeError::BitSequenceError)?;
+	use scale_bits::Format;
 
-	let mut bitseq = BitSequence::new(store, order, data);
+	let format = Format::from_metadata(ty, types).map_err(DecodeError::BitSequenceError)?;
+	let mut bitseq = BitSequence::new(format, data);
 	let res = visitor.visit_bitsequence(&mut bitseq, ty_id);
 
-	// Decode and skip over the bytes regardless of whether the visitor chooses to or not.
-	bitseq.skip_if_not_decoded()?;
-	*data = bitseq.bytes();
+	// Move to the bytes after the bit sequence.
+	*data = bitseq.remaining_bytes()?;
 
 	res
 }
