@@ -44,149 +44,61 @@ impl<'a> BitSequence<'a> {
 	}
 }
 
-// impl Drop
+#[cfg(test)]
+mod test {
+	use super::*;
+	use bitvec::{
+		order::{Lsb0, Msb0},
+		vec::BitVec,
+	};
+	use codec::Encode;
+	use scale_bits::{
+		bits,
+		scale::format::{OrderFormat, StoreFormat},
+		Bits,
+	};
 
-// #[cfg(test)]
-// mod test {
-// 	use super::*;
-// 	use bitvec::bitvec;
-// 	use codec::Encode;
+	fn assert_remaining_bytes_works<Input: Encode>(
+		bits: Input,
+		store: StoreFormat,
+		order: OrderFormat,
+	) {
+		let bytes = bits.encode();
+		let format = Format::new(store, order);
 
-// 	fn encode_decode_bitseq<Bits: Encode>(bits: Bits, store: BitStoreTy, order: BitOrderTy) {
-// 		let bytes = bits.encode();
+		// Test skipping works:
+		let mut seq = BitSequence::new(format, &bytes);
+		let leftover = seq.remaining_bytes().expect("can skip bitseq without error");
+		assert_eq!(leftover.len(), 0, "No bytes should remain after skipping over");
+	}
 
-// 		// Test skipping works:
-// 		let mut seq = BitSequence::new(store, order, &bytes);
-// 		seq.skip_if_not_decoded().expect("can skip bitseq without error");
-// 		assert_eq!(seq.bytes().len(), 0, "No bytes should remain after skipping over");
+	fn assert_remaining_bytes_works_all(bits: Bits) {
+		let b: BitVec<u8, Lsb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U8, OrderFormat::Lsb0);
+		let b: BitVec<u16, Lsb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U16, OrderFormat::Lsb0);
+		let b: BitVec<u32, Lsb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U32, OrderFormat::Lsb0);
+		let b: BitVec<u64, Lsb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U64, OrderFormat::Lsb0);
+		let b: BitVec<u8, Msb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U8, OrderFormat::Msb0);
+		let b: BitVec<u16, Msb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U16, OrderFormat::Msb0);
+		let b: BitVec<u32, Msb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U32, OrderFormat::Msb0);
+		let b: BitVec<u64, Msb0> = bits.iter().collect();
+		assert_remaining_bytes_works(b, StoreFormat::U64, OrderFormat::Msb0);
+	}
 
-// 		// Test actual decoding works:
-// 		let mut seq = BitSequence::new(store, order, &bytes);
-// 		let new_bytes = match seq.decode_bitsequence().expect("can decode bytes") {
-// 			BitSequenceValue::U8Lsb0(new_bits)
-// 				if store == BitStoreTy::U8 && order == BitOrderTy::Lsb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U8Msb0(new_bits)
-// 				if store == BitStoreTy::U8 && order == BitOrderTy::Msb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U16Lsb0(new_bits)
-// 				if store == BitStoreTy::U16 && order == BitOrderTy::Lsb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U16Msb0(new_bits)
-// 				if store == BitStoreTy::U16 && order == BitOrderTy::Msb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U32Lsb0(new_bits)
-// 				if store == BitStoreTy::U32 && order == BitOrderTy::Lsb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U32Msb0(new_bits)
-// 				if store == BitStoreTy::U32 && order == BitOrderTy::Msb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U64Lsb0(new_bits)
-// 				if store == BitStoreTy::U64 && order == BitOrderTy::Lsb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			BitSequenceValue::U64Msb0(new_bits)
-// 				if store == BitStoreTy::U64 && order == BitOrderTy::Msb0 =>
-// 			{
-// 				new_bits.encode()
-// 			}
-// 			v => panic!("Value {v:?} was unexpected given store {store:?} and order {order:?}"),
-// 		};
-
-// 		assert_eq!(bytes, new_bytes, "Original encoded bytes don't line up to decoded bytes");
-// 	}
-
-// 	#[test]
-// 	fn can_decode() {
-// 		encode_decode_bitseq(bitvec![u8, Lsb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U8, BitOrderTy::Lsb0);
-// 		encode_decode_bitseq(
-// 			bitvec![u16, Lsb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U16,
-// 			BitOrderTy::Lsb0,
-// 		);
-// 		encode_decode_bitseq(
-// 			bitvec![u32, Lsb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U32,
-// 			BitOrderTy::Lsb0,
-// 		);
-// 		encode_decode_bitseq(
-// 			bitvec![u64, Lsb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U64,
-// 			BitOrderTy::Lsb0,
-// 		);
-
-// 		encode_decode_bitseq(bitvec![u8, Msb0; 0, 0, 1, 1, 0, 1], BitStoreTy::U8, BitOrderTy::Msb0);
-// 		encode_decode_bitseq(
-// 			bitvec![u16, Msb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U16,
-// 			BitOrderTy::Msb0,
-// 		);
-// 		encode_decode_bitseq(
-// 			bitvec![u32, Msb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U32,
-// 			BitOrderTy::Msb0,
-// 		);
-// 		encode_decode_bitseq(
-// 			bitvec![u64, Msb0; 0, 0, 1, 1, 0, 1],
-// 			BitStoreTy::U64,
-// 			BitOrderTy::Msb0,
-// 		);
-// 	}
-
-// 	#[test]
-// 	fn number_of_bits() {
-// 		let tests = vec![
-// 			// u8
-// 			(0, BitStoreTy::U8, 0),
-// 			(1, BitStoreTy::U8, 1),
-// 			(7, BitStoreTy::U8, 1),
-// 			(8, BitStoreTy::U8, 1),
-// 			(9, BitStoreTy::U8, 2),
-// 			(16, BitStoreTy::U8, 2),
-// 			(17, BitStoreTy::U8, 3),
-// 			// u16
-// 			(0, BitStoreTy::U16, 0),
-// 			(1, BitStoreTy::U16, 2),
-// 			(15, BitStoreTy::U16, 2),
-// 			(16, BitStoreTy::U16, 2),
-// 			(17, BitStoreTy::U16, 4),
-// 			(32, BitStoreTy::U16, 4),
-// 			(33, BitStoreTy::U16, 6),
-// 			// u32
-// 			(0, BitStoreTy::U32, 0),
-// 			(1, BitStoreTy::U32, 4),
-// 			(31, BitStoreTy::U32, 4),
-// 			(32, BitStoreTy::U32, 4),
-// 			(33, BitStoreTy::U32, 8),
-// 			(64, BitStoreTy::U32, 8),
-// 			(65, BitStoreTy::U32, 12),
-// 			// u64
-// 			(0, BitStoreTy::U64, 0),
-// 			(1, BitStoreTy::U64, 8),
-// 			(64, BitStoreTy::U64, 8),
-// 			(65, BitStoreTy::U64, 16),
-// 			(128, BitStoreTy::U64, 16),
-// 			(129, BitStoreTy::U64, 24),
-// 		];
-// 		for (bits, store, expected) in tests {
-// 			assert_eq!(
-// 				number_of_bytes_needed(bits, store),
-// 				expected,
-// 				"bits: {bits}, store: {store:?}, expected: {expected}"
-// 			);
-// 		}
-// 	}
-// }
+	#[test]
+	fn skipping_remaining_bytes_works() {
+		assert_remaining_bytes_works_all(bits![]);
+		assert_remaining_bytes_works_all(bits![0]);
+		assert_remaining_bytes_works_all(bits![0, 1]);
+		assert_remaining_bytes_works_all(bits![1, 0, 1, 1, 0, 1, 1, 0, 1]);
+		assert_remaining_bytes_works_all(bits![
+			1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1
+		]);
+	}
+}
