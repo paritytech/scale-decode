@@ -27,13 +27,6 @@
 //! shape.
 
 #![deny(missing_docs)]
-// BitVec only supports u64 BitStore if `target_pointer_width = "64"`.
-// Turn this into a feature so it can be tested, and use to avoid using
-// this store type on 32bit architectures.
-#![cfg_attr(
-    not(target_pointer_width = "64"),
-    feature(32bit_target)
-)]
 
 mod decode;
 mod utils;
@@ -43,7 +36,7 @@ pub use decode::decode;
 
 #[cfg(test)]
 mod test {
-	use crate::visitor::{BitSequenceValue, TypeId};
+	use crate::visitor::TypeId;
 
 	use super::*;
 	use codec::{self, Encode};
@@ -78,7 +71,7 @@ mod test {
 		Str(String),
 		Array(Vec<Value>),
 		Variant(String, Vec<(String, Value)>),
-		BitSequence(crate::visitor::BitSequenceValue),
+		BitSequence(scale_bits::Bits),
 	}
 
 	#[derive(Clone, Debug, PartialEq)]
@@ -261,7 +254,8 @@ mod test {
 			value: &mut visitor::BitSequence,
 			_type_id: TypeId,
 		) -> Result<Self::Value, Self::Error> {
-			Ok(Value::BitSequence(value.decode_bitsequence()?))
+			let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
+			Ok(Value::BitSequence(bools?))
 		}
 	}
 
@@ -459,38 +453,41 @@ mod test {
 			bitvec,
 			order::{Lsb0, Msb0},
 		};
+		use scale_bits::bits;
 
+		// Check that Bits, as well as all compatible bitvecs, are properly decoded.
+		encode_decode_check(bits![0, 1, 1, 0, 1, 0], Value::BitSequence(bits![0, 1, 1, 0, 1, 0]));
 		encode_decode_check(
 			bitvec![u8, Lsb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U8Lsb0(bitvec![u8, Lsb0; 0, 1, 1, 0, 1, 0])),
-		);
-		encode_decode_check(
-			bitvec![u8, Msb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U8Msb0(bitvec![u8, Msb0; 0, 1, 1, 0, 1, 0])),
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
 		);
 		encode_decode_check(
 			bitvec![u16, Lsb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U16Lsb0(bitvec![u16, Lsb0; 0, 1, 1, 0, 1, 0])),
-		);
-		encode_decode_check(
-			bitvec![u16, Msb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U16Msb0(bitvec![u16, Msb0; 0, 1, 1, 0, 1, 0])),
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
 		);
 		encode_decode_check(
 			bitvec![u32, Lsb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U32Lsb0(bitvec![u32, Lsb0; 0, 1, 1, 0, 1, 0])),
-		);
-		encode_decode_check(
-			bitvec![u32, Msb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U32Msb0(bitvec![u32, Msb0; 0, 1, 1, 0, 1, 0])),
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
 		);
 		encode_decode_check(
 			bitvec![u64, Lsb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U64Lsb0(bitvec![u64, Lsb0; 0, 1, 1, 0, 1, 0])),
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
+		);
+		encode_decode_check(
+			bitvec![u8, Msb0; 0, 1, 1, 0, 1, 0],
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
+		);
+		encode_decode_check(
+			bitvec![u16, Msb0; 0, 1, 1, 0, 1, 0],
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
+		);
+		encode_decode_check(
+			bitvec![u32, Msb0; 0, 1, 1, 0, 1, 0],
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
 		);
 		encode_decode_check(
 			bitvec![u64, Msb0; 0, 1, 1, 0, 1, 0],
-			Value::BitSequence(BitSequenceValue::U64Msb0(bitvec![u64, Msb0; 0, 1, 1, 0, 1, 0])),
+			Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
 		);
 	}
 }

@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.4.0
+
+This release removes `bitvec` and the 32bit feature flag needed to play nicely with it and leans on `scale-bits` instead to decode bit sequences. We add a CI check to ensure that it can be compiled to WASM.
+
+## Changed
+
+- Use scale-bits to handle bit sequences ([#5](https://github.com/paritytech/scale-decode/pull/5)
+
 ## 0.3.0
 
 This release makes the following changes:
