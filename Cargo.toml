@@ -1,6 +1,6 @@
 [package]
 name = "scale-decode"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -13,16 +13,11 @@ description = "Decode SCALE encoded bytes into arbitrary types at runtime"
 keywords = ["parity", "scale", "decoding"]
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
-[features]
-# Signal that the target architecture is 32bit. Enabled internally
-# if pointer_width != "64", but can be enabled here for testing.
-32bit_target = []
-
 [dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 thiserror = "1.0.24"
-scale-bits = { version = "0.2.0" }
+scale-bits = { version = "0.3.0" }
 
 [dev-dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std", "derive"] }
