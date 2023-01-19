@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::DecodeError;
+use crate::visitor::DecodeError;
 use scale_bits::{
     scale::{decode_using_format_from, Decoder},
     Format,
@@ -31,7 +31,7 @@ impl<'scale> BitSequence<'scale> {
     }
 
     /// The bytes after this bit sequence.
-    pub(crate) fn remaining_bytes(&mut self) -> Result<&'scale [u8], DecodeError> {
+    pub(crate) fn bytes_after(&mut self) -> Result<&'scale [u8], DecodeError> {
         let decoder = decode_using_format_from(self.bytes, self.format)?;
         let num_bytes = decoder.encoded_size();
         Ok(&self.bytes[num_bytes..])
@@ -68,7 +68,7 @@ mod test {
 
         // Test skipping works:
         let mut seq = BitSequence::new(format, &bytes);
-        let leftover = seq.remaining_bytes().expect("can skip bitseq without error");
+        let leftover = seq.bytes_after().expect("can skip bitseq without error");
         assert_eq!(leftover.len(), 0, "No bytes should remain after skipping over");
     }
 

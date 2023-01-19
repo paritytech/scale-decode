@@ -14,7 +14,11 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::visitor::{self, TypeId};
+use scale_decode::visitor::{
+    self,
+    types::{Array, BitSequence, Compact, Composite, Sequence, Str, Tuple, Variant},
+    TypeId,
+};
 
 // A custom type we'd like to decode into:
 #[derive(Debug, PartialEq)]
@@ -154,42 +158,42 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_compact_u8<'scale>(
         self,
-        value: visitor::Compact<u8>,
+        value: Compact<u8>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::CompactU8(value.value()))
     }
     fn visit_compact_u16<'scale>(
         self,
-        value: visitor::Compact<u16>,
+        value: Compact<u16>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::CompactU16(value.value()))
     }
     fn visit_compact_u32<'scale>(
         self,
-        value: visitor::Compact<u32>,
+        value: Compact<u32>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::CompactU32(value.value()))
     }
     fn visit_compact_u64<'scale>(
         self,
-        value: visitor::Compact<u64>,
+        value: Compact<u64>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::CompactU64(value.value()))
     }
     fn visit_compact_u128<'scale>(
         self,
-        value: visitor::Compact<u128>,
+        value: Compact<u128>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::CompactU128(value.value()))
     }
     fn visit_sequence<'scale>(
         self,
-        value: &mut visitor::Sequence<'scale, '_>,
+        value: &mut Sequence<'scale, '_>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
@@ -200,7 +204,7 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_composite<'scale>(
         self,
-        value: &mut visitor::Composite<'scale, '_>,
+        value: &mut Composite<'scale, '_>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
@@ -211,7 +215,7 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_tuple<'scale>(
         self,
-        value: &mut visitor::Tuple<'scale, '_>,
+        value: &mut Tuple<'scale, '_>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
@@ -222,14 +226,14 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_str<'scale>(
         self,
-        value: visitor::Str<'scale>,
+        value: &mut Str<'scale>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::Str(value.as_str()?.to_owned()))
     }
     fn visit_variant<'scale>(
         self,
-        value: &mut visitor::Variant<'scale, '_>,
+        value: &mut Variant<'scale, '_>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
@@ -241,7 +245,7 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_array<'scale>(
         self,
-        value: &mut visitor::Array<'scale, '_>,
+        value: &mut Array<'scale, '_>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
@@ -252,7 +256,7 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_bitsequence<'scale>(
         self,
-        value: &mut visitor::BitSequence<'scale>,
+        value: &mut BitSequence<'scale>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::TypeId;
+use crate::visitor::TypeId;
 
 /// This represents a compact encoded type.
 pub struct Compact<'info, 'c, T> {
@@ -61,7 +61,7 @@ impl<'info> CompactLocation<'info> {
 // Default values for locations are never handed back, but they are
 // stored on the StackArray in the "unused" positions. We could avoid needing
 // this with some unsafe code.
-impl<'a> Default for CompactLocation<'a> {
+impl<'info> Default for CompactLocation<'info> {
     fn default() -> Self {
         CompactLocation::Primitive(TypeId::default())
     }

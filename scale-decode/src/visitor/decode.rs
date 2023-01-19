@@ -63,8 +63,8 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip_rest()?;
-    *data = items.bytes();
+    items.skip()?;
+    *data = items.remaining_bytes();
 
     res
 }
@@ -76,23 +76,12 @@ fn decode_variant_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale>, V::Error> {
-    let index = *data.first().ok_or(DecodeError::NotEnoughInput)?;
-    *data = &data[1..];
-
-    // Does a variant exist with the index we're looking for?
-    let variant = ty
-        .variants()
-        .iter()
-        .find(|v| v.index() == index)
-        .ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
-
-    let composite = Composite::new(data, variant.fields(), types);
-    let mut variant = Variant::new(variant, composite);
+    let mut variant = Variant::new(data, ty, types)?;
     let res = visitor.visit_variant(&mut variant, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    variant.skip_rest()?;
-    *data = variant.bytes();
+    variant.skip()?;
+    *data = variant.remaining_bytes();
 
     res
 }
@@ -104,15 +93,12 @@ fn decode_sequence_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale>, V::Error> {
-    // We assume that the sequence is preceeded by a compact encoded length, so that
-    // we know how many values to try pulling out of the data.
-    let len = codec::Compact::<u64>::decode(data).map_err(|e| e.into())?;
-    let mut items = Sequence::new(data, ty.type_param().id(), len.0 as usize, types);
+    let mut items = Sequence::new(data, ty.type_param().id(), types)?;
     let res = visitor.visit_sequence(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip_rest()?;
-    *data = items.bytes();
+    items.skip()?;
+    *data = items.remaining_bytes();
 
     res
 }
@@ -125,13 +111,12 @@ fn decode_array_value<'scale, 'info, V: Visitor>(
     visitor: V,
 ) -> Result<V::Value<'scale>, V::Error> {
     let len = ty.len() as usize;
-    let seq = Sequence::new(data, ty.type_param().id(), len, types);
-    let mut arr = Array::new(seq);
+    let mut arr = Array::new(data, ty.type_param().id(), len, types);
     let res = visitor.visit_array(&mut arr, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    arr.skip_rest()?;
-    *data = arr.bytes();
+    arr.skip()?;
+    *data = arr.remaining_bytes();
 
     res
 }
@@ -143,12 +128,12 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale>, V::Error> {
-    let mut items = Tuple::new(*data, ty.fields(), types);
+    let mut items = Tuple::new(data, ty.fields(), types);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip_rest()?;
-    *data = items.bytes();
+    items.skip()?;
+    *data = items.remaining_bytes();
 
     res
 }
@@ -184,8 +169,10 @@ fn decode_primitive_value<'scale, V: Visitor>(
         TypeDefPrimitive::Str => {
             // Avoid allocating; don't decode into a String. instead, pull the bytes
             // and let the visitor decide whether to use them or not.
-            let s = Str::new_from(data)?;
-            visitor.visit_str(s, ty_id)
+            let mut s = Str::new(data)?;
+            // Since we aren't decoding here, shift our bytes along to after the str:
+            *data = s.bytes_after();
+            visitor.visit_str(&mut s, ty_id)
         }
         TypeDefPrimitive::U8 => {
             let n = u8::decode(data).map_err(|e| e.into())?;
@@ -357,7 +344,7 @@ fn decode_bit_sequence_value<'scale, V: Visitor>(
     let res = visitor.visit_bitsequence(&mut bitseq, ty_id);
 
     // Move to the bytes after the bit sequence.
-    *data = bitseq.remaining_bytes()?;
+    *data = bitseq.bytes_after()?;
 
     res
 }

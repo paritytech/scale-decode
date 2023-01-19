@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{DecodeError, IgnoreVisitor, Visitor};
+use crate::visitor::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
 pub struct Composite<'scale, 'info> {
     bytes: &'scale [u8],
+    item_bytes: &'scale [u8],
     fields: &'info [Field<PortableForm>],
     types: &'info PortableRegistry,
 }
@@ -29,16 +30,27 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         fields: &'info [Field<PortableForm>],
         types: &'info PortableRegistry,
     ) -> Composite<'scale, 'info> {
-        Composite { bytes, fields, types }
+        Composite { bytes, item_bytes: bytes, fields, types }
     }
-    pub(crate) fn bytes(&self) -> &'scale [u8] {
-        self.bytes
-    }
-    pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+    /// Skip over all bytes associated with this composite type. After calling this,
+    /// [`Self::remaining_bytes()`] will represent the bytes after this composite type.
+    pub fn skip(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor)?;
         }
         Ok(())
+    }
+    /// The bytes representing this composite type and anything following it.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.bytes
+    }
+    /// The bytes that have not yet been decoded in this composite type.
+    pub fn remaining_bytes(&self) -> &'scale [u8] {
+        self.item_bytes
+    }
+    /// The number of un-decoded items remaining in this composite type.
+    pub fn remaining(&self) -> usize {
+        self.fields.len()
     }
     /// The yet-to-be-decoded fields still present in this composite type.
     pub fn fields(&self) -> &'info [Field<PortableForm>] {
@@ -63,13 +75,13 @@ impl<'scale, 'info> Composite<'scale, 'info> {
 
         let field = &self.fields[0];
         let field_name = self.fields.get(0).and_then(|f| f.name().map(|n| &**n)).unwrap_or("");
-        let b = &mut self.bytes;
+        let b = &mut self.item_bytes;
 
         // Don't return here; decrement bytes properly first and then return, so that
         // calling decode_item again works as expected.
-        let res = super::decode_with_visitor(b, field.ty().id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, field.ty().id(), self.types, visitor);
 
-        self.bytes = *b;
+        self.item_bytes = *b;
         self.fields = &self.fields[1..];
 
         res.map(|val| Some((field_name, val)))

@@ -15,27 +15,13 @@
 
 //! The [`Visitor`] trait and associated types.
 
-mod array;
-mod bit_sequence;
-mod compact;
-mod composite;
 mod decode;
-mod sequence;
-mod str;
-mod tuple;
-mod variant;
+pub mod types;
 
 use scale_info::form::PortableForm;
+use types::*;
 
-pub use self::str::Str;
-pub use array::Array;
-pub use bit_sequence::BitSequence;
-pub use compact::{Compact, CompactLocation};
-pub use composite::Composite;
 pub use decode::decode_with_visitor;
-pub use sequence::Sequence;
-pub use tuple::Tuple;
-pub use variant::Variant;
 
 /// An implementation of the [`Visitor`] trait can be passed to the [`crate::decode()`]
 /// function, and is handed back values as they are encountered. It's up to the implementation
@@ -196,7 +182,7 @@ pub trait Visitor: Sized {
     /// Called when a string value is seen in the input bytes.
     fn visit_str<'scale>(
         self,
-        _value: Str<'scale>,
+        _value: &mut Str<'scale>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Str)
@@ -614,7 +600,7 @@ mod test {
         }
         fn visit_str<'scale>(
             self,
-            value: Str<'scale>,
+            value: &mut Str<'scale>,
             _type_id: TypeId,
         ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::Str(value.as_str()?.to_owned()))
@@ -900,7 +886,7 @@ mod test {
 
             fn visit_str<'scale>(
                 self,
-                value: Str<'scale>,
+                value: &mut Str<'scale>,
                 _type_id: TypeId,
             ) -> Result<Self::Value<'scale>, Self::Error> {
                 value.as_str()

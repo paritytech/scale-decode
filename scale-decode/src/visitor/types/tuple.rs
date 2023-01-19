@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::{DecodeError, IgnoreVisitor, Visitor};
+use crate::visitor::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
 pub struct Tuple<'scale, 'info> {
     bytes: &'scale [u8],
+    item_bytes: &'scale [u8],
     fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
     types: &'info PortableRegistry,
 }
@@ -29,24 +30,27 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
         types: &'info PortableRegistry,
     ) -> Tuple<'scale, 'info> {
-        Tuple { bytes, fields, types }
+        Tuple { bytes, item_bytes: bytes, fields, types }
     }
-    pub(crate) fn bytes(&self) -> &'scale [u8] {
-        self.bytes
-    }
-    pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+    /// Skip over all bytes associated with this tuple. After calling this,
+    /// [`Self::remaining_bytes()`] will represent the bytes after this tuple.
+    pub fn skip(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor)?;
         }
         Ok(())
     }
-    /// The number of un-decoded items remaining in the tuple.
-    pub fn len(&self) -> usize {
-        self.fields.len()
+    /// The bytes representing this tuple and anything following it.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.bytes
     }
-    /// Are there any un-decoded items remaining in the tuple.
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
+    /// The bytes that have not yet been decoded in this tuple.
+    pub fn remaining_bytes(&self) -> &'scale [u8] {
+        self.item_bytes
+    }
+    /// The number of un-decoded items remaining in the tuple.
+    pub fn remaining(&self) -> usize {
+        self.fields.len()
     }
     /// Decode the next item from the tuple by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(
@@ -58,14 +62,14 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         }
 
         let field = &self.fields[0];
-        let b = &mut self.bytes;
+        let b = &mut self.item_bytes;
 
         // Don't return here; decrement bytes properly first and then return, so that
         // calling decode_item again works as expected.
-        let res = super::decode_with_visitor(b, field.id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
 
         self.fields = &self.fields[1..];
-        self.bytes = *b;
+        self.item_bytes = *b;
 
         res.map(Some)
     }
