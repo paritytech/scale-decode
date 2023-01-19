@@ -17,29 +17,29 @@ use super::{sequence::Sequence, DecodeError, Visitor};
 
 /// This represents an array type.
 pub struct Array<'a, 'b> {
-	seq: Sequence<'a, 'b>,
+    seq: Sequence<'a, 'b>,
 }
 
 impl<'a, 'b> Array<'a, 'b> {
-	pub(crate) fn new(seq: Sequence<'a, 'b>) -> Self {
-		Array { seq }
-	}
-	pub(crate) fn bytes(&self) -> &'a [u8] {
-		self.seq.bytes()
-	}
-	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-		self.seq.skip_rest()
-	}
-	/// The number of un-decoded items left in the array.
-	pub fn len(&self) -> usize {
-		self.seq.len()
-	}
-	/// Are there any un-decoded items remaining in the array.
-	pub fn is_empty(&self) -> bool {
-		self.seq.is_empty()
-	}
-	/// Decode the next item from the array by providing a visitor to handle it.
-	pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
-		self.seq.decode_item(visitor)
-	}
+    pub(crate) fn new(seq: Sequence<'a, 'b>) -> Self {
+        Array { seq }
+    }
+    pub(crate) fn bytes(&self) -> &'a [u8] {
+        self.seq.bytes()
+    }
+    pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+        self.seq.skip_rest()
+    }
+    /// The number of un-decoded items left in the array.
+    pub fn len(&self) -> usize {
+        self.seq.len()
+    }
+    /// Are there any un-decoded items remaining in the array.
+    pub fn is_empty(&self) -> bool {
+        self.seq.is_empty()
+    }
+    /// Decode the next item from the array by providing a visitor to handle it.
+    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+        self.seq.decode_item(visitor)
+    }
 }

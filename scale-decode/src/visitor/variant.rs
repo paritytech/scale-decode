@@ -18,33 +18,33 @@ use scale_info::form::PortableForm;
 
 /// A representation of the a variant type.
 pub struct Variant<'a, 'b> {
-	variant: &'b scale_info::Variant<PortableForm>,
-	fields: Composite<'a, 'b>,
+    variant: &'b scale_info::Variant<PortableForm>,
+    fields: Composite<'a, 'b>,
 }
 
 impl<'a, 'b> Variant<'a, 'b> {
-	pub(crate) fn new(
-		variant: &'b scale_info::Variant<PortableForm>,
-		fields: Composite<'a, 'b>,
-	) -> Variant<'a, 'b> {
-		Variant { variant, fields }
-	}
-	pub(crate) fn bytes(&self) -> &'a [u8] {
-		self.fields.bytes()
-	}
-	pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
-		self.fields.skip_rest()
-	}
-	/// The name of the variant.
-	pub fn name(&self) -> &str {
-		self.variant.name()
-	}
-	/// The index of the variant.
-	pub fn index(&self) -> u8 {
-		self.variant.index()
-	}
-	/// Access the variant fields.
-	pub fn fields(&mut self) -> &mut Composite<'a, 'b> {
-		&mut self.fields
-	}
+    pub(crate) fn new(
+        variant: &'b scale_info::Variant<PortableForm>,
+        fields: Composite<'a, 'b>,
+    ) -> Variant<'a, 'b> {
+        Variant { variant, fields }
+    }
+    pub(crate) fn bytes(&self) -> &'a [u8] {
+        self.fields.bytes()
+    }
+    pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
+        self.fields.skip_rest()
+    }
+    /// The name of the variant.
+    pub fn name(&self) -> &str {
+        self.variant.name()
+    }
+    /// The index of the variant.
+    pub fn index(&self) -> u8 {
+        self.variant.index()
+    }
+    /// Access the variant fields.
+    pub fn fields(&mut self) -> &mut Composite<'a, 'b> {
+        &mut self.fields
+    }
 }
