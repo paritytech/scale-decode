@@ -47,64 +47,113 @@ pub trait Visitor: Sized {
     /// handle any internal errors that crop up trying to decode things).
     type Error: From<DecodeError>;
 
+    /// This is called when a visitor function that you've not provided an implementation is called.
+    /// You are provided an enum value corresponding to the function call, and can decide what to return
+    /// in this case. The default is to return an error to announce the unexpected value.
+    fn visit_unexpected(self, unexpected: Unexpected) -> Result<Self::Value, Self::Error> {
+        Err(DecodeError::Unexpected(unexpected).into())
+    }
+
     /// Called when a bool is seen in the input bytes.
-    fn visit_bool(self, value: bool, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_bool(self, _value: bool, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Bool)
+    }
     /// Called when a bool is seen in the input bytes.
-    fn visit_char(self, value: char, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_char(self, _value: char, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Char)
+    }
     /// Called when a u8 is seen in the input bytes.
-    fn visit_u8(self, value: u8, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u8(self, _value: u8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U8)
+    }
     /// Called when a u16 is seen in the input bytes.
-    fn visit_u16(self, value: u16, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u16(self, _value: u16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U16)
+    }
     /// Called when a u32 is seen in the input bytes.
-    fn visit_u32(self, value: u32, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u32(self, _value: u32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U32)
+    }
     /// Called when a u64 is seen in the input bytes.
-    fn visit_u64(self, value: u64, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u64(self, _value: u64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U64)
+    }
     /// Called when a u128 is seen in the input bytes.
-    fn visit_u128(self, value: u128, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u128(self, _value: u128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U128)
+    }
     /// Called when a u256 is seen in the input bytes.
-    fn visit_u256(self, value: &[u8; 32], type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_u256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::U256)
+    }
     /// Called when an i8 is seen in the input bytes.
-    fn visit_i8(self, value: i8, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i8(self, _value: i8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I8)
+    }
     /// Called when an i16 is seen in the input bytes.
-    fn visit_i16(self, value: i16, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i16(self, _value: i16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I16)
+    }
     /// Called when an i32 is seen in the input bytes.
-    fn visit_i32(self, value: i32, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i32(self, _value: i32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I32)
+    }
     /// Called when an i64 is seen in the input bytes.
-    fn visit_i64(self, value: i64, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i64(self, _value: i64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I64)
+    }
     /// Called when an i128 is seen in the input bytes.
-    fn visit_i128(self, value: i128, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i128(self, _value: i128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I128)
+    }
     /// Called when an i256 is seen in the input bytes.
-    fn visit_i256(self, value: &[u8; 32], type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_i256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::I256)
+    }
     /// Called when a sequence of values is seen in the input bytes.
     fn visit_sequence(
         self,
-        value: &mut Sequence,
-        type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error>;
+        _value: &mut Sequence,
+        _type_id: TypeId,
+    ) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Sequence)
+    }
     /// Called when a composite value is seen in the input bytes.
     fn visit_composite(
         self,
-        value: &mut Composite,
-        type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error>;
+        _value: &mut Composite,
+        _type_id: TypeId,
+    ) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Composite)
+    }
     /// Called when a tuple of values is seen in the input bytes.
-    fn visit_tuple(self, value: &mut Tuple, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_tuple(self, _value: &mut Tuple, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Tuple)
+    }
     /// Called when a string value is seen in the input bytes.
-    fn visit_str(self, value: Str, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_str(self, _value: Str, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Str)
+    }
     /// Called when a variant is seen in the input bytes.
     fn visit_variant(
         self,
-        value: &mut Variant,
-        type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error>;
+        _value: &mut Variant,
+        _type_id: TypeId,
+    ) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Variant)
+    }
     /// Called when an array is seen in the input bytes.
-    fn visit_array(self, value: &mut Array, type_id: TypeId) -> Result<Self::Value, Self::Error>;
+    fn visit_array(self, _value: &mut Array, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Array)
+    }
     /// Called when a bit sequence is seen in the input bytes.
     fn visit_bitsequence(
         self,
-        value: &mut BitSequence,
-        type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error>;
+        _value: &mut BitSequence,
+        _type_id: TypeId,
+    ) -> Result<Self::Value, Self::Error> {
+        self.visit_unexpected(Unexpected::Bitsequence)
+    }
 
     // Default implementations for visiting compact values just delegate and
     // ignore the compactness, but they are here if decoders would like to know
@@ -179,9 +228,65 @@ pub enum DecodeError {
     /// We could not find the type given in the type registry provided.
     #[error("Cannot find type with ID {0}")]
     TypeIdNotFound(u32),
-    /// You hit this is you try to decode a field from an
-    #[error("No fields left to decode")]
-    NothingLeftToDecode,
+    /// This is returned by default if a visitor function is not implemented.
+    #[error("Unexpected type {0}")]
+    Unexpected(Unexpected)
+}
+
+/// This is returned by default when a visitor function isn't implemented.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(missing_docs)]
+pub enum Unexpected {
+    Bool,
+    Char,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    U256,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    I256,
+    Sequence,
+    Composite,
+    Tuple,
+    Str,
+    Variant,
+    Array,
+    Bitsequence,
+}
+
+impl std::fmt::Display for Unexpected {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Unexpected::Bool => "bool",
+            Unexpected::Char => "char",
+            Unexpected::U8 => "u8",
+            Unexpected::U16 => "u16",
+            Unexpected::U32 => "u32",
+            Unexpected::U64 => "u64",
+            Unexpected::U128 => "u128",
+            Unexpected::U256 => "u256",
+            Unexpected::I8 => "i8",
+            Unexpected::I16 => "i16",
+            Unexpected::I32 => "i32",
+            Unexpected::I64 => "i64",
+            Unexpected::I128 => "i128",
+            Unexpected::I256 => "i256",
+            Unexpected::Sequence => "sequence",
+            Unexpected::Composite => "composite",
+            Unexpected::Tuple => "tuple",
+            Unexpected::Str => "str",
+            Unexpected::Variant => "variant",
+            Unexpected::Array => "array",
+            Unexpected::Bitsequence => "bitsequence",
+        };
+        f.write_str(s)
+    }
 }
 
 /// An error that can occur trying to decode a bit sequence.
@@ -193,92 +298,15 @@ pub struct TypeId(pub u32);
 
 /// A [`Visitor`] implementation that just ignores all of the bytes.
 pub struct IgnoreVisitor;
-
 impl Visitor for IgnoreVisitor {
     type Value = ();
     type Error = DecodeError;
 
-    fn visit_bool(self, _value: bool, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_char(self, _value: char, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u8(self, _value: u8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u16(self, _value: u16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u32(self, _value: u32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u64(self, _value: u64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u128(self, _value: u128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_u256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i8(self, _value: i8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i16(self, _value: i16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i32(self, _value: i32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i64(self, _value: i64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i128(self, _value: i128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_i256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_sequence(
-        self,
-        _value: &mut Sequence,
-        _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_composite(
-        self,
-        _value: &mut Composite,
-        _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_tuple(self, _value: &mut Tuple, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_str(self, _value: Str, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_array(self, _value: &mut Array, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_variant(
-        self,
-        _value: &mut Variant,
-        _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
-        Ok(())
-    }
-    fn visit_bitsequence(
-        self,
-        _value: &mut BitSequence,
-        _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    // Whatever the value we visit is, just ignore it.
+    fn visit_unexpected(self, _unexpected: Unexpected) -> Result<Self::Value, Self::Error> {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod test {
