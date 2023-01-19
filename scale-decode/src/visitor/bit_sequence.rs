@@ -20,18 +20,18 @@ use scale_bits::{
 };
 
 /// This represents a BitSequence, deferring decoding until the implementation wants to.
-pub struct BitSequence<'a> {
+pub struct BitSequence<'scale> {
     format: Format,
-    bytes: &'a [u8],
+    bytes: &'scale [u8],
 }
 
-impl<'a> BitSequence<'a> {
-    pub(crate) fn new(format: Format, bytes: &'a [u8]) -> Self {
+impl<'scale> BitSequence<'scale> {
+    pub(crate) fn new(format: Format, bytes: &'scale [u8]) -> Self {
         BitSequence { format, bytes }
     }
 
     /// The bytes after this bit sequence.
-    pub(crate) fn remaining_bytes(&mut self) -> Result<&'a [u8], DecodeError> {
+    pub(crate) fn remaining_bytes(&mut self) -> Result<&'scale [u8], DecodeError> {
         let decoder = decode_using_format_from(self.bytes, self.format)?;
         let num_bytes = decoder.encoded_size();
         Ok(&self.bytes[num_bytes..])

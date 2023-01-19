@@ -42,7 +42,7 @@ pub use variant::Variant;
 /// to decide what to do with these values.
 pub trait Visitor: Sized {
     /// The type of the value to hand back from the [`crate::decode()`] function.
-    type Value;
+    type Value<'scale>;
     /// The error type (which we must be able to convert [`DecodeError`]s into, to
     /// handle any internal errors that crop up trying to decode things).
     type Error: From<DecodeError>;
@@ -50,108 +50,179 @@ pub trait Visitor: Sized {
     /// This is called when a visitor function that you've not provided an implementation is called.
     /// You are provided an enum value corresponding to the function call, and can decide what to return
     /// in this case. The default is to return an error to announce the unexpected value.
-    fn visit_unexpected(self, unexpected: Unexpected) -> Result<Self::Value, Self::Error> {
+    fn visit_unexpected<'scale>(
+        self,
+        unexpected: Unexpected,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         Err(DecodeError::Unexpected(unexpected).into())
     }
 
     /// Called when a bool is seen in the input bytes.
-    fn visit_bool(self, _value: bool, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_bool<'scale>(
+        self,
+        _value: bool,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Bool)
     }
     /// Called when a bool is seen in the input bytes.
-    fn visit_char(self, _value: char, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_char<'scale>(
+        self,
+        _value: char,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Char)
     }
     /// Called when a u8 is seen in the input bytes.
-    fn visit_u8(self, _value: u8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u8<'scale>(
+        self,
+        _value: u8,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U8)
     }
     /// Called when a u16 is seen in the input bytes.
-    fn visit_u16(self, _value: u16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u16<'scale>(
+        self,
+        _value: u16,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U16)
     }
     /// Called when a u32 is seen in the input bytes.
-    fn visit_u32(self, _value: u32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u32<'scale>(
+        self,
+        _value: u32,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U32)
     }
     /// Called when a u64 is seen in the input bytes.
-    fn visit_u64(self, _value: u64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u64<'scale>(
+        self,
+        _value: u64,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U64)
     }
     /// Called when a u128 is seen in the input bytes.
-    fn visit_u128(self, _value: u128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u128<'scale>(
+        self,
+        _value: u128,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U128)
     }
     /// Called when a u256 is seen in the input bytes.
-    fn visit_u256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_u256<'scale>(
+        self,
+        _value: &'scale [u8; 32],
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::U256)
     }
     /// Called when an i8 is seen in the input bytes.
-    fn visit_i8(self, _value: i8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i8<'scale>(
+        self,
+        _value: i8,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I8)
     }
     /// Called when an i16 is seen in the input bytes.
-    fn visit_i16(self, _value: i16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i16<'scale>(
+        self,
+        _value: i16,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I16)
     }
     /// Called when an i32 is seen in the input bytes.
-    fn visit_i32(self, _value: i32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i32<'scale>(
+        self,
+        _value: i32,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I32)
     }
     /// Called when an i64 is seen in the input bytes.
-    fn visit_i64(self, _value: i64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i64<'scale>(
+        self,
+        _value: i64,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I64)
     }
     /// Called when an i128 is seen in the input bytes.
-    fn visit_i128(self, _value: i128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i128<'scale>(
+        self,
+        _value: i128,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I128)
     }
     /// Called when an i256 is seen in the input bytes.
-    fn visit_i256(self, _value: &[u8; 32], _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_i256<'scale>(
+        self,
+        _value: &'scale [u8; 32],
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::I256)
     }
     /// Called when a sequence of values is seen in the input bytes.
-    fn visit_sequence(
+    fn visit_sequence<'scale>(
         self,
-        _value: &mut Sequence,
+        _value: &mut Sequence<'scale, '_>,
         _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Sequence)
     }
     /// Called when a composite value is seen in the input bytes.
-    fn visit_composite(
+    fn visit_composite<'scale>(
         self,
-        _value: &mut Composite,
+        _value: &mut Composite<'scale, '_>,
         _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Composite)
     }
     /// Called when a tuple of values is seen in the input bytes.
-    fn visit_tuple(self, _value: &mut Tuple, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_tuple<'scale>(
+        self,
+        _value: &mut Tuple<'scale, '_>,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Tuple)
     }
     /// Called when a string value is seen in the input bytes.
-    fn visit_str(self, _value: Str, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_str<'scale>(
+        self,
+        _value: Str<'scale>,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Str)
     }
     /// Called when a variant is seen in the input bytes.
-    fn visit_variant(
+    fn visit_variant<'scale>(
         self,
-        _value: &mut Variant,
+        _value: &mut Variant<'scale, '_>,
         _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Variant)
     }
     /// Called when an array is seen in the input bytes.
-    fn visit_array(self, _value: &mut Array, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+    fn visit_array<'scale>(
+        self,
+        _value: &mut Array<'scale, '_>,
+        _type_id: TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Array)
     }
     /// Called when a bit sequence is seen in the input bytes.
-    fn visit_bitsequence(
+    fn visit_bitsequence<'scale>(
         self,
-        _value: &mut BitSequence,
+        _value: &mut BitSequence<'scale>,
         _type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_unexpected(Unexpected::Bitsequence)
     }
 
@@ -160,43 +231,43 @@ pub trait Visitor: Sized {
     // that the thing was compact encoded:
 
     /// Called when a compact encoded u8 is seen in the input bytes.
-    fn visit_compact_u8(
+    fn visit_compact_u8<'scale>(
         self,
         value: Compact<u8>,
         type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_u8(value.value(), type_id)
     }
     /// Called when a compact encoded u16 is seen in the input bytes.
-    fn visit_compact_u16(
+    fn visit_compact_u16<'scale>(
         self,
         value: Compact<u16>,
         type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_u16(value.value(), type_id)
     }
     /// Called when a compact encoded u32 is seen in the input bytes.
-    fn visit_compact_u32(
+    fn visit_compact_u32<'scale>(
         self,
         value: Compact<u32>,
         type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_u32(value.value(), type_id)
     }
     /// Called when a compact encoded u64 is seen in the input bytes.
-    fn visit_compact_u64(
+    fn visit_compact_u64<'scale>(
         self,
         value: Compact<u64>,
         type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_u64(value.value(), type_id)
     }
     /// Called when a compact encoded u128 is seen in the input bytes.
-    fn visit_compact_u128(
+    fn visit_compact_u128<'scale>(
         self,
         value: Compact<u128>,
         type_id: TypeId,
-    ) -> Result<Self::Value, Self::Error> {
+    ) -> Result<Self::Value<'scale>, Self::Error> {
         self.visit_u128(value.value(), type_id)
     }
 }
@@ -218,7 +289,7 @@ pub enum DecodeError {
     InvalidChar(u32),
     /// We expected more bytes to finish decoding, but could not find them.
     #[error("Ran out of data during decoding")]
-    Eof,
+    NotEnoughInput,
     /// We found a variant that does not match with any in the type we're trying to decode from.
     #[error("Could not find variant with index {0} in {1:?}")]
     VariantNotFound(u8, scale_info::TypeDefVariant<PortableForm>),
@@ -230,7 +301,7 @@ pub enum DecodeError {
     TypeIdNotFound(u32),
     /// This is returned by default if a visitor function is not implemented.
     #[error("Unexpected type {0}")]
-    Unexpected(Unexpected)
+    Unexpected(Unexpected),
 }
 
 /// This is returned by default when a visitor function isn't implemented.
@@ -299,11 +370,11 @@ pub struct TypeId(pub u32);
 /// A [`Visitor`] implementation that just ignores all of the bytes.
 pub struct IgnoreVisitor;
 impl Visitor for IgnoreVisitor {
-    type Value = ();
+    type Value<'a> = ();
     type Error = DecodeError;
 
     // Whatever the value we visit is, just ignore it.
-    fn visit_unexpected(self, _unexpected: Unexpected) -> Result<Self::Value, Self::Error> {
+    fn visit_unexpected<'a>(self, _unexpected: Unexpected) -> Result<Self::Value<'a>, Self::Error> {
         Ok(())
     }
 }
@@ -367,144 +438,192 @@ mod test {
 
     struct ValueVisitor;
     impl Visitor for ValueVisitor {
-        type Value = Value;
+        type Value<'a> = Value;
         type Error = DecodeError;
 
-        fn visit_bool(self, value: bool, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_bool<'scale>(
+            self,
+            value: bool,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::Bool(value))
         }
-        fn visit_char(self, value: char, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_char<'scale>(
+            self,
+            value: char,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::Char(value))
         }
-        fn visit_u8(self, value: u8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_u8<'scale>(
+            self,
+            value: u8,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U8(value))
         }
-        fn visit_u16(self, value: u16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_u16<'scale>(
+            self,
+            value: u16,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U16(value))
         }
-        fn visit_u32(self, value: u32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_u32<'scale>(
+            self,
+            value: u32,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U32(value))
         }
-        fn visit_u64(self, value: u64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_u64<'scale>(
+            self,
+            value: u64,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U64(value))
         }
-        fn visit_u128(self, value: u128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_u128<'scale>(
+            self,
+            value: u128,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U128(value))
         }
-        fn visit_u256(
+        fn visit_u256<'scale>(
             self,
-            value: &[u8; 32],
+            value: &'scale [u8; 32],
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U256(*value))
         }
-        fn visit_i8(self, value: i8, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_i8<'scale>(
+            self,
+            value: i8,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I8(value))
         }
-        fn visit_i16(self, value: i16, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_i16<'scale>(
+            self,
+            value: i16,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I16(value))
         }
-        fn visit_i32(self, value: i32, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_i32<'scale>(
+            self,
+            value: i32,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I32(value))
         }
-        fn visit_i64(self, value: i64, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_i64<'scale>(
+            self,
+            value: i64,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I64(value))
         }
-        fn visit_i128(self, value: i128, _type_id: TypeId) -> Result<Self::Value, Self::Error> {
+        fn visit_i128<'scale>(
+            self,
+            value: i128,
+            _type_id: TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I128(value))
         }
-        fn visit_i256(
+        fn visit_i256<'scale>(
             self,
-            value: &[u8; 32],
+            value: &'scale [u8; 32],
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I256(*value))
         }
-        fn visit_compact_u8(
+        fn visit_compact_u8<'scale>(
             self,
             value: Compact<u8>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let locs = value.locations().iter().map(|&l| l.into()).collect();
             Ok(Value::CompactU8(locs, value.value()))
         }
-        fn visit_compact_u16(
+        fn visit_compact_u16<'scale>(
             self,
             value: Compact<u16>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let locs = value.locations().iter().map(|&l| l.into()).collect();
             Ok(Value::CompactU16(locs, value.value()))
         }
-        fn visit_compact_u32(
+        fn visit_compact_u32<'scale>(
             self,
             value: Compact<u32>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let locs = value.locations().iter().map(|&l| l.into()).collect();
             Ok(Value::CompactU32(locs, value.value()))
         }
-        fn visit_compact_u64(
+        fn visit_compact_u64<'scale>(
             self,
             value: Compact<u64>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let locs = value.locations().iter().map(|&l| l.into()).collect();
             Ok(Value::CompactU64(locs, value.value()))
         }
-        fn visit_compact_u128(
+        fn visit_compact_u128<'scale>(
             self,
             value: Compact<u128>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let locs = value.locations().iter().map(|&l| l.into()).collect();
             Ok(Value::CompactU128(locs, value.value()))
         }
-        fn visit_sequence(
+        fn visit_sequence<'scale>(
             self,
-            value: &mut Sequence,
+            value: &mut Sequence<'scale, '_>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor)? {
                 vals.push(val);
             }
             Ok(Value::Sequence(vals))
         }
-        fn visit_composite(
+        fn visit_composite<'scale>(
             self,
-            value: &mut Composite,
+            value: &mut Composite<'scale, '_>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             while let Some((name, val)) = value.decode_item_with_name(ValueVisitor)? {
                 vals.push((name.to_owned(), val));
             }
             Ok(Value::Composite(vals))
         }
-        fn visit_tuple(
+        fn visit_tuple<'scale>(
             self,
-            value: &mut Tuple,
+            value: &mut Tuple<'scale, '_>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor)? {
                 vals.push(val);
             }
             Ok(Value::Tuple(vals))
         }
-        fn visit_str(
+        fn visit_str<'scale>(
             self,
-            value: Str,
+            value: Str<'scale>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::Str(value.as_str()?.to_owned()))
         }
-        fn visit_variant(
+        fn visit_variant<'scale>(
             self,
-            value: &mut Variant,
+            value: &mut Variant<'scale, '_>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             let fields = value.fields();
             while let Some((name, val)) = fields.decode_item_with_name(ValueVisitor)? {
@@ -512,22 +631,22 @@ mod test {
             }
             Ok(Value::Variant(value.name().to_owned(), vals))
         }
-        fn visit_array(
+        fn visit_array<'scale>(
             self,
-            value: &mut Array,
+            value: &mut Array<'scale, '_>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor)? {
                 vals.push(val);
             }
             Ok(Value::Array(vals))
         }
-        fn visit_bitsequence(
+        fn visit_bitsequence<'scale>(
             self,
-            value: &mut BitSequence,
+            value: &mut BitSequence<'scale>,
             _type_id: TypeId,
-        ) -> Result<Self::Value, Self::Error> {
+        ) -> Result<Self::Value<'scale>, Self::Error> {
             let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
             Ok(Value::BitSequence(bools?))
         }
@@ -764,5 +883,50 @@ mod test {
             bitvec![u64, Msb0; 0, 1, 1, 0, 1, 0],
             Value::BitSequence(bits![0, 1, 1, 0, 1, 0]),
         );
+    }
+
+    #[test]
+    fn zero_copy_string_decoding() {
+        let input = ("hello", "world");
+
+        // The SCALE encoded bytes we want to zero-copy-decode from:
+        let input_encoded = input.encode();
+
+        // This can just zero-copy decode a string:
+        struct ZeroCopyStrVisitor;
+        impl Visitor for ZeroCopyStrVisitor {
+            type Value<'a> = &'a str;
+            type Error = DecodeError;
+
+            fn visit_str<'scale>(
+                self,
+                value: Str<'scale>,
+                _type_id: TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                value.as_str()
+            }
+        }
+
+        // This can zero-copy decode the pair of strings we have as input:
+        struct ZeroCopyPairVisitor;
+        impl Visitor for ZeroCopyPairVisitor {
+            type Value<'a> = (&'a str, &'a str);
+            type Error = DecodeError;
+
+            fn visit_tuple<'scale>(
+                self,
+                value: &mut Tuple<'scale, '_>,
+                _type_id: TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                let fst = value.decode_item(ZeroCopyStrVisitor)?.unwrap();
+                let snd = value.decode_item(ZeroCopyStrVisitor)?.unwrap();
+                Ok((fst, snd))
+            }
+        }
+
+        let (ty_id, types) = make_type::<(&str, &str)>();
+        let decoded =
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyPairVisitor).unwrap();
+        assert_eq!(decoded, ("hello", "world"));
     }
 }

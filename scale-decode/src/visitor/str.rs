@@ -18,13 +18,13 @@ use codec::{Compact, Decode};
 
 /// This represents a string, but defers proper decoding of it until it's asked for,
 /// and avoids allocating.
-pub struct Str<'a> {
+pub struct Str<'scale> {
     len: usize,
-    bytes: &'a [u8],
+    bytes: &'scale [u8],
 }
 
-impl<'a> Str<'a> {
-    pub(crate) fn new_from(bytes: &mut &'a [u8]) -> Result<Self, DecodeError> {
+impl<'scale> Str<'scale> {
+    pub(crate) fn new_from(bytes: &mut &'scale [u8]) -> Result<Str<'scale>, DecodeError> {
         // Strings are just encoded the same as bytes; a length prefix and then
         // the raw bytes. Pluck these out but don't do any further work.
         let len = <Compact<u32>>::decode(bytes)?.0 as usize;
@@ -41,11 +41,11 @@ impl<'a> Str<'a> {
         self.len == 0
     }
     /// return a string, failing if the bytes could not be properly utf8-decoded.
-    pub fn as_str(&self) -> Result<&'a str, DecodeError> {
+    pub fn as_str(&self) -> Result<&'scale str, DecodeError> {
         std::str::from_utf8(self.bytes).map_err(DecodeError::InvalidStr)
     }
     /// Return the raw bytes representing this string.
-    pub fn as_bytes(&self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &'scale [u8] {
         self.bytes
     }
 }

@@ -16,13 +16,13 @@
 use super::TypeId;
 
 /// This represents a compact encoded type.
-pub struct Compact<'b, 'c, T> {
+pub struct Compact<'info, 'c, T> {
     val: T,
-    locations: &'c [CompactLocation<'b>],
+    locations: &'c [CompactLocation<'info>],
 }
 
-impl<'b, 'c, T: Copy> Compact<'b, 'c, T> {
-    pub(crate) fn new(val: T, locations: &'c [CompactLocation<'b>]) -> Compact<'b, 'c, T> {
+impl<'info, 'c, T: Copy> Compact<'info, 'c, T> {
+    pub(crate) fn new(val: T, locations: &'c [CompactLocation<'info>]) -> Compact<'info, 'c, T> {
         Compact { val, locations }
     }
     /// Return the value that was compact-encoded
@@ -31,24 +31,24 @@ impl<'b, 'c, T: Copy> Compact<'b, 'c, T> {
     }
     /// Compact values can be nested inside named or unnamed fields in structs.
     /// This provides back a slice of
-    pub fn locations(&self) -> &'c [CompactLocation<'b>] {
+    pub fn locations(&self) -> &'c [CompactLocation<'info>] {
         self.locations
     }
 }
 
 /// A pointer to what the compact value is contained within.
 #[derive(Clone, Copy, Debug)]
-pub enum CompactLocation<'b> {
+pub enum CompactLocation<'info> {
     /// We're in an unnamed composite (struct) with the type ID given.
     UnnamedComposite(TypeId),
     /// We're in a named composite (struct) with the type ID given, and the compact
     /// value lives inside the field with the given name.
-    NamedComposite(TypeId, &'b str),
+    NamedComposite(TypeId, &'info str),
     /// We're at a primitive type with the type ID given; the compact value itself.
     Primitive(TypeId),
 }
 
-impl<'b> CompactLocation<'b> {
+impl<'info> CompactLocation<'info> {
     /// Return the Primitive type of this location, if one exists.
     pub fn as_primitive(self) -> Option<TypeId> {
         match self {

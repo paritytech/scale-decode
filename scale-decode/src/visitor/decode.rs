@@ -29,12 +29,12 @@ use scale_info::{
 /// The provided pointer to the data slice will be moved forwards as needed
 /// depending on what was decoded, and a method on the provided [`Visitor`]
 /// will be called depending on the type that needs to be decoded.
-pub fn decode_with_visitor<V: Visitor>(
-    data: &mut &[u8],
+pub fn decode_with_visitor<'scale, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: u32,
     types: &PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
     let ty_id = TypeId(ty_id);
 
@@ -52,13 +52,13 @@ pub fn decode_with_visitor<V: Visitor>(
     }
 }
 
-fn decode_composite_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_composite_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
-    ty: &'b TypeDefComposite<PortableForm>,
-    types: &'b PortableRegistry,
+    ty: &'info TypeDefComposite<PortableForm>,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     let mut items = Composite::new(data, ty.fields(), types);
     let res = visitor.visit_composite(&mut items, ty_id);
 
@@ -69,14 +69,14 @@ fn decode_composite_value<'b, V: Visitor>(
     res
 }
 
-fn decode_variant_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_variant_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
-    ty: &'b TypeDefVariant<PortableForm>,
-    types: &'b PortableRegistry,
+    ty: &'info TypeDefVariant<PortableForm>,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
-    let index = *data.first().ok_or(DecodeError::Eof)?;
+) -> Result<V::Value<'scale>, V::Error> {
+    let index = *data.first().ok_or(DecodeError::NotEnoughInput)?;
     *data = &data[1..];
 
     // Does a variant exist with the index we're looking for?
@@ -97,13 +97,13 @@ fn decode_variant_value<'b, V: Visitor>(
     res
 }
 
-fn decode_sequence_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_sequence_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
-    ty: &'b TypeDefSequence<PortableForm>,
-    types: &'b PortableRegistry,
+    ty: &'info TypeDefSequence<PortableForm>,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     // We assume that the sequence is preceeded by a compact encoded length, so that
     // we know how many values to try pulling out of the data.
     let len = codec::Compact::<u64>::decode(data).map_err(|e| e.into())?;
@@ -117,13 +117,13 @@ fn decode_sequence_value<'b, V: Visitor>(
     res
 }
 
-fn decode_array_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_array_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
-    ty: &'b TypeDefArray<PortableForm>,
-    types: &'b PortableRegistry,
+    ty: &'info TypeDefArray<PortableForm>,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     let len = ty.len() as usize;
     let seq = Sequence::new(data, ty.type_param().id(), len, types);
     let mut arr = Array::new(seq);
@@ -136,13 +136,13 @@ fn decode_array_value<'b, V: Visitor>(
     res
 }
 
-fn decode_tuple_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_tuple_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
-    ty: &'b TypeDefTuple<PortableForm>,
-    types: &'b PortableRegistry,
+    ty: &'info TypeDefTuple<PortableForm>,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     let mut items = Tuple::new(*data, ty.fields(), types);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
@@ -153,12 +153,23 @@ fn decode_tuple_value<'b, V: Visitor>(
     res
 }
 
-fn decode_primitive_value<V: Visitor>(
-    data: &mut &[u8],
+fn decode_primitive_value<'scale, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
     ty: &TypeDefPrimitive,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
+    fn decode_32_bytes<'scale>(data: &mut &'scale [u8]) -> Result<&'scale [u8; 32], DecodeError> {
+        // Pull an array from the data if we can, preserving the lifetime.
+        let arr: &'scale [u8; 32] = match (*data).try_into() {
+            Ok(arr) => arr,
+            Err(_) => return Err(DecodeError::NotEnoughInput),
+        };
+        // If this works out, remember to shift data 32 bytes forward.
+        *data = &data[32..];
+        Ok(arr)
+    }
+
     match ty {
         TypeDefPrimitive::Bool => {
             let b = bool::decode(data).map_err(|e| e.into())?;
@@ -197,10 +208,8 @@ fn decode_primitive_value<V: Visitor>(
             visitor.visit_u128(n, ty_id)
         }
         TypeDefPrimitive::U256 => {
-            // Note; pass a reference to the visitor because this can be optimised to
-            // take a slice of the input bytes instead of decoding to a stack value.
-            let n = <[u8; 32]>::decode(data).map_err(|e| e.into())?;
-            visitor.visit_u256(&n, ty_id)
+            let arr = decode_32_bytes(data)?;
+            visitor.visit_u256(arr, ty_id)
         }
         TypeDefPrimitive::I8 => {
             let n = i8::decode(data).map_err(|e| e.into())?;
@@ -223,32 +232,30 @@ fn decode_primitive_value<V: Visitor>(
             visitor.visit_i128(n, ty_id)
         }
         TypeDefPrimitive::I256 => {
-            // Note; pass a reference to the visitor because this can be optimised to
-            // take a slice of the input bytes instead of decoding to a stack value.
-            let n = <[u8; 32]>::decode(data).map_err(|e| e.into())?;
-            visitor.visit_i256(&n, ty_id)
+            let arr = decode_32_bytes(data)?;
+            visitor.visit_i256(arr, ty_id)
         }
     }
 }
 
-fn decode_compact_value<'b, V: Visitor>(
-    data: &mut &[u8],
+fn decode_compact_value<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
     ty: &TypeDefCompact<PortableForm>,
-    types: &'b PortableRegistry,
+    types: &'info PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     #[allow(clippy::too_many_arguments)]
-    fn decode_compact<'b, V: Visitor>(
-        data: &mut &[u8],
+    fn decode_compact<'scale, 'info, V: Visitor>(
+        data: &mut &'scale [u8],
         outermost_ty_id: TypeId,
         current_type_id: TypeId,
-        mut locations: StackVec<CompactLocation<'b>, 8>,
-        inner: &'b scale_info::Type<PortableForm>,
-        types: &'b PortableRegistry,
+        mut locations: StackVec<CompactLocation<'info>, 8>,
+        inner: &'info scale_info::Type<PortableForm>,
+        types: &'info PortableRegistry,
         visitor: V,
         depth: usize,
-    ) -> Result<V::Value, V::Error> {
+    ) -> Result<V::Value<'scale>, V::Error> {
         use TypeDefPrimitive::*;
         match inner.type_def() {
             // It's obvious how to decode basic primitive unsigned types, since we have impls for them.
@@ -336,13 +343,13 @@ fn decode_compact_value<'b, V: Visitor>(
     decode_compact(data, ty_id, TypeId(inner_ty_id), locations, inner, types, visitor, 0)
 }
 
-fn decode_bit_sequence_value<V: Visitor>(
-    data: &mut &[u8],
+fn decode_bit_sequence_value<'scale, V: Visitor>(
+    data: &mut &'scale [u8],
     ty_id: TypeId,
     ty: &TypeDefBitSequence<PortableForm>,
     types: &PortableRegistry,
     visitor: V,
-) -> Result<V::Value, V::Error> {
+) -> Result<V::Value<'scale>, V::Error> {
     use scale_bits::Format;
 
     let format = Format::from_metadata(ty, types).map_err(DecodeError::BitSequenceError)?;

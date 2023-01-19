@@ -17,21 +17,21 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
-pub struct Composite<'a, 'b> {
-    bytes: &'a [u8],
-    fields: &'b [Field<PortableForm>],
-    types: &'b PortableRegistry,
+pub struct Composite<'scale, 'info> {
+    bytes: &'scale [u8],
+    fields: &'info [Field<PortableForm>],
+    types: &'info PortableRegistry,
 }
 
-impl<'a, 'b> Composite<'a, 'b> {
+impl<'scale, 'info> Composite<'scale, 'info> {
     pub(crate) fn new(
-        bytes: &'a [u8],
-        fields: &'b [Field<PortableForm>],
-        types: &'b PortableRegistry,
-    ) -> Composite<'a, 'b> {
+        bytes: &'scale [u8],
+        fields: &'info [Field<PortableForm>],
+        types: &'info PortableRegistry,
+    ) -> Composite<'scale, 'info> {
         Composite { bytes, fields, types }
     }
-    pub(crate) fn bytes(&self) -> &'a [u8] {
+    pub(crate) fn bytes(&self) -> &'scale [u8] {
         self.bytes
     }
     pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
@@ -41,11 +41,14 @@ impl<'a, 'b> Composite<'a, 'b> {
         Ok(())
     }
     /// The yet-to-be-decoded fields still present in this composite type.
-    pub fn fields(&self) -> &'b [Field<PortableForm>] {
+    pub fn fields(&self) -> &'info [Field<PortableForm>] {
         self.fields
     }
     /// Decode the next field in the composite type by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+    pub fn decode_item<V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Result<Option<V::Value<'scale>>, V::Error> {
         self.decode_item_with_name(visitor).map(|o| o.map(|(_n, v)| v))
     }
     /// Decode the next field in the composite type by providing a visitor to handle it.
@@ -53,7 +56,7 @@ impl<'a, 'b> Composite<'a, 'b> {
     pub fn decode_item_with_name<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Result<Option<(&'b str, V::Value)>, V::Error> {
+    ) -> Result<Option<(&'info str, V::Value<'scale>)>, V::Error> {
         if self.fields.is_empty() {
             return Ok(None);
         }

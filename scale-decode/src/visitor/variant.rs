@@ -17,19 +17,19 @@ use super::{composite::Composite, DecodeError};
 use scale_info::form::PortableForm;
 
 /// A representation of the a variant type.
-pub struct Variant<'a, 'b> {
-    variant: &'b scale_info::Variant<PortableForm>,
-    fields: Composite<'a, 'b>,
+pub struct Variant<'scale, 'info> {
+    variant: &'info scale_info::Variant<PortableForm>,
+    fields: Composite<'scale, 'info>,
 }
 
-impl<'a, 'b> Variant<'a, 'b> {
+impl<'scale, 'info> Variant<'scale, 'info> {
     pub(crate) fn new(
-        variant: &'b scale_info::Variant<PortableForm>,
-        fields: Composite<'a, 'b>,
-    ) -> Variant<'a, 'b> {
+        variant: &'info scale_info::Variant<PortableForm>,
+        fields: Composite<'scale, 'info>,
+    ) -> Variant<'scale, 'info> {
         Variant { variant, fields }
     }
-    pub(crate) fn bytes(&self) -> &'a [u8] {
+    pub(crate) fn bytes(&self) -> &'scale [u8] {
         self.fields.bytes()
     }
     pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
@@ -44,7 +44,7 @@ impl<'a, 'b> Variant<'a, 'b> {
         self.variant.index()
     }
     /// Access the variant fields.
-    pub fn fields(&mut self) -> &mut Composite<'a, 'b> {
+    pub fn fields(&mut self) -> &mut Composite<'scale, 'info> {
         &mut self.fields
     }
 }

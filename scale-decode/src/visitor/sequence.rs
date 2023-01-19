@@ -17,23 +17,23 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from a sequence type.
-pub struct Sequence<'a, 'b> {
-    bytes: &'a [u8],
+pub struct Sequence<'scale, 'info> {
+    bytes: &'scale [u8],
     type_id: u32,
-    types: &'b PortableRegistry,
+    types: &'info PortableRegistry,
     remaining: usize,
 }
 
-impl<'a, 'b> Sequence<'a, 'b> {
+impl<'scale, 'info> Sequence<'scale, 'info> {
     pub(crate) fn new(
-        bytes: &'a [u8],
+        bytes: &'scale [u8],
         type_id: u32,
         len: usize,
-        types: &'b PortableRegistry,
-    ) -> Sequence<'a, 'b> {
+        types: &'info PortableRegistry,
+    ) -> Sequence<'scale, 'info> {
         Sequence { bytes, type_id, types, remaining: len }
     }
-    pub(crate) fn bytes(&self) -> &'a [u8] {
+    pub(crate) fn bytes(&self) -> &'scale [u8] {
         self.bytes
     }
     pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
@@ -43,7 +43,7 @@ impl<'a, 'b> Sequence<'a, 'b> {
         Ok(())
     }
     /// The number of un-decoded items remaining in this sequence.
-    pub fn len(&self) -> usize {
+    pub fn remaining(&self) -> usize {
         self.remaining
     }
     /// Are there any un-decoded items remaining in this sequence.
@@ -51,7 +51,10 @@ impl<'a, 'b> Sequence<'a, 'b> {
         self.remaining == 0
     }
     /// Decode an item from the sequence by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+    pub fn decode_item<V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Result<Option<V::Value<'scale>>, V::Error> {
         if self.remaining == 0 {
             return Ok(None);
         }

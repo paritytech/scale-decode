@@ -17,21 +17,21 @@ use super::{DecodeError, IgnoreVisitor, Visitor};
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
-pub struct Tuple<'a, 'b> {
-    bytes: &'a [u8],
-    fields: &'b [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-    types: &'b PortableRegistry,
+pub struct Tuple<'scale, 'info> {
+    bytes: &'scale [u8],
+    fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+    types: &'info PortableRegistry,
 }
 
-impl<'a, 'b> Tuple<'a, 'b> {
+impl<'scale, 'info> Tuple<'scale, 'info> {
     pub(crate) fn new(
-        bytes: &'a [u8],
-        fields: &'b [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
-        types: &'b PortableRegistry,
-    ) -> Tuple<'a, 'b> {
+        bytes: &'scale [u8],
+        fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>],
+        types: &'info PortableRegistry,
+    ) -> Tuple<'scale, 'info> {
         Tuple { bytes, fields, types }
     }
-    pub(crate) fn bytes(&self) -> &'a [u8] {
+    pub(crate) fn bytes(&self) -> &'scale [u8] {
         self.bytes
     }
     pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
@@ -49,7 +49,10 @@ impl<'a, 'b> Tuple<'a, 'b> {
         self.fields.is_empty()
     }
     /// Decode the next item from the tuple by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+    pub fn decode_item<V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Result<Option<V::Value<'scale>>, V::Error> {
         if self.fields.is_empty() {
             return Ok(None);
         }

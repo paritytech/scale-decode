@@ -16,30 +16,33 @@
 use super::{sequence::Sequence, DecodeError, Visitor};
 
 /// This represents an array type.
-pub struct Array<'a, 'b> {
-    seq: Sequence<'a, 'b>,
+pub struct Array<'scale, 'info> {
+    seq: Sequence<'scale, 'info>,
 }
 
-impl<'a, 'b> Array<'a, 'b> {
-    pub(crate) fn new(seq: Sequence<'a, 'b>) -> Self {
+impl<'scale, 'info> Array<'scale, 'info> {
+    pub(crate) fn new(seq: Sequence<'scale, 'info>) -> Self {
         Array { seq }
     }
-    pub(crate) fn bytes(&self) -> &'a [u8] {
+    pub(crate) fn bytes(&self) -> &'scale [u8] {
         self.seq.bytes()
     }
     pub(crate) fn skip_rest(&mut self) -> Result<(), DecodeError> {
         self.seq.skip_rest()
     }
     /// The number of un-decoded items left in the array.
-    pub fn len(&self) -> usize {
-        self.seq.len()
+    pub fn remaining(&self) -> usize {
+        self.seq.remaining()
     }
     /// Are there any un-decoded items remaining in the array.
     pub fn is_empty(&self) -> bool {
         self.seq.is_empty()
     }
     /// Decode the next item from the array by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(&mut self, visitor: V) -> Result<Option<V::Value>, V::Error> {
+    pub fn decode_item<V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Result<Option<V::Value<'scale>>, V::Error> {
         self.seq.decode_item(visitor)
     }
 }
