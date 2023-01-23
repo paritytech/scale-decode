@@ -197,7 +197,8 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor)? {
+        while let Some(val) = value.decode_item(ValueVisitor) {
+            let val = val?;
             vals.push(val);
         }
         Ok(Value::Sequence(vals))
@@ -208,7 +209,8 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some((name, val)) = value.decode_item_with_name(ValueVisitor)? {
+        while let Some(item) = value.decode_item_with_name(ValueVisitor) {
+            let (name, val) = item?;
             vals.push((name.to_owned(), val));
         }
         Ok(Value::Composite(vals))
@@ -219,7 +221,8 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor)? {
+        while let Some(val) = value.decode_item(ValueVisitor) {
+            let val = val?;
             vals.push(val);
         }
         Ok(Value::Tuple(vals))
@@ -238,7 +241,8 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
-        while let Some((name, val)) = fields.decode_item_with_name(ValueVisitor)? {
+        while let Some(item) = fields.decode_item_with_name(ValueVisitor) {
+            let (name, val) = item?;
             vals.push((name.to_owned(), val));
         }
         Ok(Value::Variant(value.name().to_owned(), vals))
@@ -249,7 +253,8 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor)? {
+        while let Some(val) = value.decode_item(ValueVisitor) {
+            let val = val?;
             vals.push(val);
         }
         Ok(Value::Array(vals))

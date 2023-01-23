@@ -24,10 +24,13 @@ use crate::{
     visitor::{
         self,
         Visitor,
+        DecodeItemIterator,
         decode_with_visitor,
-        types::*
+        delegate_visitor_fns,
+        types::*,
     }
 };
+use std::borrow::Cow;
 
 pub struct VisitorWithContext<T> {
     pub context: Context,
@@ -40,14 +43,17 @@ impl <T> VisitorWithContext<T> {
     }
 }
 
-// Impl DecodeAsType for some VisitorWithContext<$ty>. Ideally we'd impl DecodeAtType on
-// all T where a VisitorWithContext<T>: Visitor impl exists, but that would prevent third
-// parties from implementing DecodeAsType for fear of conflicting with our impls.
+/// Generate a DecodeAsType impl for basic types that have a corresponding VisitorWithContext
+/// that implements Visitor.
 macro_rules! impl_decode_as_type {
-    ($ty:ty) => {
-        impl DecodeAsType for $ty {
+    ($ty:ident $(< $($lt:lifetime,)* $($param:ident),* >)? $(where $( $where:tt )* )?) => {
+        impl $(< $($lt,)* $($param),* >)? DecodeAsType for $ty $(< $($lt,)* $($param),* >)?
+        where
+            $( $( VisitorWithContext<$param>: for<'b> Visitor<Error = Error, Value<'b> = $param> ,)* )?
+            $( $($where)* )?
+        {
             fn decode_as_type(input: &mut &[u8], type_id: u32, types: &scale_info::PortableRegistry, context: Context) -> Result<Self, Error> {
-                decode_with_visitor(input, type_id, types, VisitorWithContext::<$ty>::new(context))
+                decode_with_visitor(input, type_id, types, VisitorWithContext::<$ty $(< $($lt,)* $($param),* >)? >::new(context))
             }
         }
     };
@@ -99,14 +105,100 @@ impl Visitor for VisitorWithContext<String> {
 }
 impl_decode_as_type!(String);
 
-impl <'a, T> DecodeAsType for std::borrow::Cow<'a, T>
+impl <'a, T> Visitor for VisitorWithContext<Cow<'a, T>>
 where
     VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
     T: Clone,
 {
-    fn decode_as_type(input: &mut &[u8], type_id: u32, types: &scale_info::PortableRegistry, context: Context) -> Result<Self, Error> {
-        decode_with_visitor(input, type_id, types, VisitorWithContext::<T>::new(context))
-            .map(std::borrow::Cow::Owned)
+    type Error = Error;
+    type Value<'scale> = Cow<'a, T>;
+
+    delegate_visitor_fns!(
+        |this: Self| VisitorWithContext::<T>::new(this.context),
+        |res| Ok(Cow::Owned(res))
+    );
+}
+impl_decode_as_type!(Cow<'a, T> where T: Clone);
+
+impl <T> Visitor for VisitorWithContext<Vec<T>>
+where
+    VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
+{
+    type Value<'scale> = Vec<T>;
+    type Error = Error;
+
+    fn visit_tuple<'scale>(
+        self,
+        value: &mut Tuple<'scale, '_>,
+        _type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        decode_items_using::<_, T>(value, self.context).collect()
+    }
+    fn visit_sequence<'scale>(
+        self,
+        value: &mut Sequence<'scale, '_>,
+        _type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        decode_items_using::<_, T>(value, self.context).collect()
+    }
+    fn visit_array<'scale>(
+        self,
+        value: &mut Array<'scale, '_>,
+        _type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        decode_items_using::<_, T>(value, self.context).collect()
+    }
+}
+impl_decode_as_type!(Vec<T>);
+
+impl <const N: usize, T> Visitor for VisitorWithContext<[T; N]>
+where
+    VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
+{
+    type Value<'scale> = [T; N];
+    type Error = Error;
+
+    fn visit_tuple<'scale>(
+        self,
+        value: &mut Tuple<'scale, '_>,
+        type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
+        let actual_len = val.len();
+        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
+            actual: type_id.0,
+            actual_len,
+            expected_len: N
+        }))?;
+        Ok(arr)
+    }
+    fn visit_sequence<'scale>(
+        self,
+        value: &mut Sequence<'scale, '_>,
+        type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
+        let actual_len = val.len();
+        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
+            actual: type_id.0,
+            actual_len,
+            expected_len: N
+        }))?;
+        Ok(arr)
+    }
+    fn visit_array<'scale>(
+        self,
+        value: &mut Array<'scale, '_>,
+        type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
+        let actual_len = val.len();
+        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
+            actual: type_id.0,
+            actual_len,
+            expected_len: N
+        }))?;
+        Ok(arr)
     }
 }
 
@@ -128,6 +220,7 @@ where
             let (_name, val) = value
                 .fields()
                 .decode_item_with_name(VisitorWithContext::<T>::new(ctx.clone()))
+                .transpose()
                 .map_err(|e| e.or_context(ctx))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Some(val))
@@ -141,14 +234,7 @@ where
         }
     }
 }
-impl <T> DecodeAsType for Option<T>
-where
-    VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>
-{
-    fn decode_as_type(input: &mut &[u8], type_id: u32, types: &scale_info::PortableRegistry, context: Context) -> Result<Self, Error> {
-        decode_with_visitor(input, type_id, types, VisitorWithContext::<Option<T>>::new(context))
-    }
-}
+impl_decode_as_type!(Option<T>);
 
 impl <T, E> Visitor for VisitorWithContext<Result<T, E>>
 where
@@ -169,6 +255,7 @@ where
             let (_name, val) = value
                 .fields()
                 .decode_item_with_name(VisitorWithContext::<T>::new(ctx.clone()))
+                .transpose()
                 .map_err(|e| e.or_context(ctx))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Ok(val))
@@ -176,6 +263,7 @@ where
             let (_name, val) = value
                 .fields()
                 .decode_item_with_name(VisitorWithContext::<E>::new(ctx.clone()))
+                .transpose()
                 .map_err(|e| e.or_context(ctx))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Err(val))
@@ -187,15 +275,7 @@ where
         }
     }
 }
-impl <T, E> DecodeAsType for Result<T, E>
-where
-    VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>,
-    VisitorWithContext<E>: for<'a> Visitor<Error = Error, Value<'a> = E>,
-{
-    fn decode_as_type(input: &mut &[u8], type_id: u32, types: &scale_info::PortableRegistry, context: Context) -> Result<Self, Error> {
-        decode_with_visitor(input, type_id, types, VisitorWithContext::<Result<T, E>>::new(context))
-    }
-}
+impl_decode_as_type!(Result<T, E>);
 
 // Impl Visitor/DecodeAsType for all primitive number types
 macro_rules! visit_number_fn_impl {
@@ -213,7 +293,7 @@ macro_rules! visit_number_fn_impl {
     }
 }
 macro_rules! visit_number_impl {
-    ($ty:ty) => {
+    ($ty:ident) => {
         impl Visitor for VisitorWithContext<$ty> {
             type Error = Error;
             type Value<'scale> = $ty;
@@ -286,6 +366,7 @@ macro_rules! impl_decode_tuple {
                             idx += 1;
                             value
                                 .decode_item(VisitorWithContext::<$t>::new(ctx.clone()))
+                                .transpose()
                                 .map_err(|e| e.or_context(ctx))?
                                 .expect("length already checked via .remaining()")
                         }
@@ -318,6 +399,7 @@ macro_rules! impl_decode_tuple {
                             idx += 1;
                             value
                                 .decode_item(VisitorWithContext::<$t>::new(ctx.clone()))
+                                .transpose()
                                 .map_err(|e| e.or_context(ctx))?
                                 .expect("length already checked via .remaining()")
                         }
@@ -357,9 +439,20 @@ impl_decode_tuple!(A B C D E F G H I J K L M N O P Q R S);
 impl_decode_tuple!(A B C D E F G H I J K L M N O P Q R S T);
 // ^ Note: We make sure to support as many as parity-scale-codec's impls do.
 
-
-
-
-
-
-
+/// This takes anything that can decode a stream if items and return an iterator over them.
+fn decode_items_using<'a, 'scale, D: DecodeItemIterator<'scale>, T>(decoder: &'a mut D, context: Context)
+    -> impl Iterator<Item = Result<<VisitorWithContext<T> as Visitor>::Value<'scale>, Error>> + 'a
+where
+    D: DecodeItemIterator<'scale>,
+    VisitorWithContext<T>: Visitor<Error = Error, Value<'scale> = T>,
+{
+    let mut idx = 0;
+    std::iter::from_fn(move || {
+        let ctx = context.at_idx(idx);
+        let item = decoder
+            .decode_item(VisitorWithContext::<T>::new(ctx.clone()))
+            .map(|res| res.map_err(|e| e.or_context(ctx)));
+        idx += 1;
+        item
+    })
+}

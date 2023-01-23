@@ -36,7 +36,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// [`Self::remaining_bytes()`] will represent the bytes after this composite type.
     pub fn skip(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
-            self.decode_item(IgnoreVisitor)?;
+            self.decode_item(IgnoreVisitor).transpose()?;
         }
         Ok(())
     }
@@ -60,7 +60,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Result<Option<V::Value<'scale>>, V::Error> {
+    ) -> Option<Result<V::Value<'scale>, V::Error>> {
         self.decode_item_with_name(visitor).map(|o| o.map(|(_n, v)| v))
     }
     /// Decode the next field in the composite type by providing a visitor to handle it.
@@ -68,9 +68,9 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     pub fn decode_item_with_name<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Result<Option<(&'info str, V::Value<'scale>)>, V::Error> {
+    ) -> Option<Result<(&'info str, V::Value<'scale>), V::Error>> {
         if self.fields.is_empty() {
-            return Ok(None);
+            return None;
         }
 
         let field = &self.fields[0];
@@ -84,6 +84,12 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         self.item_bytes = *b;
         self.fields = &self.fields[1..];
 
-        res.map(|val| Some((field_name, val)))
+        res.map(|val| Some((field_name, val))).transpose()
+    }
+}
+
+impl <'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Composite<'scale, 'info> {
+    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>> {
+        self.decode_item(visitor)
     }
 }

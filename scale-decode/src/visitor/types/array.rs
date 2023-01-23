@@ -38,7 +38,7 @@ impl<'scale, 'info> Array<'scale, 'info> {
     /// [`Self::remaining_bytes()`] will represent the bytes after this array.
     pub fn skip(&mut self) -> Result<(), DecodeError> {
         while self.remaining > 0 {
-            self.decode_item(IgnoreVisitor)?;
+            self.decode_item(IgnoreVisitor).transpose()?;
         }
         Ok(())
     }
@@ -62,9 +62,9 @@ impl<'scale, 'info> Array<'scale, 'info> {
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Result<Option<V::Value<'scale>>, V::Error> {
+    ) -> Option<Result<V::Value<'scale>, V::Error>> {
         if self.remaining == 0 {
-            return Ok(None);
+            return None;
         }
 
         let b = &mut self.item_bytes;
@@ -73,6 +73,12 @@ impl<'scale, 'info> Array<'scale, 'info> {
         let res = crate::visitor::decode_with_visitor(b, self.type_id, self.types, visitor);
         self.item_bytes = *b;
         self.remaining -= 1;
-        res.map(Some)
+        Some(res)
+    }
+}
+
+impl <'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Array<'scale, 'info> {
+    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>> {
+        self.decode_item(visitor)
     }
 }

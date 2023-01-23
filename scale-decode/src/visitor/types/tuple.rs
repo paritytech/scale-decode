@@ -36,7 +36,7 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     /// [`Self::remaining_bytes()`] will represent the bytes after this tuple.
     pub fn skip(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
-            self.decode_item(IgnoreVisitor)?;
+            self.decode_item(IgnoreVisitor).transpose()?;
         }
         Ok(())
     }
@@ -56,9 +56,9 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Result<Option<V::Value<'scale>>, V::Error> {
+    ) -> Option<Result<V::Value<'scale>, V::Error>> {
         if self.fields.is_empty() {
-            return Ok(None);
+            return None;
         }
 
         let field = &self.fields[0];
@@ -71,6 +71,12 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         self.fields = &self.fields[1..];
         self.item_bytes = *b;
 
-        res.map(Some)
+        Some(res)
+    }
+}
+
+impl <'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Tuple<'scale, 'info> {
+    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>> {
+        self.decode_item(visitor)
     }
 }
