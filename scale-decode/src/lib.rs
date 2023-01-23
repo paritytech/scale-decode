@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Parity Technologies (UK) Ltd. (admin@parity.io)
+// Copyright (C) 2023 Parity Technologies (UK) Ltd. (admin@parity.io)
 // This file is a part of the scale-value crate.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,5 +29,24 @@
 #![deny(missing_docs)]
 
 mod utils;
+mod impls;
 
+pub mod error;
+pub mod context;
 pub mod visitor;
+
+use scale_info::PortableRegistry;
+
+pub use crate::error::Error;
+pub use context::Context;
+
+/// This trait can be implemented for any type which can be decoded from static bytes, possibly with the help
+/// of a type registry and a type ID to help interpret the bytes. A [`Context`] is also passed around, which
+/// is used internally to improve error reporting. Implementations should use the [`Context::at`] method to
+/// indicate the current location if they would like it to show up in error output.
+pub trait DecodeAsType: Sized {
+    /// Given some input bytes, a `type_id`, type registry and context, attempt to decode said bytes into
+    /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes not used
+    /// in the course of decoding are still pointed to after decoding is complete.
+    fn decode_as_type(input: &mut &[u8], type_id: u32, types: &PortableRegistry, context: Context) -> Result<Self, Error>;
+}

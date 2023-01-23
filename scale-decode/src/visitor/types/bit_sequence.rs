@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Parity Technologies (UK) Ltd. (admin@parity.io)
+// Copyright (C) 2023 Parity Technologies (UK) Ltd. (admin@parity.io)
 // This file is a part of the scale-value crate.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,23 +23,32 @@ use scale_bits::{
 pub struct BitSequence<'scale> {
     format: Format,
     bytes: &'scale [u8],
+    // If we decode the bite sequence, we'll populate this too to cache it, since
+    // we must decode fully to figure it out at the mo.
+    bytes_after: Option<&'scale [u8]>
 }
 
 impl<'scale> BitSequence<'scale> {
     pub(crate) fn new(format: Format, bytes: &'scale [u8]) -> Self {
-        BitSequence { format, bytes }
+        BitSequence { format, bytes, bytes_after: None }
     }
 
-    /// The bytes after this bit sequence.
-    pub(crate) fn bytes_after(&mut self) -> Result<&'scale [u8], DecodeError> {
-        let decoder = decode_using_format_from(self.bytes, self.format)?;
-        let num_bytes = decoder.encoded_size();
-        Ok(&self.bytes[num_bytes..])
+    /// The bytes after this bit sequence. Note that at present, this needs to
+    /// decode the bit sequence fully, so if you intend to do that anyway, call
+    /// `decode` first to cache this result and save repeating the effort here.
+    pub fn bytes_after(&self) -> Result<&'scale [u8], DecodeError> {
+        if let Some(bytes_after) = self.bytes_after {
+            Ok(bytes_after)
+        } else {
+            let decoder = decode_using_format_from(self.bytes, self.format)?;
+            Ok(&self.bytes[decoder.encoded_size()..])
+        }
     }
 
     /// Return a decoder to decode the bits in this bit sequence.
     pub fn decode(&mut self) -> Result<Decoder<'_>, DecodeError> {
         let decoder = decode_using_format_from(self.bytes, self.format)?;
+        self.bytes_after = Some(&self.bytes[decoder.encoded_size()..]);
         Ok(decoder)
     }
 }
@@ -67,7 +76,13 @@ mod test {
         let format = Format::new(store, order);
 
         // Test skipping works:
+        let seq = BitSequence::new(format, &bytes);
+        let leftover = seq.bytes_after().expect("can skip bitseq without error");
+        assert_eq!(leftover.len(), 0, "No bytes should remain after skipping over");
+
+        // Test that this works when we've called decode explicitly too:
         let mut seq = BitSequence::new(format, &bytes);
+        let _ = seq.decode().unwrap();
         let leftover = seq.bytes_after().expect("can skip bitseq without error");
         assert_eq!(leftover.len(), 0, "No bytes should remain after skipping over");
     }
