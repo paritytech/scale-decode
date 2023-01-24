@@ -30,7 +30,36 @@ use crate::{
         types::*,
     }
 };
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    marker::PhantomData,
+    collections::{
+        VecDeque,
+        LinkedList,
+        BinaryHeap,
+        BTreeSet,
+        BTreeMap
+    }
+};
+use core::num::{
+    NonZeroU8,
+    NonZeroU16,
+    NonZeroU32,
+    NonZeroU64,
+    NonZeroU128,
+    NonZeroI8,
+    NonZeroI16,
+    NonZeroI32,
+    NonZeroI64,
+    NonZeroI128,
+};
+use std::sync::Arc;
+use std::rc::Rc;
+use std::time::Duration;
+use std::ops::{
+    Range,
+    RangeInclusive
+};
 
 pub struct VisitorWithContext<T> {
     pub context: Context,
@@ -105,51 +134,91 @@ impl Visitor for VisitorWithContext<String> {
 }
 impl_decode_as_type!(String);
 
-impl <'a, T> Visitor for VisitorWithContext<Cow<'a, T>>
-where
-    VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
-    T: Clone,
-{
+impl <T> Visitor for VisitorWithContext<PhantomData<T>> {
     type Error = Error;
-    type Value<'scale> = Cow<'a, T>;
-
-    delegate_visitor_fns!(
-        |this: Self| VisitorWithContext::<T>::new(this.context),
-        |res| Ok(Cow::Owned(res))
-    );
-}
-impl_decode_as_type!(Cow<'a, T> where T: Clone);
-
-impl <T> Visitor for VisitorWithContext<Vec<T>>
-where
-    VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
-{
-    type Value<'scale> = Vec<T>;
-    type Error = Error;
+    type Value<'scale> = PhantomData<T>;
 
     fn visit_tuple<'scale>(
         self,
         value: &mut Tuple<'scale, '_>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
-        decode_items_using::<_, T>(value, self.context).collect()
-    }
-    fn visit_sequence<'scale>(
-        self,
-        value: &mut Sequence<'scale, '_>,
-        _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
-        decode_items_using::<_, T>(value, self.context).collect()
-    }
-    fn visit_array<'scale>(
-        self,
-        value: &mut Array<'scale, '_>,
-        _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
-        decode_items_using::<_, T>(value, self.context).collect()
+        if value.remaining() == 0 {
+            Ok(PhantomData)
+        } else {
+            self.visit_unexpected(visitor::Unexpected::Tuple)
+        }
     }
 }
-impl_decode_as_type!(Vec<T>);
+impl_decode_as_type!(PhantomData<T>);
+
+// Generate impls to encode things based on some other type.
+macro_rules! impl_decode_like {
+    ($target:ident $(< $($lt:lifetime,)* $($param:ident),* >)? as $source:ty $( [where $($where:tt)*] )?: $mapper:expr) => {
+        impl $(< $($lt,)* $($param),* >)? Visitor for VisitorWithContext<$target $(< $($lt,)* $($param),* >)?>
+        where
+            $( $( VisitorWithContext<$param>: for<'b> Visitor<Error = Error, Value<'b> = $param> ,)* )?
+            $( $($where)* )?
+        {
+            type Error = Error;
+            type Value<'scale> = $target $(< $($lt,)* $($param),* >)?;
+
+            delegate_visitor_fns!(
+                |this: Self| VisitorWithContext::<$source>::new(this.context),
+                |res: $source| Ok($mapper(res))
+            );
+        }
+        impl_decode_as_type!($target $(< $($lt,)* $($param),* >)? $( where $($where)* )?);
+    }
+}
+impl_decode_like!(Arc<T> as T: |res| Arc::new(res));
+impl_decode_like!(Rc<T> as T: |res| Rc::new(res));
+impl_decode_like!(Box<T> as T: |res| Box::new(res));
+impl_decode_like!(Cow<'a, T> as T [where T: Clone]: |res| Cow::Owned(res));
+impl_decode_like!(Duration as (u64, u32): |res: (u64,u32)| Duration::from_secs(res.0) + Duration::from_nanos(res.1 as u64));
+impl_decode_like!(Range<T> as (T, T): |res: (T,T)| res.0..res.1);
+impl_decode_like!(RangeInclusive<T> as (T, T): |res: (T,T)| res.0..=res.1);
+
+macro_rules! impl_decode_seq_via_collect {
+    ($ty:ident<$generic:ident> $(where $($where:tt)*)?) => {
+        impl <$generic> Visitor for VisitorWithContext<$ty<$generic>>
+        where
+            VisitorWithContext<$generic>: for<'b> Visitor<Error = Error, Value<'b> = $generic>,
+            $( $($where)* )?
+        {
+            type Value<'scale> = $ty<$generic>;
+            type Error = Error;
+
+            fn visit_tuple<'scale>(
+                self,
+                value: &mut Tuple<'scale, '_>,
+                _type_id: visitor::TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                decode_items_using::<_, T>(value, self.context).collect()
+            }
+            fn visit_sequence<'scale>(
+                self,
+                value: &mut Sequence<'scale, '_>,
+                _type_id: visitor::TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                decode_items_using::<_, T>(value, self.context).collect()
+            }
+            fn visit_array<'scale>(
+                self,
+                value: &mut Array<'scale, '_>,
+                _type_id: visitor::TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                decode_items_using::<_, T>(value, self.context).collect()
+            }
+        }
+        impl_decode_as_type!($ty < $generic > $( where $($where)* )?);
+    }
+}
+impl_decode_seq_via_collect!(Vec<T>);
+impl_decode_seq_via_collect!(VecDeque<T>);
+impl_decode_seq_via_collect!(LinkedList<T>);
+impl_decode_seq_via_collect!(BinaryHeap<T> where T: Ord);
+impl_decode_seq_via_collect!(BTreeSet<T> where T: Ord);
 
 impl <const N: usize, T> Visitor for VisitorWithContext<[T; N]>
 where
