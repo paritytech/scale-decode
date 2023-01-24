@@ -63,6 +63,11 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     ) -> Option<Result<V::Value<'scale>, V::Error>> {
         self.decode_item_with_name(visitor).map(|o| o.map(|(_n, v)| v))
     }
+    /// Return the name of the next field to be decoded; `None` if either the field has no name,
+    /// or there are no fields remaining.
+    pub fn next_item_name(&self) -> Option<&str> {
+        self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
+    }
     /// Decode the next field in the composite type by providing a visitor to handle it.
     /// The name of the field will be returned too, or an empty string if it doesn't exist.
     pub fn decode_item_with_name<V: Visitor>(
@@ -88,8 +93,11 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     }
 }
 
-impl <'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Composite<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>> {
+impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Composite<'scale, 'info> {
+    fn decode_item<'a, V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Option<Result<V::Value<'scale>, V::Error>> {
         self.decode_item(visitor)
     }
 }

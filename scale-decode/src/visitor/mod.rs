@@ -492,7 +492,7 @@ macro_rules! delegate_visitor_fns {
             let v = ($map_visitor)(self);
             v.visit_compact_u128(value, type_id).and_then($map_result)
         }
-    }
+    };
 }
 pub(crate) use delegate_visitor_fns;
 
@@ -588,7 +588,10 @@ impl std::fmt::Display for Unexpected {
 /// and allows you to generically talk about decoding unnamed items.
 pub trait DecodeItemIterator<'scale> {
     /// Use a visitor to decode a single item.
-    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>>;
+    fn decode_item<'a, V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Option<Result<V::Value<'scale>, V::Error>>;
 }
 
 /// An error that can occur trying to decode a bit sequence.

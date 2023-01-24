@@ -25,7 +25,7 @@ pub struct BitSequence<'scale> {
     bytes: &'scale [u8],
     // If we decode the bite sequence, we'll populate this too to cache it, since
     // we must decode fully to figure it out at the mo.
-    bytes_after: Option<&'scale [u8]>
+    bytes_after: Option<&'scale [u8]>,
 }
 
 impl<'scale> BitSequence<'scale> {

@@ -17,15 +17,15 @@
 //! attempt to encode some type. Internally, the [`Context`] tracks the path
 //! that we're attempting to encode to aid in error reporting.
 
+use crate::utils::linkedlist::LinkedList;
 use std::borrow::Cow;
-use crate::utils::linkedlist::{ LinkedList };
 
 /// A cheaply clonable opaque context which allows us to track the current
 /// location into a type that we're trying to encode, to aid in
 /// error reporting.
 #[derive(Clone, Default, Debug)]
 pub struct Context {
-    path: LinkedList<Location>
+    path: LinkedList<Location>,
 }
 
 impl Context {
@@ -39,11 +39,11 @@ impl Context {
         Context { path }
     }
     /// Return a new context with a field location appended.
-    pub fn at_field(&self, field: impl Into<Cow<'static,str>>) -> Context {
+    pub fn at_field(&self, field: impl Into<Cow<'static, str>>) -> Context {
         self.at(Location::field(field))
     }
     /// Return a new context with a variant location appended.
-    pub fn at_variant(&self, name: impl Into<Cow<'static,str>>) -> Context {
+    pub fn at_variant(&self, name: impl Into<Cow<'static, str>>) -> Context {
         self.at(Location::variant(name))
     }
     /// Return a new context with an index location appended.
@@ -63,7 +63,7 @@ impl Context {
 /// The current path that we're trying to encode.
 pub struct Path<'a>(Cow<'a, LinkedList<Location>>);
 
-impl <'a> Path<'a> {
+impl<'a> Path<'a> {
     /// Cheaply convert the path to an owned version.
     pub fn to_owned(self) -> Path<'static> {
         Path(Cow::Owned(self.0.into_owned()))
@@ -74,7 +74,7 @@ impl <'a> Path<'a> {
     }
 }
 
-impl <'a> std::fmt::Display for Path<'a> {
+impl<'a> std::fmt::Display for Path<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut items = Vec::with_capacity(self.0.len());
         for item in self.0.iter_back() {
@@ -88,7 +88,7 @@ impl <'a> std::fmt::Display for Path<'a> {
             match &loc.inner {
                 Loc::Field(name) => f.write_str(&*name)?,
                 Loc::Index(i) => write!(f, "[{i}]")?,
-                Loc::Variant(name) => write!(f, "({name})")?
+                Loc::Variant(name) => write!(f, "({name})")?,
             }
         }
         Ok(())
@@ -98,33 +98,27 @@ impl <'a> std::fmt::Display for Path<'a> {
 /// Some location, like a field, variant or index in an array.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Location {
-    inner: Loc
+    inner: Loc,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Loc {
     Field(Cow<'static, str>),
     Index(usize),
-    Variant(Cow<'static, str>)
+    Variant(Cow<'static, str>),
 }
 
 impl Location {
     /// This represents some struct field.
-    pub fn field(name: impl Into<Cow<'static,str>>) -> Self {
-        Location {
-            inner: Loc::Field(name.into())
-        }
+    pub fn field(name: impl Into<Cow<'static, str>>) -> Self {
+        Location { inner: Loc::Field(name.into()) }
     }
     /// This represents some variant name.
-    pub fn variant(name: impl Into<Cow<'static,str>>) -> Self {
-        Location {
-            inner: Loc::Variant(name.into())
-        }
+    pub fn variant(name: impl Into<Cow<'static, str>>) -> Self {
+        Location { inner: Loc::Variant(name.into()) }
     }
     /// This represents a tuple or array index.
     pub fn idx(i: usize) -> Self {
-        Location {
-            inner: Loc::Index(i)
-        }
+        Location { inner: Loc::Index(i) }
     }
 }

@@ -28,11 +28,11 @@
 
 #![deny(missing_docs)]
 
-mod utils;
 mod impls;
+mod utils;
 
-pub mod error;
 pub mod context;
+pub mod error;
 pub mod visitor;
 
 use scale_info::PortableRegistry;
@@ -48,5 +48,10 @@ pub trait DecodeAsType: Sized {
     /// Given some input bytes, a `type_id`, type registry and context, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes not used
     /// in the course of decoding are still pointed to after decoding is complete.
-    fn decode_as_type(input: &mut &[u8], type_id: u32, types: &PortableRegistry, context: Context) -> Result<Self, Error>;
+    fn decode_as_type(
+        input: &mut &[u8],
+        type_id: u32,
+        types: &PortableRegistry,
+        context: Context,
+    ) -> Result<Self, Error>;
 }

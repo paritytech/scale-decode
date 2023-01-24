@@ -14,59 +14,33 @@
 // limitations under the License.
 
 use crate::{
-    DecodeAsType,
-    Context,
     context,
-    error::{
-        Error,
-        ErrorKind,
-    },
+    error::{Error, ErrorKind},
     visitor::{
-        self,
-        Visitor,
-        DecodeItemIterator,
-        decode_with_visitor,
-        delegate_visitor_fns,
-        types::*,
-    }
-};
-use std::{
-    borrow::Cow,
-    marker::PhantomData,
-    collections::{
-        VecDeque,
-        LinkedList,
-        BinaryHeap,
-        BTreeSet,
-        BTreeMap
-    }
+        self, decode_with_visitor, delegate_visitor_fns, types::*, DecodeItemIterator, Visitor,
+    },
+    Context, DecodeAsType,
 };
 use core::num::{
-    NonZeroU8,
-    NonZeroU16,
-    NonZeroU32,
-    NonZeroU64,
-    NonZeroU128,
-    NonZeroI8,
-    NonZeroI16,
-    NonZeroI32,
-    NonZeroI64,
-    NonZeroI128,
+    NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
+    NonZeroU32, NonZeroU64, NonZeroU8,
 };
-use std::sync::Arc;
+use std::ops::{Range, RangeInclusive};
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
-use std::ops::{
-    Range,
-    RangeInclusive
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+    marker::PhantomData,
 };
 
 pub struct VisitorWithContext<T> {
     pub context: Context,
-    _marker: std::marker::PhantomData<T>
+    _marker: std::marker::PhantomData<T>,
 }
 
-impl <T> VisitorWithContext<T> {
+impl<T> VisitorWithContext<T> {
     pub fn new(context: Context) -> Self {
         Self { context, _marker: std::marker::PhantomData }
     }
@@ -125,16 +99,13 @@ impl Visitor for VisitorWithContext<String> {
         value: &mut Str<'scale>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
-        let s = value
-            .as_str()
-            .map_err(|e| Error::new(self.context, e.into()))?
-            .to_owned();
+        let s = value.as_str().map_err(|e| Error::new(self.context, e.into()))?.to_owned();
         Ok(s)
     }
 }
 impl_decode_as_type!(String);
 
-impl <T> Visitor for VisitorWithContext<PhantomData<T>> {
+impl<T> Visitor for VisitorWithContext<PhantomData<T>> {
     type Error = Error;
     type Value<'scale> = PhantomData<T>;
 
@@ -220,7 +191,7 @@ impl_decode_seq_via_collect!(LinkedList<T>);
 impl_decode_seq_via_collect!(BinaryHeap<T> where T: Ord);
 impl_decode_seq_via_collect!(BTreeSet<T> where T: Ord);
 
-impl <const N: usize, T> Visitor for VisitorWithContext<[T; N]>
+impl<const N: usize, T> Visitor for VisitorWithContext<[T; N]>
 where
     VisitorWithContext<T>: for<'b> Visitor<Error = Error, Value<'b> = T>,
 {
@@ -234,11 +205,12 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
         let actual_len = val.len();
-        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
-            actual: type_id.0,
-            actual_len,
-            expected_len: N
-        }))?;
+        let arr = val.try_into().map_err(|_e| {
+            Error::new(
+                Context::new(),
+                ErrorKind::WrongLength { actual: type_id.0, actual_len, expected_len: N },
+            )
+        })?;
         Ok(arr)
     }
     fn visit_sequence<'scale>(
@@ -248,11 +220,12 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
         let actual_len = val.len();
-        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
-            actual: type_id.0,
-            actual_len,
-            expected_len: N
-        }))?;
+        let arr = val.try_into().map_err(|_e| {
+            Error::new(
+                Context::new(),
+                ErrorKind::WrongLength { actual: type_id.0, actual_len, expected_len: N },
+            )
+        })?;
         Ok(arr)
     }
     fn visit_array<'scale>(
@@ -262,18 +235,51 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let val = decode_items_using::<_, T>(value, self.context).collect::<Result<Vec<T>, _>>()?;
         let actual_len = val.len();
-        let arr = val.try_into().map_err(|_e| Error::new(Context::new(), ErrorKind::WrongLength {
-            actual: type_id.0,
-            actual_len,
-            expected_len: N
-        }))?;
+        let arr = val.try_into().map_err(|_e| {
+            Error::new(
+                Context::new(),
+                ErrorKind::WrongLength { actual: type_id.0, actual_len, expected_len: N },
+            )
+        })?;
         Ok(arr)
     }
 }
 
-impl <T> Visitor for VisitorWithContext<Option<T>>
+impl<T> Visitor for VisitorWithContext<BTreeMap<String, T>>
 where
-    VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>
+    VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>,
+{
+    type Error = Error;
+    type Value<'scale> = BTreeMap<String, T>;
+
+    fn visit_composite<'scale>(
+        self,
+        value: &mut Composite<'scale, '_>,
+        _type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        let mut map = BTreeMap::new();
+        loop {
+            // Break if no fields left or we hit an unnamed one:
+            // We can't `continue` here; must avoid infinite looping.
+            let Some(key) = value.next_item_name() else {
+                break
+            };
+
+            let key = key.to_owned();
+            let ctx = self.context.at_field(key.clone());
+            let Some(val) = value.decode_item(VisitorWithContext::<T>::new(ctx)) else {
+                break
+            };
+
+            map.insert(key, val?);
+        }
+        Ok(map)
+    }
+}
+
+impl<T> Visitor for VisitorWithContext<Option<T>>
+where
+    VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>,
 {
     type Error = Error;
     type Value<'scale> = Option<T>;
@@ -296,16 +302,19 @@ where
         } else if value.name() == "None" && value.fields().remaining() == 0 {
             Ok(None)
         } else {
-            Err(Error::new(ctx, ErrorKind::CannotFindVariant {
-                got: value.name().to_string(),
-                expected: vec!["Some", "None"]
-            }))
+            Err(Error::new(
+                ctx,
+                ErrorKind::CannotFindVariant {
+                    got: value.name().to_string(),
+                    expected: vec!["Some", "None"],
+                },
+            ))
         }
     }
 }
 impl_decode_as_type!(Option<T>);
 
-impl <T, E> Visitor for VisitorWithContext<Result<T, E>>
+impl<T, E> Visitor for VisitorWithContext<Result<T, E>>
 where
     VisitorWithContext<T>: for<'a> Visitor<Error = Error, Value<'a> = T>,
     VisitorWithContext<E>: for<'a> Visitor<Error = Error, Value<'a> = E>,
@@ -337,10 +346,13 @@ where
                 .expect("checked for 1 field already so should be ok");
             Ok(Err(val))
         } else {
-            Err(Error::new(ctx, ErrorKind::CannotFindVariant {
-                got: value.name().to_string(),
-                expected: vec!["Some", "None"]
-            }))
+            Err(Error::new(
+                ctx,
+                ErrorKind::CannotFindVariant {
+                    got: value.name().to_string(),
+                    expected: vec!["Some", "None"],
+                },
+            ))
         }
     }
 }
@@ -348,49 +360,60 @@ impl_decode_as_type!(Result<T, E>);
 
 // Impl Visitor/DecodeAsType for all primitive number types
 macro_rules! visit_number_fn_impl {
-    ($name:ident : $ty:ty) => {
+    ($name:ident : $ty:ty where |$res:ident| $expr:expr) => {
         fn $name<'scale>(
             self,
             value: $ty,
             _type_id: visitor::TypeId,
         ) -> Result<Self::Value<'scale>, Self::Error> {
-            let n = value
-                .try_into()
-                .map_err(|_| Error::new(self.context, ErrorKind::NumberOutOfRange { value: value.to_string() }))?;
+            let $res = value;
+            let n = $expr.ok_or_else(|| {
+                Error::new(self.context, ErrorKind::NumberOutOfRange { value: value.to_string() })
+            })?;
             Ok(n)
         }
-    }
+    };
 }
 macro_rules! visit_number_impl {
-    ($ty:ident) => {
+    ($ty:ident where |$res:ident| $expr:expr) => {
         impl Visitor for VisitorWithContext<$ty> {
             type Error = Error;
             type Value<'scale> = $ty;
 
-            visit_number_fn_impl!(visit_u8: u8);
-            visit_number_fn_impl!(visit_u16: u16);
-            visit_number_fn_impl!(visit_u32: u32);
-            visit_number_fn_impl!(visit_u64: u64);
-            visit_number_fn_impl!(visit_u128: u128);
-            visit_number_fn_impl!(visit_i8: i8);
-            visit_number_fn_impl!(visit_i16: i16);
-            visit_number_fn_impl!(visit_i32: i32);
-            visit_number_fn_impl!(visit_i64: i64);
-            visit_number_fn_impl!(visit_i128: i128);
+            visit_number_fn_impl!(visit_u8: u8 where |$res| $expr);
+            visit_number_fn_impl!(visit_u16: u16 where |$res| $expr);
+            visit_number_fn_impl!(visit_u32: u32 where |$res| $expr);
+            visit_number_fn_impl!(visit_u64: u64 where |$res| $expr);
+            visit_number_fn_impl!(visit_u128: u128 where |$res| $expr);
+            visit_number_fn_impl!(visit_i8: i8 where |$res| $expr);
+            visit_number_fn_impl!(visit_i16: i16 where |$res| $expr);
+            visit_number_fn_impl!(visit_i32: i32 where |$res| $expr);
+            visit_number_fn_impl!(visit_i64: i64 where |$res| $expr);
+            visit_number_fn_impl!(visit_i128: i128 where |$res| $expr);
         }
         impl_decode_as_type!($ty);
     };
 }
-visit_number_impl!(u8);
-visit_number_impl!(u16);
-visit_number_impl!(u32);
-visit_number_impl!(u64);
-visit_number_impl!(u128);
-visit_number_impl!(i8);
-visit_number_impl!(i16);
-visit_number_impl!(i32);
-visit_number_impl!(i64);
-visit_number_impl!(i128);
+visit_number_impl!(u8 where |res| res.try_into().ok());
+visit_number_impl!(u16 where |res| res.try_into().ok());
+visit_number_impl!(u32 where |res| res.try_into().ok());
+visit_number_impl!(u64 where |res| res.try_into().ok());
+visit_number_impl!(u128 where |res| res.try_into().ok());
+visit_number_impl!(i8 where |res| res.try_into().ok());
+visit_number_impl!(i16 where |res| res.try_into().ok());
+visit_number_impl!(i32 where |res| res.try_into().ok());
+visit_number_impl!(i64 where |res| res.try_into().ok());
+visit_number_impl!(i128 where |res| res.try_into().ok());
+visit_number_impl!(NonZeroU8 where |res| res.try_into().ok().and_then(NonZeroU8::new));
+visit_number_impl!(NonZeroU16 where |res| res.try_into().ok().and_then(NonZeroU16::new));
+visit_number_impl!(NonZeroU32 where |res| res.try_into().ok().and_then(NonZeroU32::new));
+visit_number_impl!(NonZeroU64 where |res| res.try_into().ok().and_then(NonZeroU64::new));
+visit_number_impl!(NonZeroU128 where |res| res.try_into().ok().and_then(NonZeroU128::new));
+visit_number_impl!(NonZeroI8 where |res| res.try_into().ok().and_then(NonZeroI8::new));
+visit_number_impl!(NonZeroI16 where |res| res.try_into().ok().and_then(NonZeroI16::new));
+visit_number_impl!(NonZeroI32 where |res| res.try_into().ok().and_then(NonZeroI32::new));
+visit_number_impl!(NonZeroI64 where |res| res.try_into().ok().and_then(NonZeroI64::new));
+visit_number_impl!(NonZeroI128 where |res| res.try_into().ok().and_then(NonZeroI128::new));
 
 macro_rules! count_idents {
     ($t:ident $($rest:ident)*) => {
@@ -509,8 +532,10 @@ impl_decode_tuple!(A B C D E F G H I J K L M N O P Q R S T);
 // ^ Note: We make sure to support as many as parity-scale-codec's impls do.
 
 /// This takes anything that can decode a stream if items and return an iterator over them.
-fn decode_items_using<'a, 'scale, D: DecodeItemIterator<'scale>, T>(decoder: &'a mut D, context: Context)
-    -> impl Iterator<Item = Result<<VisitorWithContext<T> as Visitor>::Value<'scale>, Error>> + 'a
+fn decode_items_using<'a, 'scale, D: DecodeItemIterator<'scale>, T>(
+    decoder: &'a mut D,
+    context: Context,
+) -> impl Iterator<Item = Result<<VisitorWithContext<T> as Visitor>::Value<'scale>, Error>> + 'a
 where
     D: DecodeItemIterator<'scale>,
     VisitorWithContext<T>: Visitor<Error = Error, Value<'scale> = T>,

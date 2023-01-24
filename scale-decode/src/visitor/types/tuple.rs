@@ -75,8 +75,11 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     }
 }
 
-impl <'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Tuple<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(&mut self, visitor: V) -> Option<Result<V::Value<'scale>, V::Error>> {
+impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Tuple<'scale, 'info> {
+    fn decode_item<'a, V: Visitor>(
+        &mut self,
+        visitor: V,
+    ) -> Option<Result<V::Value<'scale>, V::Error>> {
         self.decode_item(visitor)
     }
 }

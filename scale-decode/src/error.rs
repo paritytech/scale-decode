@@ -15,8 +15,8 @@
 
 //! An error that is emitted whenever some decoding fails.
 
-use std::fmt::Display;
 use crate::context::Context;
+use std::fmt::Display;
 
 /// An error produced while attempting to encode some type.
 #[derive(Debug, Clone, thiserror::Error)]
@@ -28,10 +28,7 @@ pub struct Error {
 impl Error {
     /// construct a new error given some context and an error kind.
     pub fn new(context: Context, kind: ErrorKind) -> Error {
-        Error {
-            context,
-            kind
-        }
+        Error { context, kind }
     }
     /// Retrieve more information abotu what went wrong.
     pub fn kind(&self) -> &ErrorKind {
@@ -46,7 +43,7 @@ impl Error {
     pub fn or_context(self, context: Context) -> Self {
         Error {
             kind: self.kind,
-            context: if self.context.is_empty() { context } else { self.context }
+            context: if self.context.is_empty() { context } else { self.context },
         }
     }
 }
@@ -70,7 +67,7 @@ impl From<crate::visitor::DecodeError> for Error {
 pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
-	#[error("Error decoding bytes given the type ID and registry provided: {0}")]
+    #[error("Error decoding bytes given the type ID and registry provided: {0}")]
     VisitorDecodeError(#[from] crate::visitor::DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
     #[error("Number {value} is out of range")]
@@ -84,10 +81,10 @@ pub enum ErrorKind {
         /// The variant that we are given back from the encoded bytes.
         got: String,
         /// The possible variants that we can decode into.
-        expected: Vec<&'static str>
+        expected: Vec<&'static str>,
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
-	#[error("Cannot decode from type with ID {actual}; expected length {expected_len} but got length {actual_len}")]
+    #[error("Cannot decode from type with ID {actual}; expected length {expected_len} but got length {actual_len}")]
     WrongLength {
         /// ID of the type we're trying to decode from.
         actual: u32,
