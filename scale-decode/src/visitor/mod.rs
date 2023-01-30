@@ -1081,6 +1081,14 @@ mod test {
     }
 
     #[test]
+    fn decode_arrays() {
+        encode_decode_check(
+            [1u8, 2, 3],
+            Value::Array(vec![Value::U8(1), Value::U8(2), Value::U8(3)]),
+        )
+    }
+
+    #[test]
     fn decode_bit_sequence() {
         use bitvec::{
             bitvec,
