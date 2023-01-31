@@ -44,11 +44,17 @@ impl Visitor for FooVisitor {
     type Value<'scale> = Foo;
     type Error = Error;
 
+    // Support decoding from composite types containing matching field names:
     fn visit_composite<'scale>(
         self,
         value: &mut scale_decode::visitor::types::Composite<'scale, '_>,
-        _type_id: scale_decode::visitor::TypeId,
+        type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
+        if value.has_unnamed_fields() {
+            // handle it like a tuple if there are unnamed fields in it:
+           return self.visit_tuple(&mut value.into_tuple(), type_id)
+        }
+
         let vals: HashMap<Option<&str>, _> =
             value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
@@ -58,6 +64,22 @@ impl Visitor for FooVisitor {
         let wibble = *vals
             .get(&Some("wibble"))
             .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "wibble".to_owned() }))?;
+
+        Ok(Foo { bar: bar.decode_as_type()?, wibble: wibble.decode_as_type()? })
+    }
+
+    // If we like, we can also support decoding from tuples of matching lengths:
+    fn visit_tuple<'scale>(
+        self,
+        value: &mut scale_decode::visitor::types::Tuple<'scale, '_>,
+        type_id: scale_decode::visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        if value.remaining() != 2 {
+            return Err(Error::new(ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: 2 }));
+        }
+
+        let bar = value.next().unwrap()?;
+        let wibble = value.next().unwrap()?;
 
         Ok(Foo { bar: bar.decode_as_type()?, wibble: wibble.decode_as_type()? })
     }

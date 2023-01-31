@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::VecDeque;
+
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType,
@@ -58,6 +60,19 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// The yet-to-be-decoded fields still present in this composite type.
     pub fn fields(&self) -> &'info [Field<PortableForm>] {
         self.fields
+    }
+    /// Return whether any of the fields are unnamed.
+    pub fn has_unnamed_fields(&self) -> bool {
+        self.fields.iter().any(|f| f.name().is_none())
+    }
+    /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
+    /// be parsed in the same way as a tuple type, discarding name information.
+    pub fn into_tuple(&self) -> super::Tuple<'scale, 'info> {
+        let fields: VecDeque<u32> = self.fields
+            .iter()
+            .map(|f| f.ty().id())
+            .collect();
+        super::Tuple::new(self.item_bytes, fields, self.types)
     }
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
