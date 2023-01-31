@@ -34,7 +34,7 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     }
     /// Skip over all bytes associated with this tuple. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this tuple.
-    pub fn skip(&mut self) -> Result<(), DecodeError> {
+    pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor).transpose()?;
         }

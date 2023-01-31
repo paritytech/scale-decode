@@ -36,7 +36,7 @@ impl<'scale, 'info> Array<'scale, 'info> {
     }
     /// Skip over all bytes associated with this array. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this array.
-    pub fn skip(&mut self) -> Result<(), DecodeError> {
+    pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while self.remaining > 0 {
             self.decode_item(IgnoreVisitor).transpose()?;
         }

@@ -41,7 +41,7 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
     }
     /// Skip over all bytes associated with this sequence. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this sequence.
-    pub fn skip(&mut self) -> Result<(), DecodeError> {
+    pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while self.remaining > 0 {
             self.decode_item(IgnoreVisitor).transpose()?;
         }

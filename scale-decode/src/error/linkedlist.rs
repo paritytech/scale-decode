@@ -41,9 +41,6 @@ impl<T> LinkedList<T> {
     pub fn iter_back(&self) -> LinkedListIter<'_, T> {
         LinkedListIter { list: self }
     }
-    pub fn is_empty(&self) -> bool {
-        self.0.is_none()
-    }
 }
 
 impl<T> Default for LinkedList<T> {

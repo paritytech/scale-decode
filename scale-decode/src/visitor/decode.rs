@@ -63,7 +63,7 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip()?;
+    items.skip_decoding()?;
     *data = items.remaining_bytes();
 
     res
@@ -80,7 +80,7 @@ fn decode_variant_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_variant(&mut variant, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    variant.skip()?;
+    variant.skip_decoding()?;
     *data = variant.remaining_bytes();
 
     res
@@ -97,7 +97,7 @@ fn decode_sequence_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_sequence(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip()?;
+    items.skip_decoding()?;
     *data = items.remaining_bytes();
 
     res
@@ -115,7 +115,7 @@ fn decode_array_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_array(&mut arr, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    arr.skip()?;
+    arr.skip_decoding()?;
     *data = arr.remaining_bytes();
 
     res
@@ -132,7 +132,7 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
-    items.skip()?;
+    items.skip_decoding()?;
     *data = items.remaining_bytes();
 
     res

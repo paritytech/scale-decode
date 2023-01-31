@@ -27,4 +27,4 @@ scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
 bitvec = "1"
 # For tests, we'll encode and then decode things to make sure we are compatible.
-scale-encode = "0.0.1"
+scale-encode = "0.0.3"

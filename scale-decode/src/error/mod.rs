@@ -14,23 +14,31 @@
 // limitations under the License.
 
 //! An error that is emitted whenever some decoding fails.
+mod context;
+mod linkedlist;
 
-use crate::context::Context;
+use std::borrow::Cow;
 use std::fmt::Display;
 
-/// An error produced while attempting to encode some type.
-#[derive(Debug, Clone, thiserror::Error)]
+pub use context::{Context, Location};
+
+/// An error produced while attempting to decode some type.
+#[derive(Debug, thiserror::Error)]
 pub struct Error {
     context: Context,
     kind: ErrorKind,
 }
 
 impl Error {
-    /// construct a new error given some context and an error kind.
-    pub fn new(context: Context, kind: ErrorKind) -> Error {
-        Error { context, kind }
+    /// Construct a new error given an error kind.
+    pub fn new(kind: ErrorKind) -> Error {
+        Error { context: Context::new(), kind }
     }
-    /// Retrieve more information abotu what went wrong.
+    /// Construct a new, custom error.
+    pub fn custom(error: impl Into<CustomError>) -> Error {
+        Error::new(ErrorKind::Custom(error.into()))
+    }
+    /// Retrieve more information about what went wrong.
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }
@@ -38,13 +46,21 @@ impl Error {
     pub fn context(&self) -> &Context {
         &self.context
     }
-    /// If the current error context is empty, replace it with
-    /// the one provided.
-    pub fn or_context(self, context: Context) -> Self {
-        Error {
-            kind: self.kind,
-            context: if self.context.is_empty() { context } else { self.context },
-        }
+    /// Give some context to the error.
+    pub fn at(self, loc: Location) -> Self {
+        Error { context: self.context.at(loc), kind: self.kind }
+    }
+    /// Note which sequence index the error occurred in.
+    pub fn at_idx(self, idx: usize) -> Self {
+        Error { context: self.context.at(Location::idx(idx)), kind: self.kind }
+    }
+    /// Note which field the error occurred in.
+    pub fn at_field(self, field: impl Into<Cow<'static, str>>) -> Self {
+        Error { context: self.context.at(Location::field(field)), kind: self.kind }
+    }
+    /// Note which variant the error occurred in.
+    pub fn at_variant(self, variant: impl Into<Cow<'static, str>>) -> Self {
+        Error { context: self.context.at(Location::variant(variant)), kind: self.kind }
     }
 }
 
@@ -58,12 +74,12 @@ impl Display for Error {
 
 impl From<crate::visitor::DecodeError> for Error {
     fn from(err: crate::visitor::DecodeError) -> Error {
-        Error::new(Context::new(), err.into())
+        Error::new(err.into())
     }
 }
 
 /// The underlying nature of the error.
-#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, thiserror::Error)]
 pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
@@ -93,4 +109,32 @@ pub enum ErrorKind {
         /// Length fo the type we're trying to decode into
         expected_len: usize,
     },
+    /// Cannot find a field that we need to decode to our target type
+    #[error("Field {name} does not exist in our encoded data")]
+    CannotFindField {
+        /// Name of the field which was not provided.
+        name: String,
+    },
+    /// A custom error.
+    #[error("Custom error: {0}")]
+    Custom(CustomError),
+}
+
+type CustomError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[derive(thiserror::Error, Debug)]
+    enum MyError {
+        #[error("Foo!")]
+        Foo,
+    }
+
+    #[test]
+    fn custom_error() {
+        // Just a compile-time check that we can ergonomically provide an arbitrary custom error:
+        Error::custom(MyError::Foo);
+    }
 }

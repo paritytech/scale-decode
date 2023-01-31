@@ -47,8 +47,8 @@ impl<'scale, 'info> Variant<'scale, 'info> {
     }
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this variant.
-    pub fn skip(&mut self) -> Result<(), DecodeError> {
-        self.fields.skip()
+    pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
+        self.fields.skip_decoding()
     }
     /// The bytes representing this sequence and anything following it.
     pub fn bytes(&self) -> &'scale [u8] {

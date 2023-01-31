@@ -17,7 +17,7 @@
 //! attempt to encode some type. Internally, the [`Context`] tracks the path
 //! that we're attempting to encode to aid in error reporting.
 
-use crate::utils::linkedlist::LinkedList;
+use super::linkedlist::LinkedList;
 use std::borrow::Cow;
 
 /// A cheaply clonable opaque context which allows us to track the current
@@ -38,25 +38,9 @@ impl Context {
         let path = self.path.clone().push(loc);
         Context { path }
     }
-    /// Return a new context with a field location appended.
-    pub fn at_field(&self, field: impl Into<Cow<'static, str>>) -> Context {
-        self.at(Location::field(field))
-    }
-    /// Return a new context with a variant location appended.
-    pub fn at_variant(&self, name: impl Into<Cow<'static, str>>) -> Context {
-        self.at(Location::variant(name))
-    }
-    /// Return a new context with an index location appended.
-    pub fn at_idx(&self, i: usize) -> Context {
-        self.at(Location::idx(i))
-    }
     /// Return the current path.
     pub fn path(&self) -> Path<'_> {
         Path(Cow::Borrowed(&self.path))
-    }
-    /// Return true if the context is empty.
-    pub fn is_empty(&self) -> bool {
-        self.path.is_empty()
     }
 }
 

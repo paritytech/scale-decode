@@ -13,7 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::visitor::{DecodeError, IgnoreVisitor, Visitor};
+use crate::{
+    visitor::{DecodeError, IgnoreVisitor, Visitor},
+    DecodeAsType,
+};
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
@@ -34,7 +37,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this composite type.
-    pub fn skip(&mut self) -> Result<(), DecodeError> {
+    pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor).transpose()?;
         }
@@ -56,40 +59,86 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     pub fn fields(&self) -> &'info [Field<PortableForm>] {
         self.fields
     }
-    /// Decode the next field in the composite type by providing a visitor to handle it.
+    /// Return the name of the next field to be decoded; `None` if either the field has no name,
+    /// or there are no fields remaining.
+    pub fn peek_name(&self) -> Option<&'info str> {
+        self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
+    }
+    /// Decode the next field in the composite type by providing a visitor to handle it. This is more
+    /// efficient than iterating over the key/value pairs if you already know how you want to decode the
+    /// values.
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale>, V::Error>> {
-        self.decode_item_with_name(visitor).map(|o| o.map(|(_n, v)| v))
+        self.next()
+            .map(|res| res.map_err(|e| e.into()).and_then(|item| item.decode_with_visitor(visitor)))
     }
-    /// Return the name of the next field to be decoded; `None` if either the field has no name,
-    /// or there are no fields remaining.
-    pub fn next_item_name(&self) -> Option<&str> {
-        self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
-    }
-    /// Decode the next field in the composite type by providing a visitor to handle it.
-    /// The name of the field will be returned too, or an empty string if it doesn't exist.
-    pub fn decode_item_with_name<V: Visitor>(
-        &mut self,
-        visitor: V,
-    ) -> Option<Result<(&'info str, V::Value<'scale>), V::Error>> {
+}
+
+// Iterating returns a representation of each field in the composite type.
+impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
+    type Item = Result<CompositeField<'scale, 'info>, DecodeError>;
+    fn next(&mut self) -> Option<Self::Item> {
         if self.fields.is_empty() {
             return None;
         }
 
+        let name = self.peek_name();
         let field = &self.fields[0];
-        let field_name = self.fields.get(0).and_then(|f| f.name().map(|n| &**n)).unwrap_or("");
-        let b = &mut self.item_bytes;
+        let b = &mut &*self.item_bytes;
 
-        // Don't return here; decrement bytes properly first and then return, so that
-        // calling decode_item again works as expected.
-        let res = crate::visitor::decode_with_visitor(b, field.ty().id(), self.types, visitor);
+        // Skip over the bytes, ignoring them:
+        let res =
+            crate::visitor::decode_with_visitor(b, field.ty().id(), self.types, IgnoreVisitor);
 
+        // Pull out the bytes representing the thing we just skipped over:
+        let num_bytes_before = self.item_bytes.len();
+        let num_bytes_after = b.len();
+        let res_bytes = &self.item_bytes[..num_bytes_before - num_bytes_after];
+
+        // Update self to point to the next item, now:
         self.item_bytes = *b;
         self.fields = &self.fields[1..];
 
-        res.map(|val| Some((field_name, val))).transpose()
+        Some(res.map(|()| CompositeField {
+            bytes: res_bytes,
+            field: field,
+            name: name,
+            types: self.types,
+        }))
+    }
+}
+
+/// A single field in the composite type.
+#[derive(Copy, Clone)]
+pub struct CompositeField<'scale, 'info> {
+    name: Option<&'info str>,
+    bytes: &'scale [u8],
+    field: &'info Field<PortableForm>,
+    types: &'info PortableRegistry,
+}
+
+impl<'scale, 'info> CompositeField<'scale, 'info> {
+    /// The field name.
+    pub fn name(&self) -> Option<&'info str> {
+        self.name
+    }
+    /// Decode this field using a visitor.
+    pub fn decode_with_visitor<V: Visitor>(
+        &self,
+        visitor: V,
+    ) -> Result<V::Value<'scale>, V::Error> {
+        crate::visitor::decode_with_visitor(
+            &mut &*self.bytes,
+            self.field.ty().id(),
+            self.types,
+            visitor,
+        )
+    }
+    /// Decode this field into a specific type via [`DecodeAsType`].
+    pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
+        T::decode_as_type(&mut &*self.bytes, self.field.ty().id(), self.types)
     }
 }
 

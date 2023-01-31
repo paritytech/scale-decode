@@ -31,19 +31,17 @@
 mod impls;
 mod utils;
 
-pub mod context;
 pub mod error;
 pub mod visitor;
 
 use scale_info::PortableRegistry;
 
 pub use crate::error::Error;
-pub use context::Context;
+pub use visitor::Visitor;
 
-/// This trait can be implemented for any type which can be decoded from static bytes, possibly with the help
-/// of a type registry and a type ID to help interpret the bytes. A [`Context`] is also passed around, which
-/// is used internally to improve error reporting. Implementations should use the [`Context::at`] method to
-/// indicate the current location if they would like it to show up in error output.
+/// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
+/// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
+/// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.
 pub trait DecodeAsType: Sized {
     /// Given some input bytes, a `type_id`, type registry and context, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes not used
@@ -52,6 +50,29 @@ pub trait DecodeAsType: Sized {
         input: &mut &[u8],
         type_id: u32,
         types: &PortableRegistry,
-        context: Context,
     ) -> Result<Self, Error>;
+}
+
+impl<T> DecodeAsType for T
+where
+    T: IntoVisitor,
+    Error: From<<T::Visitor as Visitor>::Error>,
+{
+    fn decode_as_type(
+        input: &mut &[u8],
+        type_id: u32,
+        types: &scale_info::PortableRegistry,
+    ) -> Result<Self, Error> {
+        let res = visitor::decode_with_visitor(input, type_id, types, T::into_visitor())?;
+        Ok(res)
+    }
+}
+
+/// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
+/// SCALE encoded bytes to it.
+pub trait IntoVisitor {
+    /// The visitor type used to decode SCALE encoded bytes to `Self`.
+    type Visitor: for<'b> visitor::Visitor<Value<'b> = Self>;
+    /// A means of obtaining this visitor.
+    fn into_visitor() -> Self::Visitor;
 }

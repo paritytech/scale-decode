@@ -209,9 +209,11 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some(item) = value.decode_item_with_name(ValueVisitor) {
-            let (name, val) = item?;
-            vals.push((name.to_owned(), val));
+        while let Some(item) = value.next() {
+            let item = item?;
+            let val = item.decode_with_visitor(ValueVisitor)?;
+            let name = item.name().unwrap_or("").to_owned();
+            vals.push((name, val));
         }
         Ok(Value::Composite(vals))
     }
@@ -241,9 +243,11 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
-        while let Some(item) = fields.decode_item_with_name(ValueVisitor) {
-            let (name, val) = item?;
-            vals.push((name.to_owned(), val));
+        while let Some(item) = fields.next() {
+            let item = item?;
+            let val = item.decode_with_visitor(ValueVisitor)?;
+            let name = item.name().unwrap_or("").to_owned();
+            vals.push((name, val));
         }
         Ok(Value::Variant(value.name().to_owned(), vals))
     }
