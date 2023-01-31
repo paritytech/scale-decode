@@ -37,7 +37,7 @@ pub mod visitor;
 use scale_info::PortableRegistry;
 
 pub use crate::error::Error;
-pub use visitor::Visitor;
+pub use visitor::{ Visitor, VisitorExt };
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around

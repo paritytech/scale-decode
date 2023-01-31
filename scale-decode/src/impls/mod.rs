@@ -15,7 +15,7 @@
 
 use crate::{
     error::{Error, ErrorKind},
-    visitor::{self, delegate_visitor_fns, types::*, DecodeItemIterator, Visitor},
+    visitor::{self, types::*, DecodeItemIterator, Visitor, VisitorExt, ext},
     IntoVisitor,
 };
 use core::num::{
@@ -137,33 +137,42 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
 }
 impl_into_visitor!(PhantomData<T>);
 
-// Generate impls to encode things based on some other type.
-macro_rules! impl_decode_like {
+// Generate impls to encode things based on some other type. We do this by implementing
+// `IntoVisitor` and using the `AndThen` combinator to map from an existing one to the desired output.
+macro_rules! impl_into_visitor_like {
     ($target:ident $(< $($lt:lifetime,)* $($param:ident),* >)? as $source:ty $( [where $($where:tt)*] )?: $mapper:expr) => {
-        impl $(< $($lt,)* $($param),* >)? Visitor for BasicVisitor<$target $(< $($lt,)* $($param),* >)?>
+        impl $(< $($lt,)* $($param),* >)? IntoVisitor for $target $(< $($lt,)* $($param),* >)?
         where
             $source: IntoVisitor,
-            Error: From<<<$source as IntoVisitor>::Visitor as Visitor>::Error>,
             $( $($where)* )?
         {
-            type Error = Error;
-            type Value<'scale> = $target $(< $($lt,)* $($param),* >)?;
-
-            delegate_visitor_fns!(
-                |_: Self| <$source as IntoVisitor>::into_visitor(),
-                |res: $source| Ok($mapper(res))
-            );
+            type Visitor = ext::AndThen<
+                // The input visitor:
+                <$source as IntoVisitor>::Visitor,
+                // The function signature to do the result transformation:
+                Box<dyn FnOnce(Result<$source, <<$source as IntoVisitor>::Visitor as Visitor>::Error>)
+                    -> Result<$target $(< $($lt,)* $($param),* >)?, <<$source as IntoVisitor>::Visitor as Visitor>::Error>>,
+                // The output Visitor::Value:
+                $target $(< $($lt,)* $($param),* >)?,
+                // The output Visitor::Error (same as before):
+                <<$source as IntoVisitor>::Visitor as Visitor>::Error
+            >;
+            fn into_visitor() -> Self::Visitor {
+                // We need to box the function because we can't otherwise name it in the associated type.
+                let f = |res: Result<$source, <<$source as IntoVisitor>::Visitor as Visitor>::Error>| res.map($mapper);
+                <$source as IntoVisitor>::into_visitor().and_then(Box::new(f))
+            }
         }
-        impl_into_visitor!($target $(< $($lt,)* $($param),* >)? $( where $($where)* )?);
     }
 }
-impl_decode_like!(Arc<T> as T: |res| Arc::new(res));
-impl_decode_like!(Rc<T> as T: |res| Rc::new(res));
-impl_decode_like!(Box<T> as T: |res| Box::new(res));
-impl_decode_like!(Cow<'a, T> as T [where T: Clone]: |res| Cow::Owned(res));
-impl_decode_like!(Duration as (u64, u32): |res: (u64,u32)| Duration::from_secs(res.0) + Duration::from_nanos(res.1 as u64));
-impl_decode_like!(Range<T> as (T, T): |res: (T,T)| res.0..res.1);
-impl_decode_like!(RangeInclusive<T> as (T, T): |res: (T,T)| res.0..=res.1);
+
+impl_into_visitor_like!(Arc<T> as T: |res| Arc::new(res));
+impl_into_visitor_like!(Rc<T> as T: |res| Rc::new(res));
+impl_into_visitor_like!(Box<T> as T: |res| Box::new(res));
+impl_into_visitor_like!(Cow<'a, T> as T [where T: Clone]: |res| Cow::Owned(res));
+impl_into_visitor_like!(Duration as (u64, u32): |res: (u64,u32)| Duration::from_secs(res.0) + Duration::from_nanos(res.1 as u64));
+impl_into_visitor_like!(Range<T> as (T, T): |res: (T,T)| res.0..res.1);
+impl_into_visitor_like!(RangeInclusive<T> as (T, T): |res: (T,T)| res.0..=res.1);
 
 macro_rules! impl_decode_seq_via_collect {
     ($ty:ident<$generic:ident> $(where $($where:tt)*)?) => {

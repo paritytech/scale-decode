@@ -17,6 +17,7 @@
 
 mod decode;
 pub mod types;
+pub mod ext;
 
 use scale_info::form::PortableForm;
 use types::*;
@@ -260,225 +261,17 @@ pub trait Visitor: Sized {
     }
 }
 
-/// This macro helps with creating visitors that just delegate to some
-/// other [`Visitor`] impl to do the work. Here's an example of it in use.
-///
-/// Two functions are provided in order to delegate; the first takes `Self` and
-/// maps it into the visitor you'd like to do the work. The second takes the result
-/// of this new visitor and maps it back into the result expected by `Self`.
-macro_rules! delegate_visitor_fns {
-    ($map_visitor:expr, $map_result:expr) => {
-        fn visit_bool<'scale>(
-            self,
-            value: bool,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_bool(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_char<'scale>(
-            self,
-            value: char,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_char(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u8<'scale>(
-            self,
-            value: u8,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u8(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u16<'scale>(
-            self,
-            value: u16,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u16(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u32<'scale>(
-            self,
-            value: u32,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u32(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u64<'scale>(
-            self,
-            value: u64,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u64(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u128<'scale>(
-            self,
-            value: u128,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u128(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_u256<'scale>(
-            self,
-            value: &'scale [u8; 32],
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_u256(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i8<'scale>(
-            self,
-            value: i8,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i8(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i16<'scale>(
-            self,
-            value: i16,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i16(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i32<'scale>(
-            self,
-            value: i32,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i32(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i64<'scale>(
-            self,
-            value: i64,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i64(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i128<'scale>(
-            self,
-            value: i128,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i128(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_i256<'scale>(
-            self,
-            value: &'scale [u8; 32],
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_i256(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_sequence<'scale>(
-            self,
-            value: &mut Sequence<'scale, '_>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_sequence(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_composite<'scale>(
-            self,
-            value: &mut Composite<'scale, '_>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_composite(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_tuple<'scale>(
-            self,
-            value: &mut Tuple<'scale, '_>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_tuple(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_str<'scale>(
-            self,
-            value: &mut Str<'scale>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_str(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_variant<'scale>(
-            self,
-            value: &mut Variant<'scale, '_>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_variant(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_array<'scale>(
-            self,
-            value: &mut Array<'scale, '_>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_array(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_bitsequence<'scale>(
-            self,
-            value: &mut BitSequence<'scale>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_bitsequence(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_compact_u8<'scale>(
-            self,
-            value: Compact<u8>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_compact_u8(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_compact_u16<'scale>(
-            self,
-            value: Compact<u16>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_compact_u16(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_compact_u32<'scale>(
-            self,
-            value: Compact<u32>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_compact_u32(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_compact_u64<'scale>(
-            self,
-            value: Compact<u64>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_compact_u64(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-        fn visit_compact_u128<'scale>(
-            self,
-            value: Compact<u128>,
-            type_id: $crate::visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
-            let v = ($map_visitor)(self);
-            v.visit_compact_u128(value, type_id).map_err(Error::from).and_then($map_result)
-        }
-    };
+/// An extension trait that implements helper methods on any [`Visitor`]
+pub trait VisitorExt: Visitor {
+    /// Return a [`Visitor`] that is the result of applying some transformation to
+    /// the result of the current visitor.
+    fn and_then<F, O, E>(self, f: F) -> ext::AndThen<Self, F, O, E>
+    where F: for<'b> FnOnce(Result<Self::Value<'b>, Self::Error>) -> Result<O, E> {
+        ext::AndThen::new(self, f)
+    }
 }
-pub(crate) use delegate_visitor_fns;
+
+impl <V> VisitorExt for V where V: Visitor {}
 
 /// An error decoding SCALE bytes.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
