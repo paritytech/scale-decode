@@ -52,7 +52,7 @@ impl Visitor for FooVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
-           return self.visit_tuple(&mut value.into_tuple(), type_id)
+           return self.visit_tuple(&mut value.as_tuple(), type_id)
         }
 
         let vals: HashMap<Option<&str>, _> =

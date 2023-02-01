@@ -18,7 +18,6 @@ use crate::{
     DecodeAsType
 };
 use scale_info::PortableRegistry;
-use std::collections::VecDeque;
 
 /// This represents a tuple of values.
 pub struct Tuple<'scale, 'info> {
@@ -87,7 +86,7 @@ impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
         let res_bytes = &self.item_bytes[..num_bytes_before - num_bytes_after];
 
         // Update self to point to the next item, now:
-        self.fields.pop_front();
+        self.fields.pop_front_unwrap();
         self.item_bytes = *b;
 
         Some(res.map(|()| TupleField {
@@ -135,44 +134,44 @@ impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Tuple<'scale,
 }
 
 pub enum TupleFieldIds<'info> {
-    Borrowed(&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]),
-    Owned(VecDeque<u32>)
+    Ids(&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]),
+    Fields(&'info [scale_info::Field<scale_info::form::PortableForm>])
 }
 
 impl <'info> TupleFieldIds<'info> {
     fn len(&self) -> usize {
         match self {
-            TupleFieldIds::Borrowed(fs) => fs.len(),
-            TupleFieldIds::Owned(fs) => fs.len(),
+            TupleFieldIds::Ids(fs) => fs.len(),
+            TupleFieldIds::Fields(fs) => fs.len(),
         }
     }
     fn is_empty(&self) -> bool {
         match self {
-            TupleFieldIds::Borrowed(fs) => fs.is_empty(),
-            TupleFieldIds::Owned(fs) => fs.is_empty(),
+            TupleFieldIds::Ids(fs) => fs.is_empty(),
+            TupleFieldIds::Fields(fs) => fs.is_empty(),
         }
     }
     fn first(&self) -> Option<u32> {
         match self {
-            TupleFieldIds::Borrowed(fs) => fs.get(0).map(|f| f.id()),
-            TupleFieldIds::Owned(fs) => fs.get(0).copied(),
+            TupleFieldIds::Ids(fs) => fs.get(0).map(|f| f.id()),
+            TupleFieldIds::Fields(fs) => fs.get(0).map(|f| f.ty().id()),
         }
     }
-    fn pop_front(&mut self) {
+    fn pop_front_unwrap(&mut self) {
         match self {
-            TupleFieldIds::Borrowed(fs) => { *fs = &fs[1..]; },
-            TupleFieldIds::Owned(fs) => { fs.pop_front(); },
+            TupleFieldIds::Ids(fs) => { *fs = &fs[1..]; },
+            TupleFieldIds::Fields(fs) => { *fs = &fs[1..]; },
         }
     }
 }
 
 impl <'info> From<&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]> for TupleFieldIds<'info> {
     fn from(fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]) -> Self {
-        TupleFieldIds::Borrowed(fields)
+        TupleFieldIds::Ids(fields)
     }
 }
-impl <'info> From<VecDeque<u32>> for TupleFieldIds<'info> {
-    fn from(fields: VecDeque<u32>) -> Self {
-        TupleFieldIds::Owned(fields)
+impl <'info> From<&'info [scale_info::Field<scale_info::form::PortableForm>]> for TupleFieldIds<'info> {
+    fn from(fields: &'info [scale_info::Field<scale_info::form::PortableForm>]) -> Self {
+        TupleFieldIds::Fields(fields)
     }
 }
