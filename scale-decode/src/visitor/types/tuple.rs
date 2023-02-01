@@ -15,11 +15,12 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType
+    DecodeAsType,
 };
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
+#[derive(Copy, Clone)]
 pub struct Tuple<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
@@ -77,8 +78,7 @@ impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
         let b = &mut &*self.item_bytes;
 
         // Skip over the bytes, ignoring them:
-        let res =
-            crate::visitor::decode_with_visitor(b, type_id, self.types, IgnoreVisitor);
+        let res = crate::visitor::decode_with_visitor(b, type_id, self.types, IgnoreVisitor);
 
         // Pull out the bytes representing the thing we just skipped over:
         let num_bytes_before = self.item_bytes.len();
@@ -89,11 +89,7 @@ impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
         self.fields.pop_front_unwrap();
         self.item_bytes = *b;
 
-        Some(res.map(|()| TupleField {
-            bytes: res_bytes,
-            type_id,
-            types: self.types
-        }))
+        Some(res.map(|()| TupleField { bytes: res_bytes, type_id, types: self.types }))
     }
 }
 
@@ -106,17 +102,20 @@ pub struct TupleField<'scale, 'info> {
 }
 
 impl<'scale, 'info> TupleField<'scale, 'info> {
+    /// The bytes associated with this field.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.bytes
+    }
+    /// The type ID associated with this field.
+    pub fn type_id(&self) -> u32 {
+        self.type_id
+    }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale>, V::Error> {
-        crate::visitor::decode_with_visitor(
-            &mut &*self.bytes,
-            self.type_id,
-            self.types,
-            visitor,
-        )
+        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
@@ -133,12 +132,13 @@ impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Tuple<'scale,
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum TupleFieldIds<'info> {
     Ids(&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]),
-    Fields(&'info [scale_info::Field<scale_info::form::PortableForm>])
+    Fields(&'info [scale_info::Field<scale_info::form::PortableForm>]),
 }
 
-impl <'info> TupleFieldIds<'info> {
+impl<'info> TupleFieldIds<'info> {
     fn len(&self) -> usize {
         match self {
             TupleFieldIds::Ids(fs) => fs.len(),
@@ -159,18 +159,26 @@ impl <'info> TupleFieldIds<'info> {
     }
     fn pop_front_unwrap(&mut self) {
         match self {
-            TupleFieldIds::Ids(fs) => { *fs = &fs[1..]; },
-            TupleFieldIds::Fields(fs) => { *fs = &fs[1..]; },
+            TupleFieldIds::Ids(fs) => {
+                *fs = &fs[1..];
+            }
+            TupleFieldIds::Fields(fs) => {
+                *fs = &fs[1..];
+            }
         }
     }
 }
 
-impl <'info> From<&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]> for TupleFieldIds<'info> {
+impl<'info> From<&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]>
+    for TupleFieldIds<'info>
+{
     fn from(fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]) -> Self {
         TupleFieldIds::Ids(fields)
     }
 }
-impl <'info> From<&'info [scale_info::Field<scale_info::form::PortableForm>]> for TupleFieldIds<'info> {
+impl<'info> From<&'info [scale_info::Field<scale_info::form::PortableForm>]>
+    for TupleFieldIds<'info>
+{
     fn from(fields: &'info [scale_info::Field<scale_info::form::PortableForm>]) -> Self {
         TupleFieldIds::Fields(fields)
     }

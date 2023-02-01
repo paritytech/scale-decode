@@ -16,8 +16,8 @@
 //! The [`Visitor`] trait and associated types.
 
 mod decode;
-pub mod types;
 pub mod ext;
+pub mod types;
 
 use scale_info::form::PortableForm;
 use types::*;
@@ -266,12 +266,14 @@ pub trait VisitorExt: Visitor {
     /// Return a [`Visitor`] that is the result of applying some transformation to
     /// the result of the current visitor.
     fn and_then<F, O, E>(self, f: F) -> ext::AndThen<Self, F, O, E>
-    where F: for<'b> FnOnce(Result<Self::Value<'b>, Self::Error>) -> Result<O, E> {
+    where
+        F: for<'b> FnOnce(Result<Self::Value<'b>, Self::Error>) -> Result<O, E>,
+    {
         ext::AndThen::new(self, f)
     }
 }
 
-impl <V> VisitorExt for V where V: Visitor {}
+impl<V> VisitorExt for V where V: Visitor {}
 
 /// An error decoding SCALE bytes.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]

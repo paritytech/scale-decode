@@ -17,8 +17,10 @@ use codec::Encode;
 use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor};
 use std::collections::HashMap;
 
-// We have some struct Foo that we'll be encoding. The aim of this example is
-// to write a decoder for it
+// We have some struct Foo that we'll encode to bytes. The aim of this example is
+// to manually write a decoder for it.
+//
+// Note: we can derive this autoamtically via the `DecodeAsType` derive macro.
 #[derive(scale_info::TypeInfo, codec::Encode, PartialEq, Debug)]
 struct Foo {
     bar: bool,
@@ -44,7 +46,10 @@ impl Visitor for FooVisitor {
     type Value<'scale> = Foo;
     type Error = Error;
 
-    // Support decoding from composite types containing matching field names:
+    // Support decoding from composite types. We support decoding from either named or
+    // unnamed fields (matching by field index if unnamed) and add context to errors via
+    // `.map_err(|e| e.at_x(..))` calls to give back more precise inforamtion about where
+    // decoding failed, if it does.
     fn visit_composite<'scale>(
         self,
         value: &mut scale_decode::visitor::types::Composite<'scale, '_>,
@@ -52,7 +57,7 @@ impl Visitor for FooVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
-           return self.visit_tuple(&mut value.as_tuple(), type_id)
+            return self.visit_tuple(&mut value.as_tuple(), type_id);
         }
 
         let vals: HashMap<Option<&str>, _> =
@@ -65,7 +70,10 @@ impl Visitor for FooVisitor {
             .get(&Some("wibble"))
             .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "wibble".to_owned() }))?;
 
-        Ok(Foo { bar: bar.decode_as_type()?, wibble: wibble.decode_as_type()? })
+        Ok(Foo {
+            bar: bar.decode_as_type().map_err(|e| e.at_field("bar"))?,
+            wibble: wibble.decode_as_type().map_err(|e| e.at_field("wibble"))?,
+        })
     }
 
     // If we like, we can also support decoding from tuples of matching lengths:
@@ -75,13 +83,20 @@ impl Visitor for FooVisitor {
         type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         if value.remaining() != 2 {
-            return Err(Error::new(ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: 2 }));
+            return Err(Error::new(ErrorKind::WrongLength {
+                actual: type_id.0,
+                actual_len: value.remaining(),
+                expected_len: 2,
+            }));
         }
 
         let bar = value.next().unwrap()?;
         let wibble = value.next().unwrap()?;
 
-        Ok(Foo { bar: bar.decode_as_type()?, wibble: wibble.decode_as_type()? })
+        Ok(Foo {
+            bar: bar.decode_as_type().map_err(|e| e.at_field("bar"))?,
+            wibble: wibble.decode_as_type().map_err(|e| e.at_field("wibble"))?,
+        })
     }
 }
 
@@ -97,7 +112,8 @@ fn main() {
     // We can decode via `DecodeAsType`, which is automatically implemented:
     let foo_via_decode_as_type = Foo::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
     // We can also attempt to decode it into any other type; we'll get an error if this fails:
-    let foo_via_decode_as_type_arc = <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
+    let foo_via_decode_as_type_arc =
+        <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
     // Or we can also manually use our `Visitor` impl:
     let foo_via_visitor =
         scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, type_id, &types, FooVisitor)

@@ -13,28 +13,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::visitor::{ Visitor, TypeId, DecodeError };
 use crate::visitor::types::*;
+use crate::visitor::{DecodeError, TypeId, Visitor};
 
 /// Transform the result from a visitor. This type also implements [`Visitor`].
 pub struct AndThen<V, F, O, E> {
     visitor: V,
     mapper: F,
-    _marker: std::marker::PhantomData<(O, E)>
+    _marker: std::marker::PhantomData<(O, E)>,
 }
 
-impl <V, F, O, E> AndThen<V, F, O, E> {
+impl<V, F, O, E> AndThen<V, F, O, E> {
     /// Transform the result obtained from a visitor given the provided function.
     pub fn new(visitor: V, f: F) -> AndThen<V, F, O, E> {
         AndThen { visitor, mapper: f, _marker: std::marker::PhantomData }
     }
 }
 
-impl <V, F, O, E> Visitor for AndThen<V, F, O, E>
+impl<V, F, O, E> Visitor for AndThen<V, F, O, E>
 where
     V: Visitor,
     F: for<'b> FnOnce(Result<V::Value<'b>, V::Error>) -> Result<O, E>,
-    E: From<DecodeError>
+    E: From<DecodeError>,
 {
     type Value<'scale> = O;
     type Error = E;

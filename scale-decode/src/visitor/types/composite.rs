@@ -20,6 +20,7 @@ use crate::{
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
+#[derive(Copy, Clone)]
 pub struct Composite<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
@@ -132,6 +133,14 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     /// The field name.
     pub fn name(&self) -> Option<&'info str> {
         self.name
+    }
+    /// The bytes associated with this field.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.bytes
+    }
+    /// The type ID associated with this field.
+    pub fn type_id(&self) -> u32 {
+        self.field.ty().id()
     }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(

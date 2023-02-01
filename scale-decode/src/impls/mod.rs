@@ -15,7 +15,7 @@
 
 use crate::{
     error::{Error, ErrorKind},
-    visitor::{self, types::*, DecodeItemIterator, Visitor, VisitorExt, ext},
+    visitor::{self, ext, types::*, DecodeItemIterator, Visitor, VisitorExt},
     IntoVisitor,
 };
 use core::num::{
