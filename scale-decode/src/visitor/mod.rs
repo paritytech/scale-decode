@@ -15,10 +15,6 @@
 
 //! The [`Visitor`] trait and associated types.
 
-// For some reason, we get a bunch of clippy errors related to 'scale
-// lifetimes used, but we can't elide them, so just ignore the warnings.
-#![allow(clippy::needless_lifetimes)]
-
 mod decode;
 pub mod ext;
 pub mod types;
@@ -105,11 +101,11 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::U128)
     }
     /// Called when a u256 is seen in the input bytes.
-    fn visit_u256<'scale>(
+    fn visit_u256(
         self,
-        _value: &'scale [u8; 32],
+        _value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         self.visit_unexpected(Unexpected::U256)
     }
     /// Called when an i8 is seen in the input bytes.
@@ -153,11 +149,11 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::I128)
     }
     /// Called when an i256 is seen in the input bytes.
-    fn visit_i256<'scale>(
+    fn visit_i256(
         self,
-        _value: &'scale [u8; 32],
+        _value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         self.visit_unexpected(Unexpected::I256)
     }
     /// Called when a sequence of values is seen in the input bytes.
@@ -503,11 +499,11 @@ mod test {
         ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::U128(value))
         }
-        fn visit_u256<'scale>(
+        fn visit_u256(
             self,
-            value: &'scale [u8; 32],
+            value: &'_ [u8; 32],
             _type_id: TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
+        ) -> Result<Self::Value<'_>, Self::Error> {
             Ok(Value::U256(*value))
         }
         fn visit_i8<'scale>(
@@ -545,11 +541,11 @@ mod test {
         ) -> Result<Self::Value<'scale>, Self::Error> {
             Ok(Value::I128(value))
         }
-        fn visit_i256<'scale>(
+        fn visit_i256(
             self,
-            value: &'scale [u8; 32],
+            value: &'_ [u8; 32],
             _type_id: TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
+        ) -> Result<Self::Value<'_>, Self::Error> {
             Ok(Value::I256(*value))
         }
         fn visit_compact_u8<'scale>(

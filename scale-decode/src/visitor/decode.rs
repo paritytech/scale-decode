@@ -225,11 +225,11 @@ fn decode_primitive_value<'scale, V: Visitor>(
     }
 }
 
-fn decode_compact_value<'scale, 'info, V: Visitor>(
+fn decode_compact_value<'scale, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: TypeId,
     ty: &TypeDefCompact<PortableForm>,
-    types: &'info PortableRegistry,
+    types: &'_ PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale>, V::Error> {
     #[allow(clippy::too_many_arguments)]

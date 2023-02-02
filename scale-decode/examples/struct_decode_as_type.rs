@@ -101,12 +101,12 @@ impl Visitor for FooVisitor {
 }
 
 fn main() {
-    let foo = Foo { bar: true, wibble: 12345 };
+    let foo_original = Foo { bar: true, wibble: 12345 };
 
     // First, the setup. We encode Foo to bytes, and use `TypeInfo` to give us
     // a type registry and ID describing the shape of it. Substrate metadata contains
     // all of this type information already.
-    let foo_bytes = foo.encode();
+    let foo_bytes = foo_original.encode();
     let (type_id, types) = make_type::<Foo>();
 
     // We can decode via `DecodeAsType`, which is automatically implemented:
@@ -119,9 +119,9 @@ fn main() {
         scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, type_id, &types, FooVisitor)
             .unwrap();
 
-    assert_eq!(foo, foo_via_decode_as_type);
-    assert_eq!(&foo, &*foo_via_decode_as_type_arc);
-    assert_eq!(foo, foo_via_visitor);
+    assert_eq!(foo_original, foo_via_decode_as_type);
+    assert_eq!(&foo_original, &*foo_via_decode_as_type_arc);
+    assert_eq!(foo_original, foo_via_visitor);
 }
 
 // Normally we'd have a type registry to hand already, but if not, we can build our own:

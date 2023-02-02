@@ -107,11 +107,11 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::U128(value))
     }
-    fn visit_u256<'scale>(
+    fn visit_u256(
         self,
-        value: &'scale [u8; 32],
+        value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         Ok(Value::U256(*value))
     }
     fn visit_i8<'scale>(
@@ -149,11 +149,11 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(Value::I128(value))
     }
-    fn visit_i256<'scale>(
+    fn visit_i256(
         self,
-        value: &'scale [u8; 32],
+        value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         Ok(Value::I256(*value))
     }
     fn visit_compact_u8<'scale>(

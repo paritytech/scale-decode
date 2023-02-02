@@ -88,11 +88,11 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         (self.mapper)(self.visitor.visit_u128(value, type_id))
     }
-    fn visit_u256<'scale>(
+    fn visit_u256(
         self,
-        value: &'scale [u8; 32],
+        value: &'_ [u8; 32],
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         (self.mapper)(self.visitor.visit_u256(value, type_id))
     }
     fn visit_i8<'scale>(
@@ -130,11 +130,11 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         (self.mapper)(self.visitor.visit_i128(value, type_id))
     }
-    fn visit_i256<'scale>(
+    fn visit_i256(
         self,
-        value: &'scale [u8; 32],
+        value: &'_ [u8; 32],
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'_>, Self::Error> {
         (self.mapper)(self.visitor.visit_i256(value, type_id))
     }
     fn visit_sequence<'scale>(
