@@ -17,14 +17,10 @@
 //! SCALE encoded bytes, given a type ID and type registry that defines
 //! the expected shape that the bytes should be decoded into.
 //!
-//! In order to allow the user to decode bytes into any shape they like,
-//! you must implement a [`visitor::Visitor`] trait, which is handed
-//! values back and has the opportunity to transform them into some
-//! output representation of your choice (or fail with an error of your
-//! choice). This Visitor is passed to the [`decode()`] method, whose job it
-//! is to look at the type information provided and pass values of those
-//! types to the Visitor, or fail if the bytes do not match the expected
-//! shape.
+//! The standard approach is to use the [`macro@DecodeAsType`] macro to auto-implement
+//! [`IntoVisitor`] and ultimately [`trait@DecodeAsType`] on your custom struct or enum.
+//! If you'd like to do mroe custom decoding, you can instead implement [`Visitor`] directly
+//! in order to have full control over how to decode some bytes into your custom type..
 
 #![deny(missing_docs)]
 
@@ -63,7 +59,6 @@ where
 {
     fn decode_as_type(
         input: &mut &[u8],
-
         type_id: u32,
         types: &scale_info::PortableRegistry,
     ) -> Result<Self, Error> {
@@ -73,7 +68,8 @@ where
 }
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
-/// SCALE encoded bytes to it.
+/// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has
+/// an error type that converts into [`Error`], then you'll also get a [`DecodeAsType`] implementation for free.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
     type Visitor: for<'b> visitor::Visitor<Value<'b> = Self>;

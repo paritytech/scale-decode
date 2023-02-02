@@ -24,13 +24,11 @@ use types::*;
 
 pub use decode::decode_with_visitor;
 
-/// An implementation of the [`Visitor`] trait can be passed to the [`crate::decode()`]
+/// An implementation of the [`Visitor`] trait can be passed to the [`decode_with_visitor()`]
 /// function, and is handed back values as they are encountered. It's up to the implementation
 /// to decide what to do with these values.
-// dev note: keep `delegate_visitor_fns` in sync with this; since methods have defaults,
-// the compiler won't catch method additions.
 pub trait Visitor: Sized {
-    /// The type of the value to hand back from the [`crate::decode()`] function.
+    /// The type of the value to hand back from the [`decode_with_visitor()`] function.
     type Value<'scale>;
     /// The error type (which we must be able to convert a combination of [`Self`] and [`DecodeError`]s
     /// into, to handle any internal errors that crop up trying to decode things).
