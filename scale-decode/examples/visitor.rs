@@ -209,7 +209,7 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
-        while let Some(item) = value.next() {
+        for item in value.by_ref() {
             let item = item?;
             let val = item.decode_with_visitor(ValueVisitor)?;
             let name = item.name().unwrap_or("").to_owned();
@@ -243,7 +243,7 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
-        while let Some(item) = fields.next() {
+        for item in fields.by_ref() {
             let item = item?;
             let val = item.decode_with_visitor(ValueVisitor)?;
             let name = item.name().unwrap_or("").to_owned();

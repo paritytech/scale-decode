@@ -62,14 +62,13 @@ pub fn derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 fn derive_with_attrs(attrs: TopLevelAttrs, input: DeriveInput) -> TokenStream2 {
     // what type is the derive macro declared on?
     match &input.data {
-        syn::Data::Enum(details) => generate_enum_impl(attrs, &input, details).into(),
-        syn::Data::Struct(details) => generate_struct_impl(attrs, &input, details).into(),
+        syn::Data::Enum(details) => generate_enum_impl(attrs, &input, details),
+        syn::Data::Struct(details) => generate_struct_impl(attrs, &input, details),
         syn::Data::Union(_) => syn::Error::new(
             input.ident.span(),
             "Unions are not supported by the DecodeAsType macro",
         )
-        .into_compile_error()
-        .into(),
+        .into_compile_error(),
     }
 }
 

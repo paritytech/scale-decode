@@ -15,6 +15,10 @@
 
 //! The [`Visitor`] trait and associated types.
 
+// For some reason, we get a bunch of clippy errors related to 'scale
+// lifetimes used, but we can't elide them, so just ignore the warnings.
+#![allow(clippy::needless_lifetimes)]
+
 mod decode;
 pub mod ext;
 pub mod types;
@@ -365,10 +369,8 @@ impl std::fmt::Display for Unexpected {
 /// and allows you to generically talk about decoding unnamed items.
 pub trait DecodeItemIterator<'scale> {
     /// Use a visitor to decode a single item.
-    fn decode_item<'a, V: Visitor>(
-        &mut self,
-        visitor: V,
-    ) -> Option<Result<V::Value<'scale>, V::Error>>;
+    fn decode_item<V: Visitor>(&mut self, visitor: V)
+        -> Option<Result<V::Value<'scale>, V::Error>>;
 }
 
 /// An error that can occur trying to decode a bit sequence.
@@ -608,7 +610,7 @@ mod test {
             _type_id: TypeId,
         ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
-            while let Some(item) = value.next() {
+            for item in value.by_ref() {
                 let item = item?;
                 let val = item.decode_with_visitor(ValueVisitor)?;
                 let name = item.name().unwrap_or("").to_owned();
@@ -642,7 +644,7 @@ mod test {
         ) -> Result<Self::Value<'scale>, Self::Error> {
             let mut vals = vec![];
             let fields = value.fields();
-            while let Some(item) = fields.next() {
+            for item in fields.by_ref() {
                 let item = item?;
                 let val = item.decode_with_visitor(ValueVisitor)?;
                 let name = item.name().unwrap_or("").to_owned();

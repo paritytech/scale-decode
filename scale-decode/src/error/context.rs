@@ -49,7 +49,7 @@ pub struct Path<'a>(Cow<'a, LinkedList<Location>>);
 
 impl<'a> Path<'a> {
     /// Cheaply convert the path to an owned version.
-    pub fn to_owned(self) -> Path<'static> {
+    pub fn into_owned(self) -> Path<'static> {
         Path(Cow::Owned(self.0.into_owned()))
     }
     /// Return each location visited, most recent first.
@@ -70,7 +70,7 @@ impl<'a> std::fmt::Display for Path<'a> {
                 f.write_str(".")?;
             }
             match &loc.inner {
-                Loc::Field(name) => f.write_str(&*name)?,
+                Loc::Field(name) => f.write_str(name)?,
                 Loc::Index(i) => write!(f, "[{i}]")?,
                 Loc::Variant(name) => write!(f, "({name})")?,
             }

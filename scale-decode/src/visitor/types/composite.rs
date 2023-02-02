@@ -111,12 +111,7 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
         self.item_bytes = *b;
         self.fields = &self.fields[1..];
 
-        Some(res.map(|()| CompositeField {
-            bytes: res_bytes,
-            field: field,
-            name: name,
-            types: self.types,
-        }))
+        Some(res.map(|()| CompositeField { bytes: res_bytes, field, name, types: self.types }))
     }
 }
 

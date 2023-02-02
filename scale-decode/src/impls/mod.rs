@@ -37,12 +37,6 @@ pub struct BasicVisitor<T> {
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<T> BasicVisitor<T> {
-    pub fn new() -> Self {
-        BasicVisitor { _marker: std::marker::PhantomData }
-    }
-}
-
 /// Generate an [`IntoVisitor`] impl for basic types `T` where `BasicVisitor<T>` impls `Visitor`.
 macro_rules! impl_into_visitor {
     ($ty:ident $(< $($lt:lifetime,)* $($param:ident),* >)? $(where $( $where:tt )* )?) => {
@@ -53,7 +47,7 @@ macro_rules! impl_into_visitor {
         {
             type Visitor = BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor::new()
+                BasicVisitor { _marker: std::marker::PhantomData }
             }
         }
     };
@@ -320,7 +314,7 @@ where
 {
     type Visitor = BasicVisitor<[T; N]>;
     fn into_visitor() -> Self::Visitor {
-        BasicVisitor::new()
+        BasicVisitor { _marker: std::marker::PhantomData }
     }
 }
 
@@ -451,6 +445,7 @@ macro_rules! visit_number_fn_impl {
 }
 macro_rules! visit_number_impl {
     ($ty:ident where |$res:ident| $expr:expr) => {
+        #[allow(clippy::useless_conversion)]
         impl Visitor for BasicVisitor<$ty> {
             type Error = Error;
             type Value<'scale> = $ty;
@@ -576,7 +571,7 @@ macro_rules! impl_decode_tuple {
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor::new()
+                BasicVisitor { _marker: std::marker::PhantomData }
             }
         }
     }

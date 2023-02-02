@@ -241,7 +241,6 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
         inner: &'info scale_info::Type<PortableForm>,
         types: &'info PortableRegistry,
         visitor: V,
-        depth: usize,
     ) -> Result<V::Value<'scale>, V::Error> {
         use TypeDefPrimitive::*;
         match inner.type_def() {
@@ -288,7 +287,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
                 // Record this composite location.
                 match field.name() {
                     Some(name) => {
-                        locations.push(CompactLocation::NamedComposite(current_type_id, &**name))
+                        locations.push(CompactLocation::NamedComposite(current_type_id, name))
                     }
                     None => locations.push(CompactLocation::UnnamedComposite(current_type_id)),
                 }
@@ -308,7 +307,6 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
                     inner_ty,
                     types,
                     visitor,
-                    depth + 1,
                 )
             }
             // For now, we give up if we have been asked for any other type:
@@ -327,7 +325,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
     // Track any inner type IDs we encounter.
     let locations = StackVec::<CompactLocation, 8>::new();
 
-    decode_compact(data, ty_id, TypeId(inner_ty_id), locations, inner, types, visitor, 0)
+    decode_compact(data, ty_id, TypeId(inner_ty_id), locations, inner, types, visitor)
 }
 
 fn decode_bit_sequence_value<'scale, V: Visitor>(
