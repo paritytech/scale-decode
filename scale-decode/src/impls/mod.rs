@@ -169,10 +169,34 @@ macro_rules! impl_into_visitor_like {
 impl_into_visitor_like!(Arc<T> as T: |res| Arc::new(res));
 impl_into_visitor_like!(Rc<T> as T: |res| Rc::new(res));
 impl_into_visitor_like!(Box<T> as T: |res| Box::new(res));
-impl_into_visitor_like!(Cow<'a, T> as T [where T: Clone]: |res| Cow::Owned(res));
 impl_into_visitor_like!(Duration as (u64, u32): |res: (u64,u32)| Duration::from_secs(res.0) + Duration::from_nanos(res.1 as u64));
 impl_into_visitor_like!(Range<T> as (T, T): |res: (T,T)| res.0..res.1);
 impl_into_visitor_like!(RangeInclusive<T> as (T, T): |res: (T,T)| res.0..=res.1);
+
+// A custom implementation for `Cow` because it's rather tricky; the visitor we want is whatever the
+// `ToOwned` value for the Cow is, and Cow's have specific constraints, too.
+type CowVisitor<T> = <<T as ToOwned>::Owned as IntoVisitor>::Visitor;
+type CowVisitorError<T> = <CowVisitor<T> as Visitor>::Error;
+impl<'a, T> IntoVisitor for Cow<'a, T>
+where
+    T: 'a + ToOwned + ?Sized,
+    <T as ToOwned>::Owned: IntoVisitor,
+{
+    type Visitor = ext::AndThen<
+        CowVisitor<T>,
+        Box<
+            dyn FnOnce(
+                Result<<T as ToOwned>::Owned, CowVisitorError<T>>,
+            ) -> Result<Cow<'a, T>, CowVisitorError<T>>,
+        >,
+        Cow<'a, T>,
+        CowVisitorError<T>,
+    >;
+    fn into_visitor() -> Self::Visitor {
+        let f = |res: Result<<T as ToOwned>::Owned, _>| res.map(|val| Cow::Owned(val));
+        <<T as ToOwned>::Owned>::into_visitor().and_then(Box::new(f))
+    }
+}
 
 macro_rules! impl_decode_seq_via_collect {
     ($ty:ident<$generic:ident> $(where $($where:tt)*)?) => {

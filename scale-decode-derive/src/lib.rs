@@ -33,7 +33,6 @@ const ATTR_NAME: &str = "decode_as_type";
 /// struct Foo<T> {
 ///    a: u64,
 ///    b: bool,
-///    c: std::marker::PhantomData<T>
 /// }
 /// ```
 ///
@@ -81,7 +80,7 @@ fn generate_enum_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause) = handle_generics(&attrs, &input.generics);
+    let (impl_generics, ty_generics, where_clause, phantomdata_type) = handle_generics(&attrs, &input.generics);
     let variant_names = details.variants.iter().map(|v| v.ident.to_string());
     let visitor_struct_name = format_ident!("{}Visitor", input.ident);
 
@@ -101,7 +100,7 @@ fn generate_enum_impl(
                     let fields = value.fields();
                     return if fields.has_unnamed_fields() {
                         if fields.remaining() != #field_count {
-                            return Err(Error::new(ErrorKind::WrongLength {
+                            return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength {
                                 actual: type_id.0,
                                 actual_len: fields.remaining(),
                                 expected_len: #field_count
@@ -110,13 +109,13 @@ fn generate_enum_impl(
                         #( let #field_ident = fields.next().unwrap()?; )*
                         Ok(#path_to_type::#variant_ident { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
                     } else {
-                        let vals: HashMap<Option<&str>, _> = fields
+                        let vals: ::std::collections::HashMap<Option<&str>, _> = fields
                             .map(|res| res.map(|item| (item.name(), item)))
                             .collect::<Result<_, _>>()?;
                         #(
                             let #field_ident = *vals
                                 .get(&Some(#field_name))
-                                .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                                .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
                         )*
                         Ok(#path_to_type::#variant_ident { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
                     }
@@ -133,7 +132,7 @@ fn generate_enum_impl(
                 quote!{
                     let fields = value.fields();
                     if fields.remaining() != #field_count {
-                        return Err(Error::new(ErrorKind::WrongLength {
+                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength {
                             actual: type_id.0,
                             actual_len: fields.remaining(),
                             expected_len: #field_count
@@ -141,7 +140,7 @@ fn generate_enum_impl(
                     }
                     #( let #field_ident = fields.next().unwrap()?; )*
                     return Ok(#path_to_type::#variant_ident (
-                        #( #field_ident.decode_as_type().map_err(|e| e.at_field(#field_idx))? ),*
+                        #( #field_ident.decode_as_type().map_err(|e| e.at_idx(#field_idx))? ),*
                     ))
                 }
             },
@@ -160,18 +159,20 @@ fn generate_enum_impl(
     });
 
     quote!(
-        struct #visitor_struct_name;
+        struct #visitor_struct_name #impl_generics (
+            ::std::marker::PhantomData<#phantomdata_type>
+        );
 
-        impl #path_to_scale_decode::IntoVisitor for #path_to_type {
-            type Visitor = #visitor_struct_name;
-            fn into_visitor() -> Self {
-                #visitor_struct_name
+        impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
+            type Visitor = #visitor_struct_name #ty_generics;
+            fn into_visitor() -> Self::Visitor {
+                #visitor_struct_name(::std::marker::PhantomData)
             }
         }
 
-        impl #impl_generics #path_to_scale_decode::Visitor for #path_to_type #ty_generics #where_clause {
+        impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
             type Error = #path_to_scale_decode::Error;
-            type Value<'scale> = #path_to_type;
+            type Value<'scale> = #path_to_type #ty_generics;
 
             fn visit_variant<'scale>(
                 self,
@@ -181,7 +182,7 @@ fn generate_enum_impl(
                 #(
                     #variant_ifs
                 )*
-                Err(Error::new(ErrorKind::CannotFindVariant {
+                Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindVariant {
                     got: value.name().to_string(),
                     expected: vec![#(#variant_names),*]
                 }))
@@ -197,8 +198,8 @@ fn generate_struct_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause) = handle_generics(&attrs, &input.generics);
-    let visitor_struct_name = format_ident!("{}Visitor", input.ident);
+    let (impl_generics, ty_generics, where_clause, phantomdata_type) = handle_generics(&attrs, &input.generics);
+    let visitor_struct_name = format_ident!("{}DecodeAsTypeVisitor", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of struct
     // that we're trying to generate output for.
@@ -216,20 +217,20 @@ fn generate_struct_impl(
                        return self.visit_tuple(&mut value.as_tuple(), type_id)
                     }
 
-                    let vals: HashMap<Option<&str>, _> =
+                    let vals: ::std::collections::HashMap<Option<&str>, _> =
                         value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
                     #(
                         let #field_ident = *vals
                             .get(&Some(#field_name))
-                            .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                            .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
                     )*
 
                     Ok(#path_to_type { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
                 },
                 quote! {
                     if value.remaining() != #field_count {
-                        return Err(Error::new(ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
+                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
                     }
 
                     #(
@@ -254,7 +255,7 @@ fn generate_struct_impl(
                 },
                 quote! {
                     if value.remaining() != #field_count {
-                        return Err(Error::new(ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
+                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
                     }
 
                     #(
@@ -271,7 +272,7 @@ fn generate_struct_impl(
             },
             quote! {
                 if value.remaining() > 0 {
-                    return Err(Error::new(ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: 0 }));
+                    return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: 0 }));
                 }
                 Ok(#path_to_type)
             },
@@ -279,18 +280,20 @@ fn generate_struct_impl(
     };
 
     quote!(
-        struct #visitor_struct_name;
+        struct #visitor_struct_name #impl_generics (
+            ::std::marker::PhantomData<#phantomdata_type>
+        );
 
-        impl #path_to_scale_decode::IntoVisitor for #path_to_type {
-            type Visitor = #visitor_struct_name;
-            fn into_visitor() -> Self {
-                #visitor_struct_name
+        impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
+            type Visitor = #visitor_struct_name #ty_generics;
+            fn into_visitor() -> Self::Visitor {
+                #visitor_struct_name(::std::marker::PhantomData)
             }
         }
 
-        impl #impl_generics #path_to_scale_decode::Visitor for #path_to_type #ty_generics #where_clause {
+        impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
             type Error = #path_to_scale_decode::Error;
-            type Value<'scale> = #path_to_type;
+            type Value<'scale> = #path_to_type #ty_generics;
 
             fn visit_composite<'scale>(
                 self,
@@ -313,7 +316,7 @@ fn generate_struct_impl(
 fn handle_generics<'a>(
     attrs: &TopLevelAttrs,
     generics: &'a syn::Generics,
-) -> (syn::ImplGenerics<'a>, syn::TypeGenerics<'a>, syn::WhereClause) {
+) -> (syn::ImplGenerics<'a>, syn::TypeGenerics<'a>, syn::WhereClause, syn::Type) {
     let path_to_crate = &attrs.crate_path;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
@@ -323,14 +326,38 @@ fn handle_generics<'a>(
         // if custom trait bounds are given, append those to the where clause.
         where_clause.predicates.extend(where_predicates.clone());
     } else {
-        // else, append our default DecodeAsType bounds to the where clause (we could mention IntoVisitor etc but this is simpler).
+        // else, append our default bounds to each parameter to ensure that it all lines up with our generated impls and such:
         for param in generics.type_params() {
             let ty = &param.ident;
-            where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::DecodeAsType))
+            where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
+            where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
+            where_clause.predicates.push(syn::parse_quote!(#path_to_crate::Error: From<<<#ty as #path_to_crate::IntoVisitor>::Visitor as #path_to_crate::Visitor>::Error>));
         }
     }
 
-    (impl_generics, ty_generics, where_clause)
+    // Construct a type to put into PhantomData<$ty>. This takes lifetimes into account too.
+    let phantomdata_type: syn::Type = {
+        let tys = generics
+            .params
+            .iter()
+            .filter_map::<syn::Type, _>(|p| match p {
+                syn::GenericParam::Type(ty) => {
+                    let ty = &ty.ident;
+                    Some(syn::parse_quote!(#ty))
+                },
+                syn::GenericParam::Lifetime(lt) => {
+                    let lt = &lt.lifetime;
+                    // [jsdw]: This is dumb, but for some reason `#lt ()` leads to
+                    // an error (seems to output `'a, ()`) whereas this does not:
+                    Some(syn::parse_quote!(::std::borrow::Cow<#lt, str>))
+                },
+                // We don't need to mention const's in the PhantomData type.
+                syn::GenericParam::Const(_) => None,
+            });
+        syn::parse_quote!( (#( #tys, )*) )
+    };
+
+    (impl_generics, ty_generics, where_clause, phantomdata_type)
 }
 
 struct TopLevelAttrs {

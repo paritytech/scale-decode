@@ -39,6 +39,9 @@ use scale_info::PortableRegistry;
 pub use crate::error::Error;
 pub use visitor::{Visitor, VisitorExt};
 
+#[cfg(feature = "derive")]
+pub use scale_decode_derive::DecodeAsType;
+
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
 /// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.

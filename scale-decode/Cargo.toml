@@ -14,17 +14,22 @@ keywords = ["parity", "scale", "decoding"]
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
 [features]
-default = []
+default = ["derive"]
+
+# Enable the `DecodeAsType` macro.
+derive = ["dep:scale-decode-derive"]
 
 [dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 thiserror = "1.0.24"
 scale-bits = { version = "0.3.0", default-features = false }
+scale-decode-derive = { path = "../scale-decode-derive", version = "0.4.0", optional = true }
 
 [dev-dependencies]
 scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std", "derive"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full", "bit-vec"] }
 bitvec = "1"
+trybuild = "1.0.72"
 # For tests, we'll encode and then decode things to make sure we are compatible.
 scale-encode = "0.0.3"
