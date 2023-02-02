@@ -63,6 +63,7 @@ where
 {
     fn decode_as_type(
         input: &mut &[u8],
+
         type_id: u32,
         types: &scale_info::PortableRegistry,
     ) -> Result<Self, Error> {

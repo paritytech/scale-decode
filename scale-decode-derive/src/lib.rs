@@ -187,6 +187,27 @@ fn generate_enum_impl(
                     expected: vec![#(#variant_names),*]
                 }))
             }
+            // Allow an enum to be decoded through nested 1-field composites and tuples:
+            fn visit_composite<'scale>(
+                self,
+                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, '_>,
+                _type_id: #path_to_scale_decode::visitor::TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                if value.remaining() != 1 {
+                    return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
+                }
+                value.decode_item(self).unwrap()
+            }
+            fn visit_tuple<'scale>(
+                self,
+                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, '_>,
+                _type_id: #path_to_scale_decode::visitor::TypeId,
+            ) -> Result<Self::Value<'scale>, Self::Error> {
+                if value.remaining() != 1 {
+                    return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
+                }
+                value.decode_item(self).unwrap()
+            }
         }
     )
 }

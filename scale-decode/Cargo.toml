@@ -32,4 +32,4 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 bitvec = "1"
 trybuild = "1.0.72"
 # For tests, we'll encode and then decode things to make sure we are compatible.
-scale-encode = "0.0.3"
+scale-encode = "0.0.4"

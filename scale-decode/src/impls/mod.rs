@@ -15,7 +15,7 @@
 
 use crate::{
     error::{Error, ErrorKind},
-    visitor::{self, ext, types::*, DecodeItemIterator, Visitor, VisitorExt},
+    visitor::{self, ext, types::*, DecodeItemIterator, Visitor, VisitorExt, Unexpected},
     IntoVisitor,
 };
 use core::num::{
@@ -59,6 +59,32 @@ macro_rules! impl_into_visitor {
     };
 }
 
+/// Ignore single-field tuples/composites and visit the single field inside instead.
+macro_rules! visit_single_field_composite_tuple_impls {
+    () => {
+        fn visit_composite<'scale>(
+            self,
+            value: &mut Composite<'scale, '_>,
+            _type_id: visitor::TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
+            if value.remaining() != 1 {
+                return self.visit_unexpected(Unexpected::Composite);
+            }
+            value.decode_item(self).unwrap()
+        }
+        fn visit_tuple<'scale>(
+            self,
+            value: &mut Tuple<'scale, '_>,
+            _type_id: visitor::TypeId,
+        ) -> Result<Self::Value<'scale>, Self::Error> {
+            if value.remaining() != 1 {
+                return self.visit_unexpected(Unexpected::Tuple);
+            }
+            value.decode_item(self).unwrap()
+        }
+    }
+}
+
 impl Visitor for BasicVisitor<char> {
     type Error = Error;
     type Value<'scale> = char;
@@ -70,6 +96,7 @@ impl Visitor for BasicVisitor<char> {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(value)
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(char);
 
@@ -84,6 +111,7 @@ impl Visitor for BasicVisitor<bool> {
     ) -> Result<Self::Value<'scale>, Self::Error> {
         Ok(value)
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(bool);
 
@@ -99,6 +127,7 @@ impl Visitor for BasicVisitor<String> {
         let s = value.as_str()?.to_owned();
         Ok(s)
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(String);
 
@@ -116,6 +145,7 @@ impl Visitor for BasicVisitor<Bits> {
             .collect::<Result<Bits, _>>()
             .map_err(|e| Error::new(ErrorKind::VisitorDecodeError(e.into())))
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(Bits);
 
@@ -132,6 +162,17 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
             Ok(PhantomData)
         } else {
             self.visit_unexpected(visitor::Unexpected::Tuple)
+        }
+    }
+    fn visit_composite<'scale>(
+        self,
+        value: &mut Composite<'scale, '_>,
+        _type_id: visitor::TypeId,
+    ) -> Result<Self::Value<'scale>, Self::Error> {
+        if value.remaining() == 0 {
+            Ok(PhantomData)
+        } else {
+            self.visit_unexpected(visitor::Unexpected::Composite)
         }
     }
 }
@@ -209,13 +250,6 @@ macro_rules! impl_decode_seq_via_collect {
             type Value<'scale> = $ty<$generic>;
             type Error = Error;
 
-            fn visit_tuple<'scale>(
-                self,
-                value: &mut Tuple<'scale, '_>,
-                _type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
-                decode_items_using::<_, $generic>(value).collect()
-            }
             fn visit_sequence<'scale>(
                 self,
                 value: &mut Sequence<'scale, '_>,
@@ -230,6 +264,8 @@ macro_rules! impl_decode_seq_via_collect {
             ) -> Result<Self::Value<'scale>, Self::Error> {
                 decode_items_using::<_, $generic>(value).collect()
             }
+
+            visit_single_field_composite_tuple_impls!();
         }
         impl_into_visitor!($ty < $generic > $( where $($where)* )?);
     }
@@ -260,13 +296,6 @@ where
     type Value<'scale> = [T; N];
     type Error = Error;
 
-    fn visit_tuple<'scale>(
-        self,
-        value: &mut Tuple<'scale, '_>,
-        type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
-        array_method_impl!(value, type_id, [T; N])
-    }
     fn visit_sequence<'scale>(
         self,
         value: &mut Sequence<'scale, '_>,
@@ -281,6 +310,8 @@ where
     ) -> Result<Self::Value<'scale>, Self::Error> {
         array_method_impl!(value, type_id, [T; N])
     }
+
+    visit_single_field_composite_tuple_impls!();
 }
 impl<const N: usize, T> IntoVisitor for [T; N]
 where
@@ -356,6 +387,7 @@ where
             }))
         }
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(Option<T>);
 
@@ -397,6 +429,7 @@ where
             }))
         }
     }
+    visit_single_field_composite_tuple_impls!();
 }
 impl_into_visitor!(Result<T, E>);
 
@@ -432,6 +465,8 @@ macro_rules! visit_number_impl {
             visit_number_fn_impl!(visit_i32: i32 where |$res| $expr);
             visit_number_fn_impl!(visit_i64: i64 where |$res| $expr);
             visit_number_fn_impl!(visit_i128: i128 where |$res| $expr);
+
+            visit_single_field_composite_tuple_impls!();
         }
         impl_into_visitor!($ty);
     };
@@ -592,6 +627,7 @@ where
 mod test {
     use super::*;
     use crate::DecodeAsType;
+    use scale_encode::EncodeAsType;
 
     /// Given a type definition, return type ID and registry representing it.
     fn make_type<T: scale_info::TypeInfo + 'static>() -> (u32, scale_info::PortableRegistry) {
@@ -606,7 +642,7 @@ mod test {
     // For most of our tests, we'll assert that whatever type we encode, we can decode back again to the given type.
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
-        A: scale_encode::EncodeAsType,
+        A: EncodeAsType,
         B: DecodeAsType + PartialEq + std::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
@@ -620,7 +656,7 @@ mod test {
     // Normally, the type info we want to use comes along with the type we're encoding.
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
-        A: scale_encode::EncodeAsType + scale_info::TypeInfo + 'static,
+        A: EncodeAsType + scale_info::TypeInfo + 'static,
         B: DecodeAsType + PartialEq + std::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
@@ -629,7 +665,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode_with<T, A>(a: &A)
     where
-        A: scale_encode::EncodeAsType + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: EncodeAsType + DecodeAsType + PartialEq + std::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         assert_encode_decode_to_with::<T, A, A>(a, a)
@@ -638,7 +674,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode<A>(a: &A)
     where
-        A: scale_encode::EncodeAsType
+        A: EncodeAsType
             + scale_info::TypeInfo
             + 'static
             + DecodeAsType
@@ -696,6 +732,15 @@ mod test {
     }
 
     #[test]
+    fn decode_cows() {
+        let a = "hello";
+        assert_encode_decode_to(&a, &Cow::<'_, str>::Borrowed(a));
+        // Decoding a Cow means being able to jump into the inner composite type
+        // (Cow's are a one-field composite type in TypeInfo by the looks of it).
+        assert_encode_decode(&Cow::<'_, str>::Borrowed(a));
+    }
+
+    #[test]
     fn decode_sequences() {
         assert_encode_decode_to(&vec![1u8, 2, 3], &[1u8, 2, 3]);
         assert_encode_decode_to(&vec![1u8, 2, 3], &(1u8, 2u8, 3u8));
@@ -706,18 +751,76 @@ mod test {
         // assert_encode_decode_to(&vec![1u8,2,3], &BinaryHeap::from_iter([1u8,2,3])); // No partialEq for BinaryHeap
     }
 
+    #[cfg(feature = "derive")]
+    #[test]
+    fn decode_types_via_tuples_or_composites() {
+        // Some type we know will be a composite type because we made it..
+        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo<A> { val: A }
+
+        // Make our own enum just to check that it can be decoded through tuples etc too:
+        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone)]
+        #[decode_as_type(crate_path = "crate")]
+        enum Wibble { Bar(u64) }
+
+        fn check<A>(a: A)
+        where
+            A: EncodeAsType + scale_info::TypeInfo + 'static
+             + DecodeAsType + PartialEq + std::fmt::Debug + Clone,
+        {
+            let tup = ((a.clone(),),);
+            let struc = Foo { val: Foo { val: a.clone() } };
+
+            assert_encode_decode_to(&tup, &a);
+            assert_encode_decode_to(&struc, &a);
+        }
+
+        // All of these types can be decoded through nested
+        // tuples or composite types that have exactly one field.
+        check(123u8);
+        check(123u16);
+        check(123u32);
+        check(123u64);
+        check(123u128);
+        check(123i8);
+        check(123i16);
+        check(123i32);
+        check(123i64);
+        check(123i128);
+        check(true);
+        check("hello".to_string());
+        check(Bits::from_iter([true, false, true, true]));
+        check([1,2,3,4,5]);
+        check(vec![1,2,3,4,5]);
+        check(NonZeroU8::new(100).unwrap());
+        check(Some(123));
+        check(Ok::<_, bool>(123));
+        check(Wibble::Bar(12345));
+    }
+
+    #[cfg(feature = "derive")]
     #[test]
     fn decode_tuples() {
+        // Some struct with the same shape as our tuples.
+        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo {
+            a: u8,
+            b: u16,
+            c: bool
+        }
+
         // Decode to the same:
         assert_encode_decode(&(1u8, 2u16, true));
-        // Decode to array:
-        assert_encode_decode_to(&(1u8, 2u8, 3u8), &[1u8, 2, 3]);
-        // Decode to sequence:
-        assert_encode_decode_to(&(1u8, 2u8, 3u8), &vec![1u8, 2, 3]);
+        // Decode to struct of similar shape:
+        assert_encode_decode_to(&(1u8, 2u8, true), &Foo { a: 1u8, b: 2u16, c: true });
+        // Decode from struct of similar shape:
+        assert_encode_decode_to(&Foo { a: 1u8, b: 2u16, c: true }, &(1u8, 2u8, true));
     }
 
     #[test]
-    fn decode_composites_tu_tuples() {
+    fn decode_composites_to_tuples() {
         #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
         struct Foo {
             hello: bool,
