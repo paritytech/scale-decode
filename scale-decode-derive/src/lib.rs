@@ -80,7 +80,8 @@ fn generate_enum_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause, phantomdata_type) = handle_generics(&attrs, &input.generics);
+    let (impl_generics, ty_generics, where_clause, phantomdata_type) =
+        handle_generics(&attrs, &input.generics);
     let variant_names = details.variants.iter().map(|v| v.ident.to_string());
     let visitor_struct_name = format_ident!("{}Visitor", input.ident);
 
@@ -219,7 +220,8 @@ fn generate_struct_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause, phantomdata_type) = handle_generics(&attrs, &input.generics);
+    let (impl_generics, ty_generics, where_clause, phantomdata_type) =
+        handle_generics(&attrs, &input.generics);
     let visitor_struct_name = format_ident!("{}DecodeAsTypeVisitor", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of struct
@@ -358,23 +360,20 @@ fn handle_generics<'a>(
 
     // Construct a type to put into PhantomData<$ty>. This takes lifetimes into account too.
     let phantomdata_type: syn::Type = {
-        let tys = generics
-            .params
-            .iter()
-            .filter_map::<syn::Type, _>(|p| match p {
-                syn::GenericParam::Type(ty) => {
-                    let ty = &ty.ident;
-                    Some(syn::parse_quote!(#ty))
-                },
-                syn::GenericParam::Lifetime(lt) => {
-                    let lt = &lt.lifetime;
-                    // [jsdw]: This is dumb, but for some reason `#lt ()` leads to
-                    // an error (seems to output `'a, ()`) whereas this does not:
-                    Some(syn::parse_quote!(::std::borrow::Cow<#lt, str>))
-                },
-                // We don't need to mention const's in the PhantomData type.
-                syn::GenericParam::Const(_) => None,
-            });
+        let tys = generics.params.iter().filter_map::<syn::Type, _>(|p| match p {
+            syn::GenericParam::Type(ty) => {
+                let ty = &ty.ident;
+                Some(syn::parse_quote!(#ty))
+            }
+            syn::GenericParam::Lifetime(lt) => {
+                let lt = &lt.lifetime;
+                // [jsdw]: This is dumb, but for some reason `#lt ()` leads to
+                // an error (seems to output `'a, ()`) whereas this does not:
+                Some(syn::parse_quote!(::std::borrow::Cow<#lt, str>))
+            }
+            // We don't need to mention const's in the PhantomData type.
+            syn::GenericParam::Const(_) => None,
+        });
         syn::parse_quote!( (#( #tys, )*) )
     };
 

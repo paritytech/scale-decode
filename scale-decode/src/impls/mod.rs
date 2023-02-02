@@ -15,7 +15,7 @@
 
 use crate::{
     error::{Error, ErrorKind},
-    visitor::{self, ext, types::*, DecodeItemIterator, Visitor, VisitorExt, Unexpected},
+    visitor::{self, ext, types::*, DecodeItemIterator, Unexpected, Visitor, VisitorExt},
     IntoVisitor,
 };
 use core::num::{
@@ -82,7 +82,7 @@ macro_rules! visit_single_field_composite_tuple_impls {
             }
             value.decode_item(self).unwrap()
         }
-    }
+    };
 }
 
 impl Visitor for BasicVisitor<char> {
@@ -757,17 +757,28 @@ mod test {
         // Some type we know will be a composite type because we made it..
         #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo)]
         #[decode_as_type(crate_path = "crate")]
-        struct Foo<A> { val: A }
+        struct Foo<A> {
+            val: A,
+        }
 
         // Make our own enum just to check that it can be decoded through tuples etc too:
-        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone)]
+        #[derive(
+            DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone,
+        )]
         #[decode_as_type(crate_path = "crate")]
-        enum Wibble { Bar(u64) }
+        enum Wibble {
+            Bar(u64),
+        }
 
         fn check<A>(a: A)
         where
-            A: EncodeAsType + scale_info::TypeInfo + 'static
-             + DecodeAsType + PartialEq + std::fmt::Debug + Clone,
+            A: EncodeAsType
+                + scale_info::TypeInfo
+                + 'static
+                + DecodeAsType
+                + PartialEq
+                + std::fmt::Debug
+                + Clone,
         {
             let tup = ((a.clone(),),);
             let struc = Foo { val: Foo { val: a.clone() } };
@@ -791,8 +802,8 @@ mod test {
         check(true);
         check("hello".to_string());
         check(Bits::from_iter([true, false, true, true]));
-        check([1,2,3,4,5]);
-        check(vec![1,2,3,4,5]);
+        check([1, 2, 3, 4, 5]);
+        check(vec![1, 2, 3, 4, 5]);
         check(NonZeroU8::new(100).unwrap());
         check(Some(123));
         check(Ok::<_, bool>(123));
@@ -803,12 +814,14 @@ mod test {
     #[test]
     fn decode_tuples() {
         // Some struct with the same shape as our tuples.
-        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone)]
+        #[derive(
+            DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone,
+        )]
         #[decode_as_type(crate_path = "crate")]
         struct Foo {
             a: u8,
             b: u16,
-            c: bool
+            c: bool,
         }
 
         // Decode to the same:
