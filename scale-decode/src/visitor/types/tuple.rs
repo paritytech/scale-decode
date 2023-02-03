@@ -60,8 +60,21 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale>, V::Error>> {
-        self.next()
-            .map(|res| res.map_err(|e| e.into()).and_then(|item| item.decode_with_visitor(visitor)))
+        if self.fields.is_empty() {
+            return None;
+        }
+
+        let b = &mut &*self.item_bytes;
+        let type_id = self.fields.first().expect("not empty; checked above");
+
+        // Decode the bytes:
+        let res = crate::visitor::decode_with_visitor(b, type_id, self.types, visitor);
+
+        // Update self to point to the next item, now:
+        self.item_bytes = *b;
+        self.fields.pop_front_unwrap();
+
+        Some(res)
     }
 }
 
@@ -69,26 +82,20 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
 impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
     type Item = Result<TupleField<'scale, 'info>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.fields.is_empty() {
-            return None;
-        }
-
-        let type_id = self.fields.first().expect("not empty; checked above");
-        let b = &mut &*self.item_bytes;
-
-        // Skip over the bytes, ignoring them:
-        let res = crate::visitor::decode_with_visitor(b, type_id, self.types, IgnoreVisitor);
-
-        // Pull out the bytes representing the thing we just skipped over:
+        // Record details we need before we decode and skip over the thing:
+        let type_id = self.fields.first()?;
         let num_bytes_before = self.item_bytes.len();
-        let num_bytes_after = b.len();
-        let res_bytes = &self.item_bytes[..num_bytes_before - num_bytes_after];
+        let item_bytes = self.item_bytes;
 
-        // Update self to point to the next item, now:
-        self.fields.pop_front_unwrap();
-        self.item_bytes = *b;
+        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+            return Some(Err(e));
+        };
 
-        Some(res.map(|()| TupleField { bytes: res_bytes, type_id, types: self.types }))
+        // How many bytes did we skip over? What bytes represent the thing we decoded?
+        let num_bytes_after = self.item_bytes.len();
+        let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
+
+        Some(Ok(TupleField { bytes: res_bytes, type_id, types: self.types }))
     }
 }
 

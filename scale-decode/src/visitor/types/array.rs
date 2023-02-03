@@ -13,7 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::visitor::{DecodeError, IgnoreVisitor, Visitor};
+use crate::{
+    visitor::{DecodeError, IgnoreVisitor, Visitor},
+    DecodeAsType,
+};
 use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from an array type.
@@ -74,6 +77,56 @@ impl<'scale, 'info> Array<'scale, 'info> {
         self.item_bytes = *b;
         self.remaining -= 1;
         Some(res)
+    }
+}
+
+// Iterating returns a representation of each field in the tuple type.
+impl<'scale, 'info> Iterator for Array<'scale, 'info> {
+    type Item = Result<ArrayItem<'scale, 'info>, DecodeError>;
+    fn next(&mut self) -> Option<Self::Item> {
+        // Record details we need before we decode and skip over the thing:
+        let num_bytes_before = self.item_bytes.len();
+        let item_bytes = self.item_bytes;
+
+        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+            return Some(Err(e));
+        };
+
+        // How many bytes did we skip over? What bytes represent the thing we decoded?
+        let num_bytes_after = self.item_bytes.len();
+        let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
+
+        Some(Ok(ArrayItem { bytes: res_bytes, type_id: self.type_id, types: self.types }))
+    }
+}
+
+/// A single item in the array.
+#[derive(Copy, Clone)]
+pub struct ArrayItem<'scale, 'info> {
+    bytes: &'scale [u8],
+    type_id: u32,
+    types: &'info PortableRegistry,
+}
+
+impl<'scale, 'info> ArrayItem<'scale, 'info> {
+    /// The bytes associated with this field.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.bytes
+    }
+    /// The type ID associated with this field.
+    pub fn type_id(&self) -> u32 {
+        self.type_id
+    }
+    /// Decode this field using a visitor.
+    pub fn decode_with_visitor<V: Visitor>(
+        &self,
+        visitor: V,
+    ) -> Result<V::Value<'scale>, V::Error> {
+        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
+    }
+    /// Decode this field into a specific type via [`DecodeAsType`].
+    pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
+        T::decode_as_type(&mut &*self.bytes, self.type_id, self.types)
     }
 }
 

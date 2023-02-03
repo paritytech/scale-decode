@@ -30,7 +30,7 @@ const ATTR_NAME: &str = "decode_as_type";
 ///
 /// #[derive(DecodeAsType)]
 /// #[decode_as_type(trait_bounds = "", crate_path = "alt_path")]
-/// struct Foo<T> {
+/// struct Foo {
 ///    a: u64,
 ///    b: bool,
 /// }

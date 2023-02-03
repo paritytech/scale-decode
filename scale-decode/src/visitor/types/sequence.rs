@@ -13,17 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::visitor::{DecodeError, IgnoreVisitor, Visitor};
+use super::array::{Array, ArrayItem};
+use crate::{
+    visitor::{DecodeError, Visitor},
+    DecodeAsType,
+};
 use codec::{Compact, Decode};
 use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from a sequence type.
 pub struct Sequence<'scale, 'info> {
     bytes: &'scale [u8],
-    item_bytes: &'scale [u8],
-    type_id: u32,
-    types: &'info PortableRegistry,
-    remaining: usize,
+    // Mostly we just delegate to our Array logic for working with sequences.
+    // The only thing we need to do otherwise is decode the compact encoded
+    // length from the beginning and keep track of the bytes including that.
+    values: Array<'scale, 'info>,
 }
 
 impl<'scale, 'info> Sequence<'scale, 'info> {
@@ -37,15 +41,12 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
         let item_bytes = &mut &*bytes;
         let len = <Compact<u64>>::decode(item_bytes)?.0 as usize;
 
-        Ok(Sequence { bytes, item_bytes, type_id, types, remaining: len })
+        Ok(Sequence { bytes, values: Array::new(item_bytes, type_id, len, types) })
     }
     /// Skip over all bytes associated with this sequence. After calling this,
     /// [`Self::remaining_bytes()`] will represent the bytes after this sequence.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
-        while self.remaining > 0 {
-            self.decode_item(IgnoreVisitor).transpose()?;
-        }
-        Ok(())
+        self.values.skip_decoding()
     }
     /// The bytes representing this sequence and anything following it.
     pub fn bytes(&self) -> &'scale [u8] {
@@ -54,28 +55,55 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
     /// The bytes that have not yet been decoded in this sequence (this never includes the
     /// compact length preceeding the sequence items).
     pub fn remaining_bytes(&self) -> &'scale [u8] {
-        self.item_bytes
+        self.values.remaining_bytes()
     }
     /// The number of un-decoded items remaining in this sequence.
     pub fn remaining(&self) -> usize {
-        self.remaining
+        self.values.remaining()
     }
     /// Decode an item from the sequence by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale>, V::Error>> {
-        if self.remaining == 0 {
-            return None;
-        }
+        self.values.decode_item(visitor)
+    }
+}
 
-        let b = &mut self.item_bytes;
-        // Don't return here; decrement bytes and remaining properly first and then return, so that
-        // calling decode_item again works as expected.
-        let res = crate::visitor::decode_with_visitor(b, self.type_id, self.types, visitor);
-        self.item_bytes = *b;
-        self.remaining -= 1;
-        Some(res)
+// Iterating returns a representation of each field in the tuple type.
+impl<'scale, 'info> Iterator for Sequence<'scale, 'info> {
+    type Item = Result<SequenceItem<'scale, 'info>, DecodeError>;
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.values.next()?.map(|item| SequenceItem { item }))
+    }
+}
+
+/// A single item in the Sequence.
+#[derive(Copy, Clone)]
+pub struct SequenceItem<'scale, 'info> {
+    // Same implementation under the hood as ArrayItem:
+    item: ArrayItem<'scale, 'info>,
+}
+
+impl<'scale, 'info> SequenceItem<'scale, 'info> {
+    /// The bytes associated with this field.
+    pub fn bytes(&self) -> &'scale [u8] {
+        self.item.bytes()
+    }
+    /// The type ID associated with this field.
+    pub fn type_id(&self) -> u32 {
+        self.item.type_id()
+    }
+    /// Decode this field using a visitor.
+    pub fn decode_with_visitor<V: Visitor>(
+        &self,
+        visitor: V,
+    ) -> Result<V::Value<'scale>, V::Error> {
+        self.item.decode_with_visitor(visitor)
+    }
+    /// Decode this field into a specific type via [`DecodeAsType`].
+    pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
+        self.item.decode_as_type()
     }
 }
 
