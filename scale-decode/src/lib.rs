@@ -13,14 +13,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This crate is concerned with decoding arbitrary values from some
-//! SCALE encoded bytes, given a type ID and type registry that defines
-//! the expected shape that the bytes should be decoded into.
+//! This crate makes it easy to decode SCALE encoded bytes into a custom data structure with the help of [`scale_info`] types.
+//! By using this type information to guide decoding (instead of just trying to decode bytes based on the shape of the target type),
+//! it's possible to be much more flexible in how data is decoded and mapped to some target type.
 //!
-//! The standard approach is to use the [`macro@DecodeAsType`] macro to auto-implement
-//! [`IntoVisitor`] and ultimately [`trait@DecodeAsType`] on your custom struct or enum.
-//! If you'd like to do mroe custom decoding, you can instead implement [`Visitor`] directly
-//! in order to have full control over how to decode some bytes into your custom type..
+//! The main trait used to decode types is a [`Visitor`] trait (example below). By implementing this trait, you can describe how to
+//! take SCALE decoded values and map them to some custom type of your choosing (whether it is a dynamically shaped type or some
+//! static type you'd like to decode into). Implementations of this [`Visitor`] trait exist for many existing Rust types in the standard
+//! library.
+//!
+//! There also exists an [`IntoVisitor`] trait, which is implemented on many existing rust types and maps a given type to some visitor
+//! implementation capable of decoding into it.
+//!
+//! Finally, a wrapper trait, [`DecodeAsType`], is auto-implemented for all types that have an [`IntoVisitor`] implementation,
+//! and whose visitor errors can be turned into a standard [`crate::Error`].
+//!
+//! For custom structs and enums, one can use the [`macro@DecodeAsType`] derive macro to have a [`DecodeAsType`] implementation automatically
+//! generated.
 
 #![deny(missing_docs)]
 
