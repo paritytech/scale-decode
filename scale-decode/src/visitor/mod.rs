@@ -263,7 +263,7 @@ pub trait Visitor: Sized {
 pub trait VisitorExt: Visitor {
     /// Return a [`Visitor`] that is the result of applying some transformation to
     /// the result of the current visitor.
-    fn and_then<F, O, E>(self, f: F) -> ext::AndThen<Self, F, O, E>
+    fn and_then<F, O, E>(self, f: F) -> ext::AndThen<Self, F>
     where
         F: for<'b> FnOnce(Result<Self::Value<'b>, Self::Error>) -> Result<O, E>,
     {

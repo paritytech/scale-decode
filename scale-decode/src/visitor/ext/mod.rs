@@ -17,4 +17,4 @@
 
 mod and_then;
 
-pub use and_then::AndThen;
+pub use and_then::{AndThen, AndThenFn};

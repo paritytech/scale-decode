@@ -187,10 +187,6 @@ macro_rules! impl_into_visitor_like {
                 // The function signature to do the result transformation:
                 Box<dyn FnOnce(Result<$source, <<$source as IntoVisitor>::Visitor as Visitor>::Error>)
                     -> Result<$target $(< $($lt,)* $($param),* >)?, <<$source as IntoVisitor>::Visitor as Visitor>::Error>>,
-                // The output Visitor::Value:
-                $target $(< $($lt,)* $($param),* >)?,
-                // The output Visitor::Error (same as before):
-                <<$source as IntoVisitor>::Visitor as Visitor>::Error
             >;
             fn into_visitor() -> Self::Visitor {
                 // We need to box the function because we can't otherwise name it in the associated type.
@@ -218,14 +214,14 @@ where
     <T as ToOwned>::Owned: IntoVisitor,
 {
     type Visitor = ext::AndThen<
+        // The original visitor type:
         CowVisitor<T>,
+        // Function to map to the desired output:
         Box<
             dyn FnOnce(
                 Result<<T as ToOwned>::Owned, CowVisitorError<T>>,
             ) -> Result<Cow<'a, T>, CowVisitorError<T>>,
         >,
-        Cow<'a, T>,
-        CowVisitorError<T>,
     >;
     fn into_visitor() -> Self::Visitor {
         let f = |res: Result<<T as ToOwned>::Owned, _>| res.map(|val| Cow::Owned(val));
