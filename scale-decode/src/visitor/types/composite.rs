@@ -20,7 +20,6 @@ use crate::{
 use scale_info::{form::PortableForm, Field, PortableRegistry};
 
 /// This represents a composite type.
-#[derive(Copy, Clone)]
 pub struct Composite<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],

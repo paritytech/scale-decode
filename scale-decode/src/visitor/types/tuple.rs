@@ -20,7 +20,6 @@ use crate::{
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
-#[derive(Copy, Clone)]
 pub struct Tuple<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
