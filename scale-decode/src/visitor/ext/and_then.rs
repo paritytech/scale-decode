@@ -41,7 +41,7 @@ where
     /// The error returned on failure.
     type Error: From<DecodeError>;
     /// Call the provided function.
-    fn call<'b>(self, val: Result<V::Value<'b>, V::Error>) -> Result<Self::Value, Self::Error>;
+    fn call(self, val: Result<V::Value<'_>, V::Error>) -> Result<Self::Value, Self::Error>;
 }
 impl<F, V, O, E> AndThenFn<V> for F
 where
@@ -51,7 +51,7 @@ where
 {
     type Value = O;
     type Error = E;
-    fn call<'b>(self, val: Result<V::Value<'b>, V::Error>) -> Result<O, E> {
+    fn call(self, val: Result<V::Value<'_>, V::Error>) -> Result<O, E> {
         (self)(val)
     }
 }
