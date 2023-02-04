@@ -79,7 +79,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         if self.fields.is_empty() {
             return None;
         }
@@ -146,7 +146,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     pub fn decode_with_visitor<V: Visitor>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale>, V::Error> {
+    ) -> Result<V::Value<'scale, 'info>, V::Error> {
         crate::visitor::decode_with_visitor(
             &mut &*self.bytes,
             self.field.ty().id(),
@@ -160,11 +160,11 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Composite<'scale, 'info> {
+impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Composite<'scale, 'info> {
     fn decode_item<'a, V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         self.decode_item(visitor)
     }
 }

@@ -172,13 +172,13 @@ fn generate_enum_impl(
 
         impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
             type Error = #path_to_scale_decode::Error;
-            type Value<'scale> = #path_to_type #ty_generics;
+            type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-            fn visit_variant<'scale>(
+            fn visit_variant<'scale, 'info>(
                 self,
-                value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, '_>,
+                value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
                 type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 #(
                     #variant_ifs
                 )*
@@ -188,21 +188,21 @@ fn generate_enum_impl(
                 }))
             }
             // Allow an enum to be decoded through nested 1-field composites and tuples:
-            fn visit_composite<'scale>(
+            fn visit_composite<'scale, 'info>(
                 self,
-                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, '_>,
+                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                 _type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 if value.remaining() != 1 {
                     return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
                 }
                 value.decode_item(self).unwrap()
             }
-            fn visit_tuple<'scale>(
+            fn visit_tuple<'scale, 'info>(
                 self,
-                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, '_>,
+                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                 _type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 if value.remaining() != 1 {
                     return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
                 }
@@ -315,20 +315,20 @@ fn generate_struct_impl(
 
         impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
             type Error = #path_to_scale_decode::Error;
-            type Value<'scale> = #path_to_type #ty_generics;
+            type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-            fn visit_composite<'scale>(
+            fn visit_composite<'scale, 'info>(
                 self,
-                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, '_>,
+                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                 type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 #visit_composite_body
             }
-            fn visit_tuple<'scale>(
+            fn visit_tuple<'scale, 'info>(
                 self,
-                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, '_>,
+                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                 type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 #visit_tuple_body
             }
         }

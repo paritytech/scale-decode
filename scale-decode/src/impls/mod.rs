@@ -42,7 +42,7 @@ macro_rules! impl_into_visitor {
     ($ty:ident $(< $($lt:lifetime,)* $($param:ident),* >)? $(where $( $where:tt )* )?) => {
         impl $(< $($lt,)* $($param),* >)? crate::IntoVisitor for $ty $(< $($lt,)* $($param),* >)?
         where
-            BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>: for<'b> Visitor<Error = Error, Value<'b> = Self>,
+            BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>: for<'scale, 'info> Visitor<Error = Error, Value<'scale, 'info> = Self>,
             $( $($where)* )?
         {
             type Visitor = BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>;
@@ -56,21 +56,21 @@ macro_rules! impl_into_visitor {
 /// Ignore single-field tuples/composites and visit the single field inside instead.
 macro_rules! visit_single_field_composite_tuple_impls {
     () => {
-        fn visit_composite<'scale>(
+        fn visit_composite<'scale, 'info>(
             self,
-            value: &mut Composite<'scale, '_>,
+            value: &mut Composite<'scale, 'info>,
             _type_id: visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
+        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
                 return self.visit_unexpected(Unexpected::Composite);
             }
             value.decode_item(self).unwrap()
         }
-        fn visit_tuple<'scale>(
+        fn visit_tuple<'scale, 'info>(
             self,
-            value: &mut Tuple<'scale, '_>,
+            value: &mut Tuple<'scale, 'info>,
             _type_id: visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
+        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
                 return self.visit_unexpected(Unexpected::Tuple);
             }
@@ -81,13 +81,13 @@ macro_rules! visit_single_field_composite_tuple_impls {
 
 impl Visitor for BasicVisitor<char> {
     type Error = Error;
-    type Value<'scale> = char;
+    type Value<'scale, 'info> = char;
 
-    fn visit_char<'scale>(
+    fn visit_char<'scale, 'info>(
         self,
         value: char,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(value)
     }
     visit_single_field_composite_tuple_impls!();
@@ -96,13 +96,13 @@ impl_into_visitor!(char);
 
 impl Visitor for BasicVisitor<bool> {
     type Error = Error;
-    type Value<'scale> = bool;
+    type Value<'scale, 'info> = bool;
 
-    fn visit_bool<'scale>(
+    fn visit_bool<'scale, 'info>(
         self,
         value: bool,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(value)
     }
     visit_single_field_composite_tuple_impls!();
@@ -111,13 +111,13 @@ impl_into_visitor!(bool);
 
 impl Visitor for BasicVisitor<String> {
     type Error = Error;
-    type Value<'scale> = String;
+    type Value<'scale, 'info> = String;
 
-    fn visit_str<'scale>(
+    fn visit_str<'scale, 'info>(
         self,
         value: &mut Str<'scale>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let s = value.as_str()?.to_owned();
         Ok(s)
     }
@@ -127,13 +127,13 @@ impl_into_visitor!(String);
 
 impl Visitor for BasicVisitor<Bits> {
     type Error = Error;
-    type Value<'scale> = Bits;
+    type Value<'scale, 'info> = Bits;
 
-    fn visit_bitsequence<'scale>(
+    fn visit_bitsequence<'scale, 'info>(
         self,
         value: &mut BitSequence<'scale>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         value
             .decode()?
             .collect::<Result<Bits, _>>()
@@ -145,24 +145,24 @@ impl_into_visitor!(Bits);
 
 impl<T> Visitor for BasicVisitor<PhantomData<T>> {
     type Error = Error;
-    type Value<'scale> = PhantomData<T>;
+    type Value<'scale, 'info> = PhantomData<T>;
 
-    fn visit_tuple<'scale>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, '_>,
+        value: &mut Tuple<'scale, 'info>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
             Ok(PhantomData)
         } else {
             self.visit_unexpected(visitor::Unexpected::Tuple)
         }
     }
-    fn visit_composite<'scale>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, '_>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
             Ok(PhantomData)
         } else {
@@ -237,21 +237,21 @@ macro_rules! impl_decode_seq_via_collect {
             Error: From<<$generic::Visitor as Visitor>::Error>,
             $( $($where)* )?
         {
-            type Value<'scale> = $ty<$generic>;
+            type Value<'scale, 'info> = $ty<$generic>;
             type Error = Error;
 
-            fn visit_sequence<'scale>(
+            fn visit_sequence<'scale, 'info>(
                 self,
-                value: &mut Sequence<'scale, '_>,
+                value: &mut Sequence<'scale, 'info>,
                 _type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 decode_items_using::<_, $generic>(value).collect()
             }
-            fn visit_array<'scale>(
+            fn visit_array<'scale, 'info>(
                 self,
-                value: &mut Array<'scale, '_>,
+                value: &mut Array<'scale, 'info>,
                 _type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 decode_items_using::<_, $generic>(value).collect()
             }
 
@@ -283,21 +283,21 @@ where
     T: IntoVisitor,
     Error: From<<T::Visitor as Visitor>::Error>,
 {
-    type Value<'scale> = [T; N];
+    type Value<'scale, 'info> = [T; N];
     type Error = Error;
 
-    fn visit_sequence<'scale>(
+    fn visit_sequence<'scale, 'info>(
         self,
-        value: &mut Sequence<'scale, '_>,
+        value: &mut Sequence<'scale, 'info>,
         type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         array_method_impl!(value, type_id, [T; N])
     }
-    fn visit_array<'scale>(
+    fn visit_array<'scale, 'info>(
         self,
-        value: &mut Array<'scale, '_>,
+        value: &mut Array<'scale, 'info>,
         type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         array_method_impl!(value, type_id, [T; N])
     }
 
@@ -320,13 +320,13 @@ where
     Error: From<<T::Visitor as Visitor>::Error>,
 {
     type Error = Error;
-    type Value<'scale> = BTreeMap<String, T>;
+    type Value<'scale, 'info> = BTreeMap<String, T>;
 
-    fn visit_composite<'scale>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, '_>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut map = BTreeMap::new();
         while value.remaining() > 0 {
             // Get the name. If no name, skip over the corresponding value.
@@ -353,13 +353,13 @@ where
     Error: From<<T::Visitor as Visitor>::Error>,
 {
     type Error = Error;
-    type Value<'scale> = Option<T>;
+    type Value<'scale, 'info> = Option<T>;
 
-    fn visit_variant<'scale>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, '_>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Some" && value.fields().remaining() == 1 {
             let val = value
                 .fields()
@@ -389,13 +389,13 @@ where
     Error: From<<E::Visitor as Visitor>::Error>,
 {
     type Error = Error;
-    type Value<'scale> = Result<T, E>;
+    type Value<'scale, 'info> = Result<T, E>;
 
-    fn visit_variant<'scale>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, '_>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Ok" && value.fields().remaining() == 1 {
             let val = value
                 .fields()
@@ -426,11 +426,11 @@ impl_into_visitor!(Result<T, E>);
 // Impl Visitor/DecodeAsType for all primitive number types
 macro_rules! visit_number_fn_impl {
     ($name:ident : $ty:ty where |$res:ident| $expr:expr) => {
-        fn $name<'scale>(
+        fn $name<'scale, 'info>(
             self,
             value: $ty,
             _type_id: visitor::TypeId,
-        ) -> Result<Self::Value<'scale>, Self::Error> {
+        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             let $res = value;
             let n = $expr.ok_or_else(|| {
                 Error::new(ErrorKind::NumberOutOfRange { value: value.to_string() })
@@ -444,7 +444,7 @@ macro_rules! visit_number_impl {
         #[allow(clippy::useless_conversion)]
         impl Visitor for BasicVisitor<$ty> {
             type Error = Error;
-            type Value<'scale> = $ty;
+            type Value<'scale, 'info> = $ty;
 
             visit_number_fn_impl!(visit_u8: u8 where |$res| $expr);
             visit_number_fn_impl!(visit_u16: u16 where |$res| $expr);
@@ -530,35 +530,35 @@ macro_rules! impl_decode_tuple {
             Error: From<<$t::Visitor as Visitor>::Error>,
         )*
         {
-            type Value<'scale> = ($($t,)*);
+            type Value<'scale, 'info> = ($($t,)*);
             type Error = Error;
 
-            fn visit_composite<'scale>(
+            fn visit_composite<'scale, 'info>(
                 self,
-                value: &mut Composite<'scale, '_>,
+                value: &mut Composite<'scale, 'info>,
                 type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value, type_id)
             }
-            fn visit_tuple<'scale>(
+            fn visit_tuple<'scale, 'info>(
                 self,
-                value: &mut Tuple<'scale, '_>,
+                value: &mut Tuple<'scale, 'info>,
                 type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value, type_id)
             }
-            fn visit_sequence<'scale>(
+            fn visit_sequence<'scale, 'info>(
                 self,
-                value: &mut Sequence<'scale, '_>,
+                value: &mut Sequence<'scale, 'info>,
                 type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value, type_id)
             }
-            fn visit_array<'scale>(
+            fn visit_array<'scale, 'info>(
                 self,
-                value: &mut Array<'scale, '_>,
+                value: &mut Array<'scale, 'info>,
                 type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale>, Self::Error> {
+            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value, type_id)
             }
         }
@@ -596,13 +596,13 @@ impl_decode_tuple!(A B C D E F G H I J K L M N O P Q R S T);
 // ^ Note: We make sure to support as many as parity-scale-codec's impls do.
 
 /// This takes anything that can decode a stream if items and return an iterator over them.
-fn decode_items_using<'a, 'scale, D: DecodeItemIterator<'scale>, T>(
+fn decode_items_using<'a, 'scale, 'info, D: DecodeItemIterator<'scale, 'info>, T>(
     decoder: &'a mut D,
 ) -> impl Iterator<Item = Result<T, Error>> + 'a
 where
     T: IntoVisitor,
     Error: From<<T::Visitor as Visitor>::Error>,
-    D: DecodeItemIterator<'scale>,
+    D: DecodeItemIterator<'scale, 'info>,
 {
     let mut idx = 0;
     std::iter::from_fn(move || {

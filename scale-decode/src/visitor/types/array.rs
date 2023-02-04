@@ -65,7 +65,7 @@ impl<'scale, 'info> Array<'scale, 'info> {
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         if self.remaining == 0 {
             return None;
         }
@@ -121,7 +121,7 @@ impl<'scale, 'info> ArrayItem<'scale, 'info> {
     pub fn decode_with_visitor<V: Visitor>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale>, V::Error> {
+    ) -> Result<V::Value<'scale, 'info>, V::Error> {
         crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
@@ -130,11 +130,11 @@ impl<'scale, 'info> ArrayItem<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale> for Array<'scale, 'info> {
+impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Array<'scale, 'info> {
     fn decode_item<'a, V: Visitor>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         self.decode_item(visitor)
     }
 }

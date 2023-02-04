@@ -81,7 +81,7 @@ where
 /// an error type that converts into [`Error`], then you'll also get a [`DecodeAsType`] implementation for free.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type Visitor: for<'b> visitor::Visitor<Value<'b> = Self>;
+    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self>;
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
 }

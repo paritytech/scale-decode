@@ -43,18 +43,18 @@ impl IntoVisitor for Foo {
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
 impl Visitor for FooVisitor {
-    type Value<'scale> = Foo;
+    type Value<'scale, 'info> = Foo;
     type Error = Error;
 
     // Support decoding from composite types. We support decoding from either named or
     // unnamed fields (matching by field index if unnamed) and add context to errors via
     // `.map_err(|e| e.at_x(..))` calls to give back more precise inforamtion about where
     // decoding failed, if it does.
-    fn visit_composite<'scale>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Composite<'scale, '_>,
+        value: &mut scale_decode::visitor::types::Composite<'scale, 'info>,
         type_id: scale_decode::visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
             return self.visit_tuple(&mut value.as_tuple(), type_id);
@@ -77,11 +77,11 @@ impl Visitor for FooVisitor {
     }
 
     // If we like, we can also support decoding from tuples of matching lengths:
-    fn visit_tuple<'scale>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Tuple<'scale, '_>,
+        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info>,
         type_id: scale_decode::visitor::TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() != 2 {
             return Err(Error::new(ErrorKind::WrongLength {
                 actual: type_id.0,

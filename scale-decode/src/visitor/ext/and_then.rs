@@ -41,17 +41,17 @@ where
     /// The error returned on failure.
     type Error: From<DecodeError>;
     /// Call the provided function.
-    fn call(self, val: Result<V::Value<'_>, V::Error>) -> Result<Self::Value, Self::Error>;
+    fn call(self, val: Result<V::Value<'_, '_>, V::Error>) -> Result<Self::Value, Self::Error>;
 }
 impl<F, V, O, E> AndThenFn<V> for F
 where
     V: Visitor,
-    F: for<'b> FnOnce(Result<V::Value<'b>, V::Error>) -> Result<O, E>,
+    F: for<'scale, 'info> FnOnce(Result<V::Value<'scale, 'info>, V::Error>) -> Result<O, E>,
     E: From<DecodeError>,
 {
     type Value = O;
     type Error = E;
-    fn call(self, val: Result<V::Value<'_>, V::Error>) -> Result<O, E> {
+    fn call(self, val: Result<V::Value<'_, '_>, V::Error>) -> Result<O, E> {
         (self)(val)
     }
 }
@@ -62,189 +62,189 @@ where
     V: Visitor,
     F: AndThenFn<V>,
 {
-    type Value<'scale> = F::Value;
+    type Value<'scale, 'info> = F::Value;
     type Error = F::Error;
 
-    fn visit_bool<'scale>(
+    fn visit_bool<'scale, 'info>(
         self,
         value: bool,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_bool(value, type_id))
     }
-    fn visit_char<'scale>(
+    fn visit_char<'scale, 'info>(
         self,
         value: char,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_char(value, type_id))
     }
-    fn visit_u8<'scale>(
+    fn visit_u8<'scale, 'info>(
         self,
         value: u8,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u8(value, type_id))
     }
-    fn visit_u16<'scale>(
+    fn visit_u16<'scale, 'info>(
         self,
         value: u16,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u16(value, type_id))
     }
-    fn visit_u32<'scale>(
+    fn visit_u32<'scale, 'info>(
         self,
         value: u32,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u32(value, type_id))
     }
-    fn visit_u64<'scale>(
+    fn visit_u64<'scale, 'info>(
         self,
         value: u64,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u64(value, type_id))
     }
-    fn visit_u128<'scale>(
+    fn visit_u128<'scale, 'info>(
         self,
         value: u128,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u128(value, type_id))
     }
-    fn visit_u256(
+    fn visit_u256<'info>(
         self,
         value: &'_ [u8; 32],
         type_id: TypeId,
-    ) -> Result<Self::Value<'_>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_u256(value, type_id))
     }
-    fn visit_i8<'scale>(
+    fn visit_i8<'scale, 'info>(
         self,
         value: i8,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i8(value, type_id))
     }
-    fn visit_i16<'scale>(
+    fn visit_i16<'scale, 'info>(
         self,
         value: i16,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i16(value, type_id))
     }
-    fn visit_i32<'scale>(
+    fn visit_i32<'scale, 'info>(
         self,
         value: i32,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i32(value, type_id))
     }
-    fn visit_i64<'scale>(
+    fn visit_i64<'scale, 'info>(
         self,
         value: i64,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i64(value, type_id))
     }
-    fn visit_i128<'scale>(
+    fn visit_i128<'scale, 'info>(
         self,
         value: i128,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i128(value, type_id))
     }
-    fn visit_i256(
+    fn visit_i256<'info>(
         self,
         value: &'_ [u8; 32],
         type_id: TypeId,
-    ) -> Result<Self::Value<'_>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_i256(value, type_id))
     }
-    fn visit_sequence<'scale>(
+    fn visit_sequence<'scale, 'info>(
         self,
-        value: &mut Sequence<'scale, '_>,
+        value: &mut Sequence<'scale, 'info>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_sequence(value, type_id))
     }
-    fn visit_composite<'scale>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, '_>,
+        value: &mut Composite<'scale, 'info>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_composite(value, type_id))
     }
-    fn visit_tuple<'scale>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, '_>,
+        value: &mut Tuple<'scale, 'info>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_tuple(value, type_id))
     }
-    fn visit_str<'scale>(
+    fn visit_str<'scale, 'info>(
         self,
         value: &mut Str<'scale>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_str(value, type_id))
     }
-    fn visit_variant<'scale>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, '_>,
+        value: &mut Variant<'scale, 'info>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_variant(value, type_id))
     }
-    fn visit_array<'scale>(
+    fn visit_array<'scale, 'info>(
         self,
-        value: &mut Array<'scale, '_>,
+        value: &mut Array<'scale, 'info>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_array(value, type_id))
     }
-    fn visit_bitsequence<'scale>(
+    fn visit_bitsequence<'scale, 'info>(
         self,
         value: &mut BitSequence<'scale>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_bitsequence(value, type_id))
     }
-    fn visit_compact_u8<'scale>(
+    fn visit_compact_u8<'scale, 'info>(
         self,
         value: Compact<u8>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_compact_u8(value, type_id))
     }
-    fn visit_compact_u16<'scale>(
+    fn visit_compact_u16<'scale, 'info>(
         self,
         value: Compact<u16>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_compact_u16(value, type_id))
     }
-    fn visit_compact_u32<'scale>(
+    fn visit_compact_u32<'scale, 'info>(
         self,
         value: Compact<u32>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_compact_u32(value, type_id))
     }
-    fn visit_compact_u64<'scale>(
+    fn visit_compact_u64<'scale, 'info>(
         self,
         value: Compact<u64>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_compact_u64(value, type_id))
     }
-    fn visit_compact_u128<'scale>(
+    fn visit_compact_u128<'scale, 'info>(
         self,
         value: Compact<u128>,
         type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.mapper.call(self.visitor.visit_compact_u128(value, type_id))
     }
 }

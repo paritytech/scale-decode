@@ -55,147 +55,147 @@ enum Value {
 // values into this type:
 struct ValueVisitor;
 impl visitor::Visitor for ValueVisitor {
-    type Value<'scale> = Value;
+    type Value<'scale, 'info> = Value;
     type Error = visitor::DecodeError;
 
-    fn visit_bool<'scale>(
+    fn visit_bool<'scale, 'info>(
         self,
         value: bool,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Bool(value))
     }
-    fn visit_char<'scale>(
+    fn visit_char<'scale, 'info>(
         self,
         value: char,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Char(value))
     }
-    fn visit_u8<'scale>(
+    fn visit_u8<'scale, 'info>(
         self,
         value: u8,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U8(value))
     }
-    fn visit_u16<'scale>(
+    fn visit_u16<'scale, 'info>(
         self,
         value: u16,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U16(value))
     }
-    fn visit_u32<'scale>(
+    fn visit_u32<'scale, 'info>(
         self,
         value: u32,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U32(value))
     }
-    fn visit_u64<'scale>(
+    fn visit_u64<'scale, 'info>(
         self,
         value: u64,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U64(value))
     }
-    fn visit_u128<'scale>(
+    fn visit_u128<'scale, 'info>(
         self,
         value: u128,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U128(value))
     }
-    fn visit_u256(
+    fn visit_u256<'info>(
         self,
         value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'_>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
         Ok(Value::U256(*value))
     }
-    fn visit_i8<'scale>(
+    fn visit_i8<'scale, 'info>(
         self,
         value: i8,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I8(value))
     }
-    fn visit_i16<'scale>(
+    fn visit_i16<'scale, 'info>(
         self,
         value: i16,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I16(value))
     }
-    fn visit_i32<'scale>(
+    fn visit_i32<'scale, 'info>(
         self,
         value: i32,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I32(value))
     }
-    fn visit_i64<'scale>(
+    fn visit_i64<'scale, 'info>(
         self,
         value: i64,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I64(value))
     }
-    fn visit_i128<'scale>(
+    fn visit_i128<'scale, 'info>(
         self,
         value: i128,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I128(value))
     }
-    fn visit_i256(
+    fn visit_i256<'info>(
         self,
         value: &'_ [u8; 32],
         _type_id: TypeId,
-    ) -> Result<Self::Value<'_>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
         Ok(Value::I256(*value))
     }
-    fn visit_compact_u8<'scale>(
+    fn visit_compact_u8<'scale, 'info>(
         self,
         value: Compact<u8>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::CompactU8(value.value()))
     }
-    fn visit_compact_u16<'scale>(
+    fn visit_compact_u16<'scale, 'info>(
         self,
         value: Compact<u16>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::CompactU16(value.value()))
     }
-    fn visit_compact_u32<'scale>(
+    fn visit_compact_u32<'scale, 'info>(
         self,
         value: Compact<u32>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::CompactU32(value.value()))
     }
-    fn visit_compact_u64<'scale>(
+    fn visit_compact_u64<'scale, 'info>(
         self,
         value: Compact<u64>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::CompactU64(value.value()))
     }
-    fn visit_compact_u128<'scale>(
+    fn visit_compact_u128<'scale, 'info>(
         self,
         value: Compact<u128>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::CompactU128(value.value()))
     }
-    fn visit_sequence<'scale>(
+    fn visit_sequence<'scale, 'info>(
         self,
-        value: &mut Sequence<'scale, '_>,
+        value: &mut Sequence<'scale, 'info>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor) {
             let val = val?;
@@ -203,11 +203,11 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Sequence(vals))
     }
-    fn visit_composite<'scale>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, '_>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         for item in value.by_ref() {
             let item = item?;
@@ -217,11 +217,11 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Composite(vals))
     }
-    fn visit_tuple<'scale>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, '_>,
+        value: &mut Tuple<'scale, 'info>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor) {
             let val = val?;
@@ -229,18 +229,18 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Tuple(vals))
     }
-    fn visit_str<'scale>(
+    fn visit_str<'scale, 'info>(
         self,
         value: &mut Str<'scale>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Str(value.as_str()?.to_owned()))
     }
-    fn visit_variant<'scale>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, '_>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
         for item in fields.by_ref() {
@@ -251,11 +251,11 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Variant(value.name().to_owned(), vals))
     }
-    fn visit_array<'scale>(
+    fn visit_array<'scale, 'info>(
         self,
-        value: &mut Array<'scale, '_>,
+        value: &mut Array<'scale, 'info>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor) {
             let val = val?;
@@ -263,11 +263,11 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Array(vals))
     }
-    fn visit_bitsequence<'scale>(
+    fn visit_bitsequence<'scale, 'info>(
         self,
         value: &mut BitSequence<'scale>,
         _type_id: TypeId,
-    ) -> Result<Self::Value<'scale>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
         Ok(Value::BitSequence(bools?))
     }
