@@ -25,12 +25,12 @@ impl<'info, 'c, T: Copy> Compact<'info, 'c, T> {
     pub(crate) fn new(val: T, locations: &'c [CompactLocation<'info>]) -> Compact<'info, 'c, T> {
         Compact { val, locations }
     }
-    /// Return the value that was compact-encoded
+    /// Return the value that was compact-encoded.
     pub fn value(&self) -> T {
         self.val
     }
     /// Compact values can be nested inside named or unnamed fields in structs.
-    /// This provides back a slice of
+    /// This provides back a slice of these locations, in case such nesting matters.
     pub fn locations(&self) -> &'c [CompactLocation<'info>] {
         self.locations
     }

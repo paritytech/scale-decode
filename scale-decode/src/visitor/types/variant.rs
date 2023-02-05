@@ -60,7 +60,7 @@ impl<'scale, 'info> Variant<'scale, 'info> {
         self.fields.remaining_bytes()
     }
     /// The name of the variant.
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &'info str {
         self.variant.name()
     }
     /// The index of the variant.
