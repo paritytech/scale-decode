@@ -46,18 +46,18 @@ impl<'scale, 'info> Variant<'scale, 'info> {
         Ok(Variant { bytes, variant, fields })
     }
     /// Skip over all bytes associated with this variant. After calling this,
-    /// [`Self::remaining_bytes()`] will represent the bytes after this variant.
+    /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         self.fields.skip_decoding()
     }
     /// The bytes representing this sequence and anything following it.
-    pub fn bytes(&self) -> &'scale [u8] {
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
         self.bytes
     }
     /// The bytes that have not yet been decoded in this variant (this never includes the
-    /// variant index at the front).
-    pub fn remaining_bytes(&self) -> &'scale [u8] {
-        self.fields.remaining_bytes()
+    /// variant index at the front) and anything following it.
+    pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
+        self.fields.bytes_from_undecoded()
     }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {

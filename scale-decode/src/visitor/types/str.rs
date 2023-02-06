@@ -41,7 +41,7 @@ impl<'scale> Str<'scale> {
         self.len
     }
     /// The bytes left in the input, starting from this string.
-    pub fn bytes(&self) -> &'scale [u8] {
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
         self.bytes
     }
     /// The bytes remaining in the input after this string.
@@ -57,9 +57,5 @@ impl<'scale> Str<'scale> {
         let start = self.compact_len;
         let end = start + self.len;
         std::str::from_utf8(&self.bytes[start..end]).map_err(DecodeError::InvalidStr)
-    }
-    /// Return the raw bytes representing this string.
-    pub fn as_bytes(&self) -> &'scale [u8] {
-        self.bytes
     }
 }

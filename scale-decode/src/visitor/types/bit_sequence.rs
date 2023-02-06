@@ -23,7 +23,7 @@ use scale_bits::{
 pub struct BitSequence<'scale> {
     format: Format,
     bytes: &'scale [u8],
-    // If we decode the bite sequence, we'll populate this too to cache it, since
+    // If we decode the bit sequence, we'll populate this too to cache it, since
     // we must decode fully to figure it out at the mo.
     bytes_after: Option<&'scale [u8]>,
 }
@@ -31,6 +31,11 @@ pub struct BitSequence<'scale> {
 impl<'scale> BitSequence<'scale> {
     pub(crate) fn new(format: Format, bytes: &'scale [u8]) -> Self {
         BitSequence { format, bytes, bytes_after: None }
+    }
+
+    /// The bytes left in the input, starting from this bit sequence.
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
+        self.bytes
     }
 
     /// The bytes after this bit sequence. Note that at present, this needs to
@@ -46,7 +51,7 @@ impl<'scale> BitSequence<'scale> {
     }
 
     /// Return a decoder to decode the bits in this bit sequence.
-    pub fn decode(&mut self) -> Result<Decoder<'_>, DecodeError> {
+    pub fn decode(&mut self) -> Result<Decoder<'scale>, DecodeError> {
         let decoder = decode_using_format_from(self.bytes, self.format)?;
         self.bytes_after = Some(&self.bytes[decoder.encoded_size()..]);
         Ok(decoder)

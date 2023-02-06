@@ -36,7 +36,7 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         Tuple { bytes, item_bytes: bytes, fields: fields.into(), types }
     }
     /// Skip over all bytes associated with this tuple. After calling this,
-    /// [`Self::remaining_bytes()`] will represent the bytes after this tuple.
+    /// [`Self::bytes_from_undecoded()`] will represent the bytes after this tuple.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor).transpose()?;
@@ -44,11 +44,12 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         Ok(())
     }
     /// The bytes representing this tuple and anything following it.
-    pub fn bytes(&self) -> &'scale [u8] {
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
         self.bytes
     }
-    /// The bytes that have not yet been decoded in this tuple.
-    pub fn remaining_bytes(&self) -> &'scale [u8] {
+    /// The bytes that have not yet been decoded in this tuple, and anything
+    /// following it.
+    pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
         self.item_bytes
     }
     /// The number of un-decoded items remaining in the tuple.

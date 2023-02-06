@@ -44,18 +44,18 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
         Ok(Sequence { bytes, values: Array::new(item_bytes, type_id, len, types) })
     }
     /// Skip over all bytes associated with this sequence. After calling this,
-    /// [`Self::remaining_bytes()`] will represent the bytes after this sequence.
+    /// [`Self::bytes_from_undecoded()`] will represent the bytes after this sequence.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         self.values.skip_decoding()
     }
     /// The bytes representing this sequence and anything following it.
-    pub fn bytes(&self) -> &'scale [u8] {
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
         self.bytes
     }
     /// The bytes that have not yet been decoded in this sequence (this never includes the
-    /// compact length preceeding the sequence items).
-    pub fn remaining_bytes(&self) -> &'scale [u8] {
-        self.values.remaining_bytes()
+    /// compact length preceeding the sequence items) and anything following it.
+    pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
+        self.values.bytes_from_undecoded()
     }
     /// The number of un-decoded items remaining in this sequence.
     pub fn remaining(&self) -> usize {
@@ -86,22 +86,22 @@ pub struct SequenceItem<'scale, 'info> {
 }
 
 impl<'scale, 'info> SequenceItem<'scale, 'info> {
-    /// The bytes associated with this field.
+    /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.item.bytes()
     }
-    /// The type ID associated with this field.
+    /// The type ID associated with this item.
     pub fn type_id(&self) -> u32 {
         self.item.type_id()
     }
-    /// Decode this field using a visitor.
+    /// Decode this item using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
         self.item.decode_with_visitor(visitor)
     }
-    /// Decode this field into a specific type via [`DecodeAsType`].
+    /// Decode this item into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
         self.item.decode_as_type()
     }

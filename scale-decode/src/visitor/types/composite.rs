@@ -36,7 +36,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         Composite { bytes, item_bytes: bytes, fields, types }
     }
     /// Skip over all bytes associated with this composite type. After calling this,
-    /// [`Self::remaining_bytes()`] will represent the bytes after this composite type.
+    /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while !self.fields.is_empty() {
             self.decode_item(IgnoreVisitor).transpose()?;
@@ -44,11 +44,12 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         Ok(())
     }
     /// The bytes representing this composite type and anything following it.
-    pub fn bytes(&self) -> &'scale [u8] {
+    pub fn bytes_from_start(&self) -> &'scale [u8] {
         self.bytes
     }
-    /// The bytes that have not yet been decoded in this composite type.
-    pub fn remaining_bytes(&self) -> &'scale [u8] {
+    /// The bytes that have not yet been decoded in this composite type and anything
+    /// following it.
+    pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
         self.item_bytes
     }
     /// The number of un-decoded items remaining in this composite type.

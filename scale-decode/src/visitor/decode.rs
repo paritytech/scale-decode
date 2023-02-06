@@ -64,7 +64,7 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
 
     // Skip over any bytes that the visitor chose not to decode:
     items.skip_decoding()?;
-    *data = items.remaining_bytes();
+    *data = items.bytes_from_undecoded();
 
     res
 }
@@ -81,7 +81,7 @@ fn decode_variant_value<'scale, 'info, V: Visitor>(
 
     // Skip over any bytes that the visitor chose not to decode:
     variant.skip_decoding()?;
-    *data = variant.remaining_bytes();
+    *data = variant.bytes_from_undecoded();
 
     res
 }
@@ -98,7 +98,7 @@ fn decode_sequence_value<'scale, 'info, V: Visitor>(
 
     // Skip over any bytes that the visitor chose not to decode:
     items.skip_decoding()?;
-    *data = items.remaining_bytes();
+    *data = items.bytes_from_undecoded();
 
     res
 }
@@ -116,7 +116,7 @@ fn decode_array_value<'scale, 'info, V: Visitor>(
 
     // Skip over any bytes that the visitor chose not to decode:
     arr.skip_decoding()?;
-    *data = arr.remaining_bytes();
+    *data = arr.bytes_from_undecoded();
 
     res
 }
@@ -133,7 +133,7 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
 
     // Skip over any bytes that the visitor chose not to decode:
     items.skip_decoding()?;
-    *data = items.remaining_bytes();
+    *data = items.bytes_from_undecoded();
 
     res
 }
