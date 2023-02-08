@@ -33,8 +33,13 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: u32,
     types: &'info PortableRegistry,
-    visitor: V,
+    mut visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    // Provide option to "bail out" and do something custom first:
+    if let Some(res) = visitor.unchecked_decode_as_type(data, TypeId(ty_id), types) {
+        return res;
+    }
+
     let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
     let ty_id = TypeId(ty_id);
 

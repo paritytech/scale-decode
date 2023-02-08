@@ -29,10 +29,29 @@ pub use decode::decode_with_visitor;
 /// to decide what to do with these values.
 pub trait Visitor: Sized {
     /// The type of the value to hand back from the [`decode_with_visitor()`] function.
-    type Value<'scal, 'info>;
+    type Value<'scale, 'info>;
     /// The error type (which we must be able to convert a combination of [`Self`] and [`DecodeError`]s
     /// into, to handle any internal errors that crop up trying to decode things).
     type Error: From<DecodeError>;
+
+    /// This method is called immediately upon running [`decode_with_visitor()`]. If it returns
+    /// `Some(result)`, we'll just hand back that result and will not visit anything else. If it returns
+    /// `None`, as is the default, we'll just visit the data as normal. This method exists to recover the
+    /// flexibility lost from not being able to implement [`crate::DecodeAsType`] manually.
+    ///
+    /// # Warning
+    ///
+    /// Unlike the other `visit_*` methods, it is completely up to the implementor to decode and advance the
+    /// bytes in a sensible way, and thus also possible for the implementor to screw this up. As a result,
+    /// It's suggested that you don't implement this unlesss you know what you're doing.
+    fn unchecked_decode_as_type<'scale, 'info>(
+        &mut self,
+        _input: &mut &'scale [u8],
+        _type_id: TypeId,
+        _types: &'info scale_info::PortableRegistry,
+    ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
+        None
+    }
 
     /// This is called when a visitor function that you've not provided an implementation is called.
     /// You are provided an enum value corresponding to the function call, and can decide what to return
@@ -1013,5 +1032,59 @@ mod test {
         let decoded =
             decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyMapVisitor).unwrap();
         assert_eq!(decoded, BTreeMap::from_iter([("hello", "hi"), ("world", "planet")]));
+    }
+
+    #[test]
+    fn bailout_works() {
+        let input = ("hello", "world");
+        let (ty_id, types) = make_type::<(&str, &str)>();
+        let input_encoded = input.encode();
+
+        // Just return the scale encoded bytes and type ID to prove
+        // that we can successfully "bail out".
+        struct BailOutVisitor;
+        impl Visitor for BailOutVisitor {
+            type Value<'scale, 'info> = (&'scale [u8], u32);
+            type Error = DecodeError;
+
+            fn unchecked_decode_as_type<'scale, 'info>(
+                &mut self,
+                input: &mut &'scale [u8],
+                type_id: TypeId,
+                _types: &'info scale_info::PortableRegistry,
+            ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
+                Some(Ok((*input, type_id.0)))
+            }
+        }
+
+        let decoded =
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, BailOutVisitor).unwrap();
+        assert_eq!(decoded, (&*input_encoded, ty_id));
+
+        // We can also use this functionality to "fall-back" to a Decode impl
+        // (though obviously with the caveat that this may be incorrect).
+        struct CodecDecodeVisitor<T>(std::marker::PhantomData<T>);
+        impl<T: codec::Decode> Visitor for CodecDecodeVisitor<T> {
+            type Value<'scale, 'info> = T;
+            type Error = DecodeError;
+
+            fn unchecked_decode_as_type<'scale, 'info>(
+                &mut self,
+                input: &mut &'scale [u8],
+                _type_id: TypeId,
+                _types: &'info scale_info::PortableRegistry,
+            ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
+                Some(T::decode(input).map_err(|e| e.into()))
+            }
+        }
+
+        let decoded: (String, String) = decode_with_visitor(
+            &mut &*input_encoded,
+            ty_id,
+            &types,
+            CodecDecodeVisitor(std::marker::PhantomData),
+        )
+        .unwrap();
+        assert_eq!(decoded, ("hello".to_string(), "world".to_string()));
     }
 }
