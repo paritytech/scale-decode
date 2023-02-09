@@ -16,7 +16,6 @@
 //! The [`Visitor`] trait and associated types.
 
 mod decode;
-pub mod ext;
 pub mod types;
 
 use scale_info::form::PortableForm;
@@ -277,17 +276,6 @@ pub trait Visitor: Sized {
         self.visit_u128(value.value(), type_id)
     }
 }
-
-/// An extension trait that implements helper methods on any [`Visitor`]
-pub trait VisitorExt: Visitor {
-    /// Return a [`Visitor`] that is the result of applying some transformation to
-    /// the result of the current visitor.
-    fn and_then<F: ext::AndThenFn<Self>>(self, f: F) -> ext::AndThen<Self, F> {
-        ext::AndThen::new(self, f)
-    }
-}
-
-impl<V> VisitorExt for V where V: Visitor {}
 
 /// An error decoding SCALE bytes.
 #[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]

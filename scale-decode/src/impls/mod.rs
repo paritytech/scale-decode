@@ -15,7 +15,10 @@
 
 use crate::{
     error::{Error, ErrorKind},
-    visitor::{self, ext, types::*, DecodeItemIterator, Unexpected, Visitor, VisitorExt},
+    visitor::{
+        self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, TypeId,
+        Unexpected, Visitor,
+    },
     IntoVisitor,
 };
 use core::num::{
@@ -176,24 +179,28 @@ impl_into_visitor!(PhantomData<T>);
 // `IntoVisitor` and using the `AndThen` combinator to map from an existing one to the desired output.
 macro_rules! impl_into_visitor_like {
     ($target:ident $(< $($lt:lifetime,)* $($param:ident),* >)? as $source:ty $( [where $($where:tt)*] )?: $mapper:expr) => {
-        impl $(< $($lt,)* $($param),* >)? IntoVisitor for $target $(< $($lt,)* $($param),* >)?
+        impl $(< $($lt,)* $($param),* >)? Visitor for BasicVisitor<$target $(< $($lt,)* $($param),* >)?>
         where
             $source: IntoVisitor,
             $( $($where)* )?
         {
-            type Visitor = ext::AndThen<
-                // The input visitor:
-                <$source as IntoVisitor>::Visitor,
-                // The function signature to do the result transformation:
-                Box<dyn FnOnce(Result<$source, <<$source as IntoVisitor>::Visitor as Visitor>::Error>)
-                    -> Result<$target $(< $($lt,)* $($param),* >)?, <<$source as IntoVisitor>::Visitor as Visitor>::Error>>,
-            >;
-            fn into_visitor() -> Self::Visitor {
-                // We need to box the function because we can't otherwise name it in the associated type.
-                let f = |res: Result<$source, <<$source as IntoVisitor>::Visitor as Visitor>::Error>| res.map($mapper);
-                <$source as IntoVisitor>::into_visitor().and_then(Box::new(f))
+            type Value<'scale, 'info> = $target $(< $($lt,)* $($param),* >)?;
+            type Error = <<$source as IntoVisitor>::Visitor as Visitor>::Error;
+
+            fn unchecked_decode_as_type<'scale, 'info>(
+                self,
+                input: &mut &'scale [u8],
+                type_id: TypeId,
+                types: &'info scale_info::PortableRegistry,
+            ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+                // Use the source visitor to decode into some type:
+                let inner_res = decode_with_visitor(input, type_id.0, types, <$source>::into_visitor());
+                // map this type into our desired output and return it:
+                let res = inner_res.map($mapper);
+                DecodeAsTypeResult::Decoded(res)
             }
         }
+        impl_into_visitor!($target $(< $($lt,)* $($param),* >)?);
     }
 }
 
@@ -206,26 +213,36 @@ impl_into_visitor_like!(RangeInclusive<T> as (T, T): |res: (T,T)| res.0..=res.1)
 
 // A custom implementation for `Cow` because it's rather tricky; the visitor we want is whatever the
 // `ToOwned` value for the Cow is, and Cow's have specific constraints, too.
-type CowVisitor<T> = <<T as ToOwned>::Owned as IntoVisitor>::Visitor;
-type CowVisitorError<T> = <CowVisitor<T> as Visitor>::Error;
+impl<'a, T> Visitor for BasicVisitor<Cow<'a, T>>
+where
+    T: 'a + ToOwned + ?Sized,
+    <T as ToOwned>::Owned: IntoVisitor,
+{
+    type Value<'scale, 'info> = Cow<'a, T>;
+    type Error = <<<T as ToOwned>::Owned as IntoVisitor>::Visitor as Visitor>::Error;
+
+    fn unchecked_decode_as_type<'scale, 'info>(
+        self,
+        input: &mut &'scale [u8],
+        type_id: TypeId,
+        types: &'info scale_info::PortableRegistry,
+    ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+        // Use the ToOwned visitor to decode into some type:
+        let inner_res =
+            decode_with_visitor(input, type_id.0, types, <<T as ToOwned>::Owned>::into_visitor());
+        // map this type into our owned Cow to return:
+        let res = inner_res.map(Cow::Owned);
+        DecodeAsTypeResult::Decoded(res)
+    }
+}
 impl<'a, T> IntoVisitor for Cow<'a, T>
 where
     T: 'a + ToOwned + ?Sized,
     <T as ToOwned>::Owned: IntoVisitor,
 {
-    type Visitor = ext::AndThen<
-        // The original visitor type:
-        CowVisitor<T>,
-        // Function to map to the desired output:
-        Box<
-            dyn FnOnce(
-                Result<<T as ToOwned>::Owned, CowVisitorError<T>>,
-            ) -> Result<Cow<'a, T>, CowVisitorError<T>>,
-        >,
-    >;
+    type Visitor = BasicVisitor<Cow<'a, T>>;
     fn into_visitor() -> Self::Visitor {
-        let f = |res: Result<<T as ToOwned>::Owned, _>| res.map(|val| Cow::Owned(val));
-        <<T as ToOwned>::Owned>::into_visitor().and_then(Box::new(f))
+        BasicVisitor { _marker: std::marker::PhantomData }
     }
 }
 

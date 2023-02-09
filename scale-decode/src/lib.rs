@@ -42,7 +42,7 @@ pub mod visitor;
 use scale_info::PortableRegistry;
 
 pub use crate::error::Error;
-pub use visitor::{Visitor, VisitorExt};
+pub use visitor::Visitor;
 
 #[cfg(feature = "derive")]
 pub use scale_decode_derive::DecodeAsType;
