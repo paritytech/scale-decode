@@ -17,12 +17,13 @@ use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType,
 };
-use scale_info::{form::PortableForm, Field, PortableRegistry};
+use scale_info::{form::PortableForm, Field, Path, PortableRegistry};
 
 /// This represents a composite type.
 pub struct Composite<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
+    path: &'info Path<PortableForm>,
     fields: &'info [Field<PortableForm>],
     types: &'info PortableRegistry,
 }
@@ -30,10 +31,11 @@ pub struct Composite<'scale, 'info> {
 impl<'scale, 'info> Composite<'scale, 'info> {
     pub(crate) fn new(
         bytes: &'scale [u8],
+        path: &'info Path<PortableForm>,
         fields: &'info [Field<PortableForm>],
         types: &'info PortableRegistry,
     ) -> Composite<'scale, 'info> {
-        Composite { bytes, item_bytes: bytes, fields, types }
+        Composite { bytes, path, item_bytes: bytes, fields, types }
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
@@ -55,6 +57,10 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// The number of un-decoded items remaining in this composite type.
     pub fn remaining(&self) -> usize {
         self.fields.len()
+    }
+    /// Path to this type.
+    pub fn path(&self) -> &'info Path<PortableForm> {
+        self.path
     }
     /// The yet-to-be-decoded fields still present in this composite type.
     pub fn fields(&self) -> &'info [Field<PortableForm>] {

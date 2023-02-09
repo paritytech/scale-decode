@@ -20,7 +20,7 @@ use crate::visitor::{
 };
 use codec::{self, Decode};
 use scale_info::{
-    form::PortableForm, PortableRegistry, TypeDef, TypeDefArray, TypeDefBitSequence,
+    form::PortableForm, Path, PortableRegistry, TypeDef, TypeDefArray, TypeDefBitSequence,
     TypeDefCompact, TypeDefComposite, TypeDefPrimitive, TypeDefSequence, TypeDefTuple,
     TypeDefVariant,
 };
@@ -43,11 +43,14 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
 
     let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
     let ty_id = TypeId(ty_id);
+    let path = ty.path();
 
     match ty.type_def() {
-        TypeDef::Composite(inner) => decode_composite_value(data, ty_id, inner, types, visitor),
+        TypeDef::Composite(inner) => {
+            decode_composite_value(data, ty_id, path, inner, types, visitor)
+        }
+        TypeDef::Variant(inner) => decode_variant_value(data, ty_id, path, inner, types, visitor),
         TypeDef::Sequence(inner) => decode_sequence_value(data, ty_id, inner, types, visitor),
-        TypeDef::Variant(inner) => decode_variant_value(data, ty_id, inner, types, visitor),
         TypeDef::Array(inner) => decode_array_value(data, ty_id, inner, types, visitor),
         TypeDef::Tuple(inner) => decode_tuple_value(data, ty_id, inner, types, visitor),
         TypeDef::Primitive(inner) => decode_primitive_value(data, ty_id, inner, visitor),
@@ -61,11 +64,12 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
 fn decode_composite_value<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: TypeId,
+    path: &'info Path<PortableForm>,
     ty: &'info TypeDefComposite<PortableForm>,
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Composite::new(data, ty.fields(), types);
+    let mut items = Composite::new(data, path, ty.fields(), types);
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -78,11 +82,12 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
 fn decode_variant_value<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: TypeId,
+    path: &'info Path<PortableForm>,
     ty: &'info TypeDefVariant<PortableForm>,
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut variant = Variant::new(data, ty, types)?;
+    let mut variant = Variant::new(data, path, ty, types)?;
     let res = visitor.visit_variant(&mut variant, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:

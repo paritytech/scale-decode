@@ -15,7 +15,7 @@
 
 use crate::visitor::{Composite, DecodeError};
 use scale_info::form::PortableForm;
-use scale_info::{PortableRegistry, TypeDefVariant};
+use scale_info::{Path, PortableRegistry, TypeDefVariant};
 
 /// A representation of the a variant type.
 pub struct Variant<'scale, 'info> {
@@ -27,6 +27,7 @@ pub struct Variant<'scale, 'info> {
 impl<'scale, 'info> Variant<'scale, 'info> {
     pub(crate) fn new(
         bytes: &'scale [u8],
+        path: &'info Path<PortableForm>,
         ty: &'info TypeDefVariant<PortableForm>,
         types: &'info PortableRegistry,
     ) -> Result<Variant<'scale, 'info>, DecodeError> {
@@ -41,7 +42,7 @@ impl<'scale, 'info> Variant<'scale, 'info> {
             .ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
 
         // Allow decoding of the fields:
-        let fields = Composite::new(item_bytes, variant.fields(), types);
+        let fields = Composite::new(item_bytes, path, variant.fields(), types);
 
         Ok(Variant { bytes, variant, fields })
     }
@@ -58,6 +59,10 @@ impl<'scale, 'info> Variant<'scale, 'info> {
     /// variant index at the front) and anything following it.
     pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
         self.fields.bytes_from_undecoded()
+    }
+    /// Path to this type.
+    pub fn path(&self) -> &'info Path<PortableForm> {
+        self.fields.path()
     }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {
