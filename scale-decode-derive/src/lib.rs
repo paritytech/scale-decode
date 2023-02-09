@@ -18,6 +18,7 @@ use quote::{format_ident, quote};
 use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
 const ATTR_NAME: &str = "decode_as_type";
+const VISITOR_TYPE_SUFFIX: &str = "ScaleDecodeVisitor";
 
 /// The `DecodeAsType` derive macro can be used to implement `DecodeAsType`
 /// on structs and enums whose fields all implement `DecodeAsType`.
@@ -60,10 +61,11 @@ pub fn derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 fn derive_with_attrs(attrs: TopLevelAttrs, input: DeriveInput) -> TokenStream2 {
+    let visibility = &input.vis;
     // what type is the derive macro declared on?
     match &input.data {
-        syn::Data::Enum(details) => generate_enum_impl(attrs, &input, details),
-        syn::Data::Struct(details) => generate_struct_impl(attrs, &input, details),
+        syn::Data::Enum(details) => generate_enum_impl(attrs, visibility, &input, details),
+        syn::Data::Struct(details) => generate_struct_impl(attrs, visibility, &input, details),
         syn::Data::Union(_) => syn::Error::new(
             input.ident.span(),
             "Unions are not supported by the DecodeAsType macro",
@@ -74,6 +76,7 @@ fn derive_with_attrs(attrs: TopLevelAttrs, input: DeriveInput) -> TokenStream2 {
 
 fn generate_enum_impl(
     attrs: TopLevelAttrs,
+    visibility: &syn::Visibility,
     input: &DeriveInput,
     details: &syn::DataEnum,
 ) -> TokenStream2 {
@@ -82,7 +85,7 @@ fn generate_enum_impl(
     let (impl_generics, ty_generics, where_clause, phantomdata_type) =
         handle_generics(&attrs, &input.generics);
     let variant_names = details.variants.iter().map(|v| v.ident.to_string());
-    let visitor_struct_name = format_ident!("{}Visitor", input.ident);
+    let visitor_struct_name = format_ident!("{}{VISITOR_TYPE_SUFFIX}", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of enum fields
     // that we're trying to generate output for.
@@ -159,7 +162,7 @@ fn generate_enum_impl(
     });
 
     quote!(
-        struct #visitor_struct_name #impl_generics (
+        #visibility struct #visitor_struct_name #impl_generics (
             ::std::marker::PhantomData<#phantomdata_type>
         );
 
@@ -214,6 +217,7 @@ fn generate_enum_impl(
 
 fn generate_struct_impl(
     attrs: TopLevelAttrs,
+    visibility: &syn::Visibility,
     input: &DeriveInput,
     details: &syn::DataStruct,
 ) -> TokenStream2 {
@@ -221,7 +225,7 @@ fn generate_struct_impl(
     let path_to_type: syn::Path = input.ident.clone().into();
     let (impl_generics, ty_generics, where_clause, phantomdata_type) =
         handle_generics(&attrs, &input.generics);
-    let visitor_struct_name = format_ident!("{}DecodeAsTypeVisitor", input.ident);
+    let visitor_struct_name = format_ident!("{}{VISITOR_TYPE_SUFFIX}", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of struct
     // that we're trying to generate output for.
@@ -302,7 +306,7 @@ fn generate_struct_impl(
     };
 
     quote!(
-        struct #visitor_struct_name #impl_generics (
+        #visibility struct #visitor_struct_name #impl_generics (
             ::std::marker::PhantomData<#phantomdata_type>
         );
 
