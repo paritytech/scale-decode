@@ -162,6 +162,7 @@ fn generate_enum_impl(
     });
 
     quote!(
+        #[doc(hidden)]
         #visibility struct #visitor_struct_name #impl_generics (
             ::std::marker::PhantomData<#phantomdata_type>
         );
@@ -306,6 +307,7 @@ fn generate_struct_impl(
     };
 
     quote!(
+        #[doc(hidden)]
         #visibility struct #visitor_struct_name #impl_generics (
             ::std::marker::PhantomData<#phantomdata_type>
         );
