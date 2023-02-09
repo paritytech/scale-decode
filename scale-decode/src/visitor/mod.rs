@@ -34,10 +34,10 @@ pub trait Visitor: Sized {
     /// into, to handle any internal errors that crop up trying to decode things).
     type Error: From<DecodeError>;
 
-    /// This method is called immediately upon running [`decode_with_visitor()`]. If it returns
-    /// `Some(result)`, we'll just hand back that result and will not visit anything else. If it returns
-    /// `None`, as is the default, we'll just visit the data as normal. This method exists to recover the
-    /// flexibility lost from not being able to implement [`crate::DecodeAsType`] manually.
+    /// This method is called immediately upon running [`decode_with_visitor()`]. By default we ignore
+    /// this call and return our visitor back (ie [`DecodeAsTypeResult::Skipped(visitor)`]). If you choose to
+    /// do some decoding at this stage, return [`DecodeAsTypeResult::Decoded(result)`]. In either case, any bytes
+    /// that you consume from the input (by altering what it points to) will be consumed for any subsequent visiting.
     ///
     /// # Warning
     ///
@@ -45,12 +45,12 @@ pub trait Visitor: Sized {
     /// bytes in a sensible way, and thus also possible for the implementor to screw this up. As a result,
     /// It's suggested that you don't implement this unlesss you know what you're doing.
     fn unchecked_decode_as_type<'scale, 'info>(
-        &mut self,
+        self,
         _input: &mut &'scale [u8],
         _type_id: TypeId,
         _types: &'info scale_info::PortableRegistry,
-    ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
-        None
+    ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+        DecodeAsTypeResult::Skipped(self)
     }
 
     /// This is called when a visitor function that you've not provided an implementation is called.
@@ -375,6 +375,14 @@ impl std::fmt::Display for Unexpected {
         };
         f.write_str(s)
     }
+}
+
+/// The response from [`Visitor::unchecked_decode_as_type()`].
+pub enum DecodeAsTypeResult<V, R> {
+    /// Skip any manual decoding and return the visitor instead.
+    Skipped(V),
+    /// Some manually decoded result.
+    Decoded(R),
 }
 
 /// This is implemented for visitor related types which have a `decode_item` method,
@@ -1048,12 +1056,13 @@ mod test {
             type Error = DecodeError;
 
             fn unchecked_decode_as_type<'scale, 'info>(
-                &mut self,
+                self,
                 input: &mut &'scale [u8],
                 type_id: TypeId,
                 _types: &'info scale_info::PortableRegistry,
-            ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
-                Some(Ok((*input, type_id.0)))
+            ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>>
+            {
+                DecodeAsTypeResult::Decoded(Ok((*input, type_id.0)))
             }
         }
 
@@ -1069,12 +1078,13 @@ mod test {
             type Error = DecodeError;
 
             fn unchecked_decode_as_type<'scale, 'info>(
-                &mut self,
+                self,
                 input: &mut &'scale [u8],
                 _type_id: TypeId,
                 _types: &'info scale_info::PortableRegistry,
-            ) -> Option<Result<Self::Value<'scale, 'info>, Self::Error>> {
-                Some(T::decode(input).map_err(|e| e.into()))
+            ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>>
+            {
+                DecodeAsTypeResult::Decoded(T::decode(input).map_err(|e| e.into()))
             }
         }
 

@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use crate::visitor::types::*;
-use crate::visitor::{DecodeError, TypeId, Visitor};
+use crate::visitor::{DecodeAsTypeResult, DecodeError, TypeId, Visitor};
 
 /// Transform the result from a visitor. This type also implements [`Visitor`].
 pub struct AndThen<V, F> {
@@ -65,6 +65,19 @@ where
     type Value<'scale, 'info> = F::Value;
     type Error = F::Error;
 
+    fn unchecked_decode_as_type<'scale, 'info>(
+        self,
+        input: &mut &'scale [u8],
+        type_id: TypeId,
+        types: &'info scale_info::PortableRegistry,
+    ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+        match self.visitor.unchecked_decode_as_type(input, type_id, types) {
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(self.mapper.call(r)),
+            DecodeAsTypeResult::Skipped(v) => {
+                DecodeAsTypeResult::Skipped(AndThen { visitor: v, mapper: self.mapper })
+            }
+        }
+    }
     fn visit_bool<'scale, 'info>(
         self,
         value: bool,

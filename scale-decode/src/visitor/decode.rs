@@ -15,8 +15,8 @@
 
 use crate::utils::stack_vec::StackVec;
 use crate::visitor::{
-    Array, BitSequence, Compact, CompactLocation, Composite, DecodeError, Sequence, Str, Tuple,
-    TypeId, Variant, Visitor,
+    Array, BitSequence, Compact, CompactLocation, Composite, DecodeAsTypeResult, DecodeError,
+    Sequence, Str, Tuple, TypeId, Variant, Visitor,
 };
 use codec::{self, Decode};
 use scale_info::{
@@ -33,12 +33,13 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: u32,
     types: &'info PortableRegistry,
-    mut visitor: V,
+    visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    // Provide option to "bail out" and do something custom first:
-    if let Some(res) = visitor.unchecked_decode_as_type(data, TypeId(ty_id), types) {
-        return res;
-    }
+    // Provide option to "bail out" and do something custom first.
+    let visitor = match visitor.unchecked_decode_as_type(data, TypeId(ty_id), types) {
+        DecodeAsTypeResult::Decoded(r) => return r,
+        DecodeAsTypeResult::Skipped(v) => v,
+    };
 
     let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
     let ty_id = TypeId(ty_id);
