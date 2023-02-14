@@ -28,6 +28,7 @@ use core::num::{
     NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
     NonZeroU32, NonZeroU64, NonZeroU8,
 };
+use codec::Compact;
 use scale_bits::Bits;
 use std::ops::{Range, RangeInclusive};
 use std::rc::Rc;
@@ -207,6 +208,7 @@ macro_rules! impl_into_visitor_like {
     }
 }
 
+impl_into_visitor_like!(Compact<T> as T: |res| Compact(res));
 impl_into_visitor_like!(Arc<T> as T: |res| Arc::new(res));
 impl_into_visitor_like!(Rc<T> as T: |res| Rc::new(res));
 impl_into_visitor_like!(Box<T> as T: |res| Box::new(res));
@@ -856,6 +858,11 @@ mod test {
         assert_encode_decode_to(&input, &(true, (1u8, 3u32)));
         // Different:
         assert_encode_decode_to(&input, &(true, (1u64, 3u64)));
+    }
+
+    #[test]
+    fn decode_compacts() {
+        assert_encode_decode(&Compact(126u64));
     }
 
     #[test]
