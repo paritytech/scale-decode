@@ -109,18 +109,28 @@ fn generate_enum_impl(
                                 expected_len: #field_count
                             }));
                         }
-                        #( let #field_ident = fields.next().unwrap()?; )*
-                        Ok(#path_to_type::#variant_ident { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
+                        Ok(#path_to_type::#variant_ident {
+                            #(
+                                #field_ident: {
+                                    let val = fields.next().unwrap()?;
+                                    val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+                                }
+                            ),*
+                        })
                     } else {
                         let vals: ::std::collections::HashMap<Option<&str>, _> = fields
                             .map(|res| res.map(|item| (item.name(), item)))
                             .collect::<Result<_, _>>()?;
-                        #(
-                            let #field_ident = *vals
-                                .get(&Some(#field_name))
-                                .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
-                        )*
-                        Ok(#path_to_type::#variant_ident { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
+                        Ok(#path_to_type::#variant_ident {
+                            #(
+                                #field_ident: {
+                                    let val = *vals
+                                        .get(&Some(#field_name))
+                                        .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                                    val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+                                }
+                            ),*
+                        })
                     }
                 }
             },
@@ -141,9 +151,11 @@ fn generate_enum_impl(
                             expected_len: #field_count
                         }));
                     }
-                    #( let #field_ident = fields.next().unwrap()?; )*
                     return Ok(#path_to_type::#variant_ident (
-                        #( #field_ident.decode_as_type().map_err(|e| e.at_idx(#field_idx))? ),*
+                        #({
+                            let val = fields.next().unwrap()?;
+                            val.decode_as_type().map_err(|e| e.at_idx(#field_idx))?
+                        }),*
                     ))
                 }
             },
@@ -247,24 +259,29 @@ fn generate_struct_impl(
                     let vals: ::std::collections::HashMap<Option<&str>, _> =
                         value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
-                    #(
-                        let #field_ident = *vals
-                            .get(&Some(#field_name))
-                            .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
-                    )*
-
-                    Ok(#path_to_type { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
+                    Ok(#path_to_type {
+                        #(
+                            #field_ident: {
+                                let val = *vals
+                                    .get(&Some(#field_name))
+                                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+                            }
+                        ),*
+                    })
                 },
                 quote! {
                     if value.remaining() != #field_count {
                         return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
                     }
-
-                    #(
-                        let #field_ident = value.next().unwrap()?;
-                    )*
-
-                    Ok(#path_to_type { #( #field_ident: #field_ident.decode_as_type().map_err(|e| e.at_field(#field_name))? ),* })
+                    Ok(#path_to_type {
+                        #(
+                            #field_ident: {
+                                let val = value.next().unwrap()?;
+                                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+                            }
+                        ),*
+                    })
                 },
             )
         }

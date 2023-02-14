@@ -19,7 +19,8 @@ use scale_decode::DecodeAsType;
 // this should lead to no issues:
 #[decode_as_type(crate_path = "::scale_decode")]
 enum Foo {
-    Named { field: u8, other: String, more: bool },
+    // Fields with names used for trait:
+    Named { field: u8, value: String, type_id: bool },
     // make sure no fields are handled ok:
     Unit,
     // make sure one named field handled properly:

@@ -20,7 +20,11 @@ use scale_decode::DecodeAsType;
 // this should lead to no issues:
 #[decode_as_type(crate_path = "::scale_decode")]
 struct Foo {
-    some_field: u8
+    some_field: u8,
+    // fields with same name as internal macro variable; make sure
+    // no name conflicts can happen:
+    value: u16,
+    type_id: bool,
 }
 
 // Single field unnamed struct
