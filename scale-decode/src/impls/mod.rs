@@ -13,11 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "primitive-types")]
+mod primitive_types;
+
 use crate::{
     error::{Error, ErrorKind},
     visitor::{
         self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, TypeId,
-        Unexpected, Visitor,
+        Visitor,
     },
     IntoVisitor,
 };
@@ -61,21 +64,21 @@ macro_rules! visit_single_field_composite_tuple_impls {
     () => {
         fn visit_composite<'scale, 'info>(
             self,
-            value: &mut Composite<'scale, 'info>,
-            _type_id: visitor::TypeId,
+            value: &mut $crate::visitor::types::Composite<'scale, 'info>,
+            _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
-                return self.visit_unexpected(Unexpected::Composite);
+                return self.visit_unexpected($crate::visitor::Unexpected::Composite);
             }
             value.decode_item(self).unwrap()
         }
         fn visit_tuple<'scale, 'info>(
             self,
-            value: &mut Tuple<'scale, 'info>,
-            _type_id: visitor::TypeId,
+            value: &mut $crate::visitor::types::Tuple<'scale, 'info>,
+            _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
-                return self.visit_unexpected(Unexpected::Tuple);
+                return self.visit_unexpected($crate::visitor::Unexpected::Tuple);
             }
             value.decode_item(self).unwrap()
         }
@@ -868,5 +871,36 @@ mod test {
     fn decode_bits() {
         assert_encode_decode(&Bits::new());
         assert_encode_decode(&Bits::from_iter([true, false, false, true, false]));
+    }
+
+    #[test]
+    #[cfg(feature = "primitive-types")]
+    fn decode_hxxx() {
+        use ::primitive_types::{H128, H160, H256, H384, H512, H768};
+
+        fn try_decode_hxxx(input: impl IntoIterator<Item = u8>) {
+            let mut bytes: Vec<u8> = input.into_iter().collect();
+
+            macro_rules! check_ty {
+                ($bytes:expr, $bits:literal, $ty:ident) => {
+                    while $bytes.len() < $bits / 8 {
+                        $bytes.push(0)
+                    }
+                    assert_encode_decode(&$ty::from_slice(&$bytes));
+                    assert_encode_decode_to(&$ty::from_slice(&$bytes), &$bytes);
+                    assert_encode_decode_to(&$bytes, &$ty::from_slice(&$bytes));
+                };
+            }
+            check_ty!(bytes, 128, H128);
+            check_ty!(bytes, 160, H160);
+            check_ty!(bytes, 256, H256);
+            check_ty!(bytes, 384, H384);
+            check_ty!(bytes, 512, H512);
+            check_ty!(bytes, 768, H768);
+        }
+
+        try_decode_hxxx([0]);
+        try_decode_hxxx([1, 2, 3, 4]);
+        try_decode_hxxx([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     }
 }
