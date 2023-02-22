@@ -76,6 +76,18 @@ where
     }
 }
 
+/// This is similar to [`DecodeAsType`], except that it's instead implemented for types that can be given a list of
+/// fields denoting the type being decoded from and attempt to do this decoding. This is generally implemented just
+/// for tuple and struct types, and is automatically implemented via the [`macro@DecodeAsType`] macro.
+pub trait DecodeAsFields: Sized {
+    /// Given some bytes and some fields denoting their structure, attempt to decode.
+    fn decode_as_fields(
+        input: &mut &[u8],
+        fields: &[scale_info::Field<scale_info::form::PortableForm>],
+        types: &scale_info::PortableRegistry,
+    ) -> Result<Self, Error>;
+}
+
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
 /// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has
 /// an error type that converts into [`Error`], then you'll also get a [`DecodeAsType`] implementation for free.
@@ -84,4 +96,9 @@ pub trait IntoVisitor {
     type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self>;
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
+}
+
+#[doc(hidden)]
+pub mod __macro_exports {
+    pub use scale_info;
 }

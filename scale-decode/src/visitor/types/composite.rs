@@ -29,7 +29,9 @@ pub struct Composite<'scale, 'info> {
 }
 
 impl<'scale, 'info> Composite<'scale, 'info> {
-    pub(crate) fn new(
+    // Used in macros, but not really expected to be used elsewhere.
+    #[doc(hidden)]
+    pub fn new(
         bytes: &'scale [u8],
         path: &'info Path<PortableForm>,
         fields: &'info [Field<PortableForm>],

@@ -80,11 +80,10 @@ impl Visitor for FooVisitor {
     fn visit_tuple<'scale, 'info>(
         self,
         value: &mut scale_decode::visitor::types::Tuple<'scale, 'info>,
-        type_id: scale_decode::visitor::TypeId,
+        _type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() != 2 {
             return Err(Error::new(ErrorKind::WrongLength {
-                actual: type_id.0,
                 actual_len: value.remaining(),
                 expected_len: 2,
             }));

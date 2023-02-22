@@ -100,10 +100,8 @@ pub enum ErrorKind {
         expected: Vec<&'static str>,
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
-    #[error("Cannot decode from type with ID {actual}; expected length {expected_len} but got length {actual_len}")]
+    #[error("Cannot decode from type; expected length {expected_len} but got length {actual_len}")]
     WrongLength {
-        /// ID of the type we're trying to decode from.
-        actual: u32,
         /// Length of the type we are trying to decode from
         actual_len: usize,
         /// Length fo the type we're trying to decode into

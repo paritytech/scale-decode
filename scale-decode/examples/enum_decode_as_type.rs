@@ -53,7 +53,7 @@ impl Visitor for FooVisitor {
     fn visit_variant<'scale, 'info>(
         self,
         value: &mut scale_decode::visitor::types::Variant<'scale, 'info>,
-        type_id: scale_decode::visitor::TypeId,
+        _type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Bar" {
             // Here we choose to support decoding named or unnamed fields into our Bar variant.
@@ -61,7 +61,6 @@ impl Visitor for FooVisitor {
             if fields.has_unnamed_fields() {
                 if fields.remaining() != 1 {
                     return Err(Error::new(ErrorKind::WrongLength {
-                        actual: type_id.0,
                         actual_len: fields.remaining(),
                         expected_len: 1,
                     }));
@@ -82,7 +81,6 @@ impl Visitor for FooVisitor {
             let fields = value.fields();
             if fields.remaining() != 1 {
                 return Err(Error::new(ErrorKind::WrongLength {
-                    actual: type_id.0,
                     actual_len: fields.remaining(),
                     expected_len: 1,
                 }));

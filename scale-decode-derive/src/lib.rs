@@ -107,7 +107,6 @@ fn generate_enum_impl(
                     return if fields.has_unnamed_fields() {
                         if fields.remaining() != #field_count {
                             return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength {
-                                actual: type_id.0,
                                 actual_len: fields.remaining(),
                                 expected_len: #field_count
                             }));
@@ -132,7 +131,6 @@ fn generate_enum_impl(
                     let fields = value.fields();
                     if fields.remaining() != #field_count {
                         return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength {
-                            actual: type_id.0,
                             actual_len: fields.remaining(),
                             expected_len: #field_count
                         }));
@@ -242,7 +240,7 @@ fn generate_struct_impl(
                 },
                 quote! {
                     if value.remaining() != #field_count {
-                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
+                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual_len: value.remaining(), expected_len: #field_count }));
                     }
 
                     let vals = value;
@@ -260,7 +258,7 @@ fn generate_struct_impl(
                 },
                 quote! {
                     if value.remaining() != #field_count {
-                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
+                        return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual_len: value.remaining(), expected_len: #field_count }));
                     }
 
                     let vals = value;
@@ -275,7 +273,7 @@ fn generate_struct_impl(
             },
             quote! {
                 if value.remaining() > 0 {
-                    return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: 0 }));
+                    return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual_len: value.remaining(), expected_len: 0 }));
                 }
                 Ok(#path_to_type)
             },
@@ -288,32 +286,57 @@ fn generate_struct_impl(
             ::std::marker::PhantomData<#phantomdata_type>
         );
 
-        impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
-            type Visitor = #visitor_struct_name #ty_generics;
-            fn into_visitor() -> Self::Visitor {
-                #visitor_struct_name(::std::marker::PhantomData)
-            }
-        }
+        const _: () = {
+            use #path_to_scale_decode::{
+                Error,
+                IntoVisitor,
+                DecodeAsFields,
+                Visitor,
+                __macro_exports::scale_info,
+                visitor::{
+                    types::{
+                        Composite,
+                        Tuple
+                    },
+                    TypeId,
+                }
+            };
 
-        impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
-            type Error = #path_to_scale_decode::Error;
-            type Value<'scale, 'info> = #path_to_type #ty_generics;
+            impl #impl_generics IntoVisitor for #path_to_type #ty_generics #where_clause {
+                type Visitor = #visitor_struct_name #ty_generics;
+                fn into_visitor() -> Self::Visitor {
+                    #visitor_struct_name(::std::marker::PhantomData)
+                }
+            }
 
-            fn visit_composite<'scale, 'info>(
-                self,
-                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
-                type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                #visit_composite_body
+            impl #impl_generics Visitor for #visitor_struct_name #ty_generics #where_clause {
+                type Error = Error;
+                type Value<'scale, 'info> = #path_to_type #ty_generics;
+
+                fn visit_composite<'scale, 'info>(
+                    self,
+                    value: &mut Composite<'scale, 'info>,
+                    type_id: TypeId,
+                ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+                    #visit_composite_body
+                }
+                fn visit_tuple<'scale, 'info>(
+                    self,
+                    value: &mut Tuple<'scale, 'info>,
+                    type_id: TypeId,
+                ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+                    #visit_tuple_body
+                }
             }
-            fn visit_tuple<'scale, 'info>(
-                self,
-                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
-                type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                #visit_tuple_body
+
+            impl #impl_generics DecodeAsFields for #path_to_type #ty_generics #where_clause  {
+                fn decode_as_fields(input: &mut &[u8], fields: &[scale_info::Field<scale_info::form::PortableForm>], types: &scale_info::PortableRegistry) -> Result<Self, Error> {
+                    let path = Default::default();
+                    let mut composite = Composite::new(input, &path, fields, types);
+                    <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, TypeId(0))
+                }
             }
-        }
+        };
     )
 }
 

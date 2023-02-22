@@ -22,7 +22,7 @@ use crate::{
         self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, TypeId,
         Visitor,
     },
-    IntoVisitor,
+    DecodeAsFields, IntoVisitor,
 };
 use codec::Compact;
 use core::num::{
@@ -291,12 +291,12 @@ impl_decode_seq_via_collect!(BTreeSet<T> where T: Ord);
 // For arrays of fixed lengths, we decode to a vec first and then try to turn that into the fixed size array.
 // Like vecs, we can decode from tuples, sequences or arrays if the types line up ok.
 macro_rules! array_method_impl {
-    ($value:ident, $type_id:ident, [$t:ident; $n:ident]) => {{
+    ($value:ident, [$t:ident; $n:ident]) => {{
         let val = decode_items_using::<_, $t>($value).collect::<Result<Vec<$t>, _>>()?;
         let actual_len = val.len();
-        let arr = val.try_into().map_err(|_e| {
-            Error::new(ErrorKind::WrongLength { actual: $type_id.0, actual_len, expected_len: $n })
-        })?;
+        let arr = val
+            .try_into()
+            .map_err(|_e| Error::new(ErrorKind::WrongLength { actual_len, expected_len: $n }))?;
         Ok(arr)
     }};
 }
@@ -311,16 +311,16 @@ where
     fn visit_sequence<'scale, 'info>(
         self,
         value: &mut Sequence<'scale, 'info>,
-        type_id: visitor::TypeId,
+        _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        array_method_impl!(value, type_id, [T; N])
+        array_method_impl!(value, [T; N])
     }
     fn visit_array<'scale, 'info>(
         self,
         value: &mut Array<'scale, 'info>,
-        type_id: visitor::TypeId,
+        _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        array_method_impl!(value, type_id, [T; N])
+        array_method_impl!(value, [T; N])
     }
 
     visit_single_field_composite_tuple_impls!();
@@ -516,11 +516,10 @@ macro_rules! count_idents {
 
 // Decode tuple types from any matching type.
 macro_rules! tuple_method_impl {
-    (($($t:ident,)*), $value:ident, $type_id:ident) => {{
+    (($($t:ident,)*), $value:ident) => {{
         const EXPECTED_LEN: usize = count_idents!($($t)*);
         if $value.remaining() != EXPECTED_LEN {
             return Err(Error::new(ErrorKind::WrongLength {
-                actual: $type_id.0,
                 actual_len: $value.remaining(),
                 expected_len: EXPECTED_LEN
             }))
@@ -533,12 +532,13 @@ macro_rules! tuple_method_impl {
             $(
                 #[allow(unused_assignments)]
                 {
-                    idx += 1;
-                    $value
+                    let v = $value
                         .decode_item($t::into_visitor())
                         .transpose()
                         .map_err(|e| Error::from(e).at_idx(idx))?
-                        .expect("length already checked via .remaining()")
+                        .expect("length already checked via .remaining()");
+                    idx += 1;
+                    v
                 }
             ,)*
         ))
@@ -558,38 +558,51 @@ macro_rules! impl_decode_tuple {
             fn visit_composite<'scale, 'info>(
                 self,
                 value: &mut Composite<'scale, 'info>,
-                type_id: visitor::TypeId,
+                _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value, type_id)
+                tuple_method_impl!(($($t,)*), value)
             }
             fn visit_tuple<'scale, 'info>(
                 self,
                 value: &mut Tuple<'scale, 'info>,
-                type_id: visitor::TypeId,
+                _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value, type_id)
+                tuple_method_impl!(($($t,)*), value)
             }
             fn visit_sequence<'scale, 'info>(
                 self,
                 value: &mut Sequence<'scale, 'info>,
-                type_id: visitor::TypeId,
+                _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value, type_id)
+                tuple_method_impl!(($($t,)*), value)
             }
             fn visit_array<'scale, 'info>(
                 self,
                 value: &mut Array<'scale, 'info>,
-                type_id: visitor::TypeId,
+                _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value, type_id)
+                tuple_method_impl!(($($t,)*), value)
             }
         }
+
+        // We can turn this tuple into a visitor which knows how to decode it:
         impl < $($t),* > IntoVisitor for ($($t,)*)
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
                 BasicVisitor { _marker: std::marker::PhantomData }
+            }
+        }
+
+        // We can decode given a list of fields (just delegate to the visitor impl:
+        impl < $($t),* > DecodeAsFields for ($($t,)*)
+        where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
+        {
+            fn decode_as_fields(input: &mut &[u8], fields: &[scale_info::Field<scale_info::form::PortableForm>], types: &scale_info::PortableRegistry) -> Result<Self, Error> {
+                let path = Default::default();
+                let mut composite = crate::visitor::types::Composite::new(input, &path, fields, types);
+                <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0))
             }
         }
     }
@@ -695,6 +708,27 @@ mod test {
             + std::fmt::Debug,
     {
         assert_encode_decode_to(a, a)
+    }
+
+    // Test that something can be encoded and then DecodeAsFields will work to decode it again.
+    fn assert_encode_decode_as_fields<Foo>(foo: Foo)
+    where
+        Foo: scale_info::TypeInfo
+            + DecodeAsFields
+            + PartialEq
+            + std::fmt::Debug
+            + codec::Encode
+            + 'static,
+    {
+        let (ty, types) = make_type::<Foo>();
+        let scale_info::TypeDef::Composite(c) = types.resolve(ty).unwrap().type_def() else {
+            panic!("Expected composite type def")
+        };
+
+        let foo_encoded = foo.encode();
+        let new_foo = Foo::decode_as_fields(&mut &*foo_encoded, c.fields(), &types).unwrap();
+
+        assert_eq!(foo, new_foo);
     }
 
     #[test]
@@ -993,5 +1027,32 @@ mod test {
             &FooPartial::UnnamedField(true, "hello".to_string()),
             &Foo::UnnamedField(true, 0, "hello".to_string()),
         );
+    }
+
+    #[cfg(feature = "derive")]
+    #[test]
+    fn decode_as_fields_works() {
+        use std::fmt::Debug;
+
+        #[derive(DecodeAsType, codec::Encode, PartialEq, Debug, scale_info::TypeInfo)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo {
+            some_field: u8,
+            value: u16,
+        }
+
+        assert_encode_decode_as_fields(Foo { some_field: 123, value: 456 });
+
+        #[derive(DecodeAsType, codec::Encode, PartialEq, Debug, scale_info::TypeInfo)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo2(String, bool, u64);
+
+        assert_encode_decode_as_fields(Foo2("hello".to_string(), true, 12345));
+
+        #[derive(DecodeAsType, codec::Encode, PartialEq, Debug, scale_info::TypeInfo)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo3;
+
+        assert_encode_decode_as_fields(Foo3);
     }
 }
