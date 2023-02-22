@@ -13,7 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use proc_macro2::{Span, TokenStream as TokenStream2};
+use darling::FromAttributes;
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
@@ -95,9 +96,11 @@ fn generate_enum_impl(
 
         let visit_one_variant_body = match &variant.fields {
             syn::Fields::Named(fields) => {
-                let field_ident: Vec<&syn::Ident> = fields.named.iter().map(|f| f.ident.as_ref().expect("named field")).collect();
-                let field_name: Vec<String> = field_ident.iter().map(|ident| ident.to_string()).collect();
-                let field_count = field_ident.len();
+                let (
+                    field_count,
+                    field_composite_keyvals,
+                    field_tuple_keyvals
+                ) = named_field_keyvals(path_to_scale_decode, fields);
 
                 quote!{
                     let fields = value.fields();
@@ -109,38 +112,21 @@ fn generate_enum_impl(
                                 expected_len: #field_count
                             }));
                         }
-                        Ok(#path_to_type::#variant_ident {
-                            #(
-                                #field_ident: {
-                                    let val = fields.next().unwrap()?;
-                                    val.decode_as_type().map_err(|e| e.at_field(#field_name))?
-                                }
-                            ),*
-                        })
+                        let vals = fields;
+                        Ok(#path_to_type::#variant_ident { #(#field_tuple_keyvals),* })
                     } else {
                         let vals: ::std::collections::HashMap<Option<&str>, _> = fields
                             .map(|res| res.map(|item| (item.name(), item)))
                             .collect::<Result<_, _>>()?;
-                        Ok(#path_to_type::#variant_ident {
-                            #(
-                                #field_ident: {
-                                    let val = *vals
-                                        .get(&Some(#field_name))
-                                        .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
-                                    val.decode_as_type().map_err(|e| e.at_field(#field_name))?
-                                }
-                            ),*
-                        })
+                        Ok(#path_to_type::#variant_ident { #(#field_composite_keyvals),* })
                     }
                 }
             },
             syn::Fields::Unnamed(fields) => {
-                let field_idx: Vec<usize> = (0..fields.unnamed.len()).collect();
-                let field_ident: Vec<syn::Ident> = field_idx
-                    .iter()
-                    .map(|n| format_ident!("field_{n}", span = Span::call_site()))
-                    .collect();
-                let field_count = field_ident.len();
+                let (
+                    field_count,
+                    field_vals
+                ) = unnamed_field_vals(path_to_scale_decode, fields);
 
                 quote!{
                     let fields = value.fields();
@@ -151,12 +137,8 @@ fn generate_enum_impl(
                             expected_len: #field_count
                         }));
                     }
-                    return Ok(#path_to_type::#variant_ident (
-                        #({
-                            let val = fields.next().unwrap()?;
-                            val.decode_as_type().map_err(|e| e.at_idx(#field_idx))?
-                        }),*
-                    ))
+                    let vals = fields;
+                    return Ok(#path_to_type::#variant_ident ( #(#field_vals),* ))
                 }
             },
             syn::Fields::Unit => {
@@ -244,11 +226,8 @@ fn generate_struct_impl(
     // that we're trying to generate output for.
     let (visit_composite_body, visit_tuple_body) = match &details.fields {
         syn::Fields::Named(fields) => {
-            let field_ident: Vec<&syn::Ident> =
-                fields.named.iter().map(|f| f.ident.as_ref().expect("named field")).collect();
-            let field_name: Vec<String> =
-                field_ident.iter().map(|ident| ident.to_string()).collect();
-            let field_count = field_ident.len();
+            let (field_count, field_composite_keyvals, field_tuple_keyvals) =
+                named_field_keyvals(path_to_scale_decode, fields);
 
             (
                 quote! {
@@ -259,39 +238,21 @@ fn generate_struct_impl(
                     let vals: ::std::collections::HashMap<Option<&str>, _> =
                         value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
-                    Ok(#path_to_type {
-                        #(
-                            #field_ident: {
-                                let val = *vals
-                                    .get(&Some(#field_name))
-                                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
-                                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
-                            }
-                        ),*
-                    })
+                    Ok(#path_to_type { #(#field_composite_keyvals),* })
                 },
                 quote! {
                     if value.remaining() != #field_count {
                         return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
                     }
-                    Ok(#path_to_type {
-                        #(
-                            #field_ident: {
-                                let val = value.next().unwrap()?;
-                                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
-                            }
-                        ),*
-                    })
+
+                    let vals = value;
+
+                    Ok(#path_to_type { #(#field_tuple_keyvals),* })
                 },
             )
         }
         syn::Fields::Unnamed(fields) => {
-            let field_idx: Vec<usize> = (0..fields.unnamed.len()).collect();
-            let field_ident: Vec<syn::Ident> = field_idx
-                .iter()
-                .map(|n| format_ident!("field_{n}", span = Span::call_site()))
-                .collect();
-            let field_count = field_ident.len();
+            let (field_count, field_vals) = unnamed_field_vals(path_to_scale_decode, fields);
 
             (
                 quote! {
@@ -302,11 +263,9 @@ fn generate_struct_impl(
                         return Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::WrongLength { actual: type_id.0, actual_len: value.remaining(), expected_len: #field_count }));
                     }
 
-                    #(
-                        let #field_ident = value.next().unwrap()?;
-                    )*
+                    let vals = value;
 
-                    Ok(#path_to_type ( #( #field_ident.decode_as_type().map_err(|e| e.at_idx(#field_idx))? ),* ))
+                    Ok(#path_to_type ( #( #field_vals ),* ))
                 },
             )
         }
@@ -356,6 +315,80 @@ fn generate_struct_impl(
             }
         }
     )
+}
+
+// Given some named fields, generate impls like `field_name: get_field_value()` for each field. Do this for the compoiste and tuple impls.
+fn named_field_keyvals<'f>(
+    path_to_scale_decode: &'f syn::Path,
+    fields: &'f syn::FieldsNamed,
+) -> (usize, impl Iterator<Item = TokenStream2> + 'f, impl Iterator<Item = TokenStream2> + 'f) {
+    let field_keyval_impls = fields.named.iter().map(move |f| {
+        let field_attrs = FieldAttrs::from_attributes(&f.attrs).expect("parsing attrs should always work");
+        let field_ident = f.ident.as_ref().expect("named field has ident");
+        let field_name = field_ident.to_string();
+        let skip_field = field_attrs.skip;
+
+        // If a field is skipped, we expect it to have a Default impl to use to populate it instead.
+        if skip_field {
+            return (
+                false,
+                quote!(#field_ident: ::std::default::Default::default()),
+                quote!(#field_ident: ::std::default::Default::default())
+            )
+        }
+
+        (
+            true,
+            quote!(#field_ident: {
+                let val = *vals
+                    .get(&Some(#field_name))
+                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+            }),
+            quote!(#field_ident: {
+                let val = vals.next().unwrap()?;
+                val.decode_as_type().map_err(|e| e.at_field(#field_name))?
+            })
+        )
+    });
+
+    // if we skip any fields, we won't expect that field to exist in some tuple that's being given back.
+    let field_count = field_keyval_impls.clone().filter(|f| f.0).count();
+    let field_composite_keyvals = field_keyval_impls.clone().map(|v| v.1);
+    let field_tuple_keyvals = field_keyval_impls.map(|v| v.2);
+
+    (field_count, field_composite_keyvals, field_tuple_keyvals)
+}
+
+// Given some unnamed fields, generate impls like `get_field_value()` for each field. Do this for a tuple style impl.
+fn unnamed_field_vals<'f>(
+    _path_to_scale_decode: &'f syn::Path,
+    fields: &'f syn::FieldsUnnamed,
+) -> (usize, impl Iterator<Item = TokenStream2> + 'f) {
+    let field_val_impls = fields.unnamed.iter().enumerate().map(|(idx, f)| {
+        let field_attrs =
+            FieldAttrs::from_attributes(&f.attrs).expect("parsing attrs should always work");
+        let skip_field = field_attrs.skip;
+
+        // If a field is skipped, we expect it to have a Default impl to use to populate it instead.
+        if skip_field {
+            return (false, quote!(::std::default::Default::default()));
+        }
+
+        (
+            true,
+            quote!({
+                let val = vals.next().unwrap()?;
+                val.decode_as_type().map_err(|e| e.at_idx(#idx))?
+            }),
+        )
+    });
+
+    // if we skip any fields, we won't expect that field to exist in some tuple that's being given back.
+    let field_count = field_val_impls.clone().filter(|f| f.0).count();
+    let field_vals = field_val_impls.map(|v| v.1);
+
+    (field_count, field_vals)
 }
 
 fn handle_generics<'a>(
@@ -440,4 +473,12 @@ impl TopLevelAttrs {
 
         Ok(res)
     }
+}
+
+/// Parse the attributes attached to some field
+#[derive(Debug, FromAttributes)]
+#[darling(attributes(decode_as_type))]
+struct FieldAttrs {
+    #[darling(default)]
+    skip: bool,
 }

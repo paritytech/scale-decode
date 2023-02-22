@@ -24,11 +24,11 @@ use crate::{
     },
     IntoVisitor,
 };
+use codec::Compact;
 use core::num::{
     NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
     NonZeroU32, NonZeroU64, NonZeroU8,
 };
-use codec::Compact;
 use scale_bits::Bits;
 use std::ops::{Range, RangeInclusive};
 use std::rc::Rc;
@@ -909,5 +909,89 @@ mod test {
         try_decode_hxxx([0]);
         try_decode_hxxx([1, 2, 3, 4]);
         try_decode_hxxx([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    }
+
+    #[cfg(feature = "derive")]
+    #[test]
+    fn decoding_can_skip_named_struct_fields() {
+        #[derive(DecodeAsType, PartialEq, Debug)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo {
+            some_field: u8,
+            value: u16,
+            #[decode_as_type(skip)]
+            some_field_to_skip: bool,
+            #[decode_as_type(skip)]
+            other_field_to_skip: usize,
+        }
+
+        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        struct FooPartial {
+            some_field: u8,
+            value: u16,
+        }
+
+        assert_encode_decode_to(
+            &FooPartial { some_field: 123, value: 456 },
+            &Foo {
+                some_field: 123,
+                value: 456,
+                // fields will be defaulted if skipped:
+                some_field_to_skip: false,
+                other_field_to_skip: 0,
+            },
+        );
+    }
+
+    #[cfg(feature = "derive")]
+    #[test]
+    fn decoding_can_skip_unnamed_struct_fields() {
+        #[derive(DecodeAsType, PartialEq, Debug)]
+        #[decode_as_type(crate_path = "crate")]
+        struct Foo(u8, #[decode_as_type(skip)] bool, #[decode_as_type(skip)] usize);
+
+        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        struct FooPartial {
+            some_field: u8,
+        }
+
+        assert_encode_decode_to(
+            &FooPartial { some_field: 123 },
+            &Foo(
+                123, // fields will be defaulted if skipped:
+                false, 0,
+            ),
+        );
+    }
+
+    #[cfg(feature = "derive")]
+    #[test]
+    fn decoding_can_skip_enum_variant_fields() {
+        #[derive(DecodeAsType, PartialEq, Debug)]
+        #[decode_as_type(crate_path = "crate")]
+        enum Foo {
+            NamedField {
+                some_field: u8,
+                #[decode_as_type(skip)]
+                some_field_to_skip: bool,
+                value: u16,
+            },
+            UnnamedField(bool, #[decode_as_type(skip)] usize, String),
+        }
+
+        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        enum FooPartial {
+            NamedField { some_field: u8, value: u16 },
+            UnnamedField(bool, String),
+        }
+
+        assert_encode_decode_to(
+            &FooPartial::NamedField { some_field: 123, value: 456 },
+            &Foo::NamedField { some_field: 123, some_field_to_skip: false, value: 456 },
+        );
+        assert_encode_decode_to(
+            &FooPartial::UnnamedField(true, "hello".to_string()),
+            &Foo::UnnamedField(true, 0, "hello".to_string()),
+        );
     }
 }
