@@ -39,13 +39,18 @@ mod utils;
 pub mod error;
 pub mod visitor;
 
-use scale_info::PortableRegistry;
-
 pub use crate::error::Error;
 pub use visitor::Visitor;
 
 #[cfg(feature = "derive")]
 pub use scale_decode_derive::DecodeAsType;
+
+// Used in trait definitions.
+pub use scale_info::PortableRegistry;
+/// A description of a single field in a tuple or struct type.
+pub type PortableField = scale_info::Field<scale_info::form::PortableForm>;
+/// A type ID used to represent tuple fields.
+pub type PortableFieldId = scale_info::interner::UntrackedSymbol<std::any::TypeId>;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
@@ -83,9 +88,22 @@ pub trait DecodeAsFields: Sized {
     /// Given some bytes and some fields denoting their structure, attempt to decode.
     fn decode_as_fields(
         input: &mut &[u8],
-        fields: &[scale_info::Field<scale_info::form::PortableForm>],
-        types: &scale_info::PortableRegistry,
+        fields: &[PortableField],
+        types: &PortableRegistry,
     ) -> Result<Self, Error>;
+
+    /// Given some bytes and some field IDs denoting their structure, attempt to decode.
+    fn decode_as_field_ids(
+        input: &mut &[u8],
+        field_ids: &[PortableFieldId],
+        types: &PortableRegistry,
+    ) -> Result<Self, Error> {
+        // [TODO jsdw]: It would be good to use a more efficient data structure
+        // here to avoid allocating with smaller numbers of fields.
+        let fields: Vec<PortableField> =
+            field_ids.iter().map(|f| PortableField::new(None, *f, None, Vec::new())).collect();
+        Self::decode_as_fields(input, &fields, types)
+    }
 }
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
@@ -96,9 +114,4 @@ pub trait IntoVisitor {
     type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self>;
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
-}
-
-#[doc(hidden)]
-pub mod __macro_exports {
-    pub use scale_info;
 }

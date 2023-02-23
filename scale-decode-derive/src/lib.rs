@@ -292,7 +292,8 @@ fn generate_struct_impl(
                 IntoVisitor,
                 DecodeAsFields,
                 Visitor,
-                __macro_exports::scale_info,
+                PortableField,
+                PortableRegistry,
                 visitor::{
                     types::{
                         Composite,
@@ -330,7 +331,7 @@ fn generate_struct_impl(
             }
 
             impl #impl_generics DecodeAsFields for #path_to_type #ty_generics #where_clause  {
-                fn decode_as_fields(input: &mut &[u8], fields: &[scale_info::Field<scale_info::form::PortableForm>], types: &scale_info::PortableRegistry) -> Result<Self, Error> {
+                fn decode_as_fields(input: &mut &[u8], fields: &[PortableField], types: &PortableRegistry) -> Result<Self, Error> {
                     let path = Default::default();
                     let mut composite = Composite::new(input, &path, fields, types);
                     <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, TypeId(0))

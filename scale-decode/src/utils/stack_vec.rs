@@ -38,7 +38,7 @@ impl<T: Default + Copy, const N: usize> StackVec<T, N> {
             StackVecInner::Heap { items } => items.push(item),
             StackVecInner::Stack { len, items } => {
                 if *len == N {
-                    let mut v = items[0..*len].to_vec();
+                    let mut v = items[..].to_vec();
                     v.push(item);
                     self.inner = StackVecInner::Heap { items: v };
                 } else {
