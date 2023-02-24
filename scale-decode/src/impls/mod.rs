@@ -726,9 +726,16 @@ mod test {
         };
 
         let foo_encoded = foo.encode();
-        let new_foo = Foo::decode_as_fields(&mut &*foo_encoded, c.fields(), &types).unwrap();
+        let foo_encoded_cursor = &mut &*foo_encoded;
+        let new_foo = Foo::decode_as_fields(foo_encoded_cursor, c.fields(), &types).unwrap();
 
         assert_eq!(foo, new_foo);
+        assert_eq!(
+            foo_encoded_cursor.len(),
+            0,
+            "leftover len when total was {}",
+            foo_encoded.len()
+        );
     }
 
     #[test]

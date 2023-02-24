@@ -334,7 +334,11 @@ fn generate_struct_impl(
                 fn decode_as_fields(input: &mut &[u8], fields: &[PortableField], types: &PortableRegistry) -> Result<Self, Error> {
                     let path = Default::default();
                     let mut composite = Composite::new(input, &path, fields, types);
-                    <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, TypeId(0))
+                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, TypeId(0))?;
+                    // Consume any remaining bytes and update input:
+                    composite.skip_decoding()?;
+                    *input = composite.bytes_from_undecoded();
+                    Ok(val)
                 }
             }
         };
