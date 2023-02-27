@@ -569,20 +569,6 @@ macro_rules! impl_decode_tuple {
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
             }
-            fn visit_sequence<'scale, 'info>(
-                self,
-                value: &mut Sequence<'scale, 'info>,
-                _type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value)
-            }
-            fn visit_array<'scale, 'info>(
-                self,
-                value: &mut Array<'scale, 'info>,
-                _type_id: visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                tuple_method_impl!(($($t,)*), value)
-            }
         }
 
         // We can turn this tuple into a visitor which knows how to decode it:
@@ -797,7 +783,6 @@ mod test {
     #[test]
     fn decode_sequences() {
         assert_encode_decode_to(&vec![1u8, 2, 3], &[1u8, 2, 3]);
-        assert_encode_decode_to(&vec![1u8, 2, 3], &(1u8, 2u8, 3u8));
         assert_encode_decode_to(&vec![1u8, 2, 3], &vec![1u8, 2, 3]);
         assert_encode_decode_to(&vec![1u8, 2, 3], &LinkedList::from_iter([1u8, 2, 3]));
         assert_encode_decode_to(&vec![1u8, 2, 3], &VecDeque::from_iter([1u8, 2, 3]));
