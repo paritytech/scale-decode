@@ -36,7 +36,7 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 bitvec = "1"
 trybuild = "1.0.72"
 # For tests, we'll encode and then decode things to make sure we are compatible.
-scale-encode = "0.0.17"
+scale-encode = "0.0.18"
 # Enable the scale-info feature for testing.
 primitive-types = { version = "0.12.0", default-features = false, features = ["scale-info"] }
 
