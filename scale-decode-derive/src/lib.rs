@@ -351,7 +351,7 @@ fn named_field_keyvals<'f>(
     fields: &'f syn::FieldsNamed,
 ) -> (usize, impl Iterator<Item = TokenStream2> + 'f, impl Iterator<Item = TokenStream2> + 'f) {
     let field_keyval_impls = fields.named.iter().map(move |f| {
-        let field_attrs = FieldAttrs::from_attributes(&f.attrs).expect("parsing attrs should always work");
+        let field_attrs = FieldAttrs::from_attributes(&f.attrs).unwrap_or_default();
         let field_ident = f.ident.as_ref().expect("named field has ident");
         let field_name = field_ident.to_string();
         let skip_field = field_attrs.skip;
@@ -395,7 +395,7 @@ fn unnamed_field_vals<'f>(
 ) -> (usize, impl Iterator<Item = TokenStream2> + 'f) {
     let field_val_impls = fields.unnamed.iter().enumerate().map(|(idx, f)| {
         let field_attrs =
-            FieldAttrs::from_attributes(&f.attrs).expect("parsing attrs should always work");
+            FieldAttrs::from_attributes(&f.attrs).unwrap_or_default();
         let skip_field = field_attrs.skip;
 
         // If a field is skipped, we expect it to have a Default impl to use to populate it instead.
@@ -504,7 +504,7 @@ impl TopLevelAttrs {
 }
 
 /// Parse the attributes attached to some field
-#[derive(Debug, FromAttributes)]
+#[derive(Debug, FromAttributes, Default)]
 #[darling(attributes(decode_as_type, codec))]
 struct FieldAttrs {
     #[darling(default)]
