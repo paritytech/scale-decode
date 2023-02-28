@@ -36,7 +36,8 @@ enum Foo3 {
     },
     UnnamedField (
         String,
-        #[decode_as_type(skip)] usize,
+        // The codec attr will work too, for compat:
+        #[codec(skip)] usize,
         bool
     )
 }

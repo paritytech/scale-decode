@@ -48,7 +48,7 @@ const VISITOR_TYPE_SUFFIX: &str = "ScaleDecodeVisitor";
 ///   By default, for each generate type parameter, the macro will add trait bounds such
 ///   that these type parameters must implement `DecodeAsType` too. You can override this
 ///   behaviour and provide your own trait bounds instead using this option.
-#[proc_macro_derive(DecodeAsType, attributes(decode_as_type))]
+#[proc_macro_derive(DecodeAsType, attributes(decode_as_type, codec))]
 pub fn derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -505,7 +505,7 @@ impl TopLevelAttrs {
 
 /// Parse the attributes attached to some field
 #[derive(Debug, FromAttributes)]
-#[darling(attributes(decode_as_type))]
+#[darling(attributes(decode_as_type, codec))]
 struct FieldAttrs {
     #[darling(default)]
     skip: bool,

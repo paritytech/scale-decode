@@ -1000,6 +1000,9 @@ mod test {
                 some_field: u8,
                 #[decode_as_type(skip)]
                 some_field_to_skip: bool,
+                // the codec attr should work too:
+                #[codec(skip)]
+                another_field_to_skip: String,
                 value: u16,
             },
             UnnamedField(bool, #[decode_as_type(skip)] usize, String),
@@ -1013,7 +1016,7 @@ mod test {
 
         assert_encode_decode_to(
             &FooPartial::NamedField { some_field: 123, value: 456 },
-            &Foo::NamedField { some_field: 123, some_field_to_skip: false, value: 456 },
+            &Foo::NamedField { some_field: 123, some_field_to_skip: false, another_field_to_skip: String::new(), value: 456 },
         );
         assert_encode_decode_to(
             &FooPartial::UnnamedField(true, "hello".to_string()),
