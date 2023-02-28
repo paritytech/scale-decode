@@ -1016,7 +1016,12 @@ mod test {
 
         assert_encode_decode_to(
             &FooPartial::NamedField { some_field: 123, value: 456 },
-            &Foo::NamedField { some_field: 123, some_field_to_skip: false, another_field_to_skip: String::new(), value: 456 },
+            &Foo::NamedField {
+                some_field: 123,
+                some_field_to_skip: false,
+                another_field_to_skip: String::new(),
+                value: 456,
+            },
         );
         assert_encode_decode_to(
             &FooPartial::UnnamedField(true, "hello".to_string()),

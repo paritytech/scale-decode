@@ -394,8 +394,7 @@ fn unnamed_field_vals<'f>(
     fields: &'f syn::FieldsUnnamed,
 ) -> (usize, impl Iterator<Item = TokenStream2> + 'f) {
     let field_val_impls = fields.unnamed.iter().enumerate().map(|(idx, f)| {
-        let field_attrs =
-            FieldAttrs::from_attributes(&f.attrs).unwrap_or_default();
+        let field_attrs = FieldAttrs::from_attributes(&f.attrs).unwrap_or_default();
         let skip_field = field_attrs.skip;
 
         // If a field is skipped, we expect it to have a Default impl to use to populate it instead.
