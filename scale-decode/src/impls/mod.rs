@@ -686,12 +686,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode<A>(a: &A)
     where
-        A: Encode
-            + scale_info::TypeInfo
-            + 'static
-            + DecodeAsType
-            + PartialEq
-            + std::fmt::Debug,
+        A: Encode + scale_info::TypeInfo + 'static + DecodeAsType + PartialEq + std::fmt::Debug,
     {
         assert_encode_decode_to(a, a)
     }
@@ -801,9 +796,7 @@ mod test {
         }
 
         // Make our own enum just to check that it can be decoded through tuples etc too:
-        #[derive(
-            DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone,
-        )]
+        #[derive(DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone)]
         #[decode_as_type(crate_path = "crate")]
         enum Wibble {
             Bar(u64),
@@ -853,9 +846,7 @@ mod test {
     #[test]
     fn decode_tuples() {
         // Some struct with the same shape as our tuples.
-        #[derive(
-            DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone,
-        )]
+        #[derive(DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone)]
         #[decode_as_type(crate_path = "crate")]
         struct Foo {
             a: u8,
