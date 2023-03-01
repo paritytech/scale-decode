@@ -639,7 +639,7 @@ where
 mod test {
     use super::*;
     use crate::DecodeAsType;
-    use scale_encode::EncodeAsType;
+    use codec::Encode;
 
     /// Given a type definition, return type ID and registry representing it.
     fn make_type<T: scale_info::TypeInfo + 'static>() -> (u32, scale_info::PortableRegistry) {
@@ -654,12 +654,12 @@ mod test {
     // For most of our tests, we'll assert that whatever type we encode, we can decode back again to the given type.
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
-        A: EncodeAsType,
+        A: Encode,
         B: DecodeAsType + PartialEq + std::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         let (type_id, types) = make_type::<T>();
-        let encoded = a.encode_as_type(type_id, &types).expect("should be able to encode");
+        let encoded = a.encode();
         let decoded =
             B::decode_as_type(&mut &*encoded, type_id, &types).expect("should be able to decode");
         assert_eq!(&decoded, b);
@@ -668,7 +668,7 @@ mod test {
     // Normally, the type info we want to use comes along with the type we're encoding.
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
-        A: EncodeAsType + scale_info::TypeInfo + 'static,
+        A: Encode + scale_info::TypeInfo + 'static,
         B: DecodeAsType + PartialEq + std::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
@@ -677,7 +677,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode_with<T, A>(a: &A)
     where
-        A: EncodeAsType + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: Encode + DecodeAsType + PartialEq + std::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         assert_encode_decode_to_with::<T, A, A>(a, a)
@@ -686,7 +686,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode<A>(a: &A)
     where
-        A: EncodeAsType
+        A: Encode
             + scale_info::TypeInfo
             + 'static
             + DecodeAsType
@@ -794,7 +794,7 @@ mod test {
     #[test]
     fn decode_types_via_tuples_or_composites() {
         // Some type we know will be a composite type because we made it..
-        #[derive(DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[derive(DecodeAsType, codec::Encode, scale_info::TypeInfo)]
         #[decode_as_type(crate_path = "crate")]
         struct Foo<A> {
             val: A,
@@ -802,7 +802,7 @@ mod test {
 
         // Make our own enum just to check that it can be decoded through tuples etc too:
         #[derive(
-            DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone,
+            DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone,
         )]
         #[decode_as_type(crate_path = "crate")]
         enum Wibble {
@@ -811,7 +811,7 @@ mod test {
 
         fn check<A>(a: A)
         where
-            A: EncodeAsType
+            A: Encode
                 + scale_info::TypeInfo
                 + 'static
                 + DecodeAsType
@@ -854,7 +854,7 @@ mod test {
     fn decode_tuples() {
         // Some struct with the same shape as our tuples.
         #[derive(
-            DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo, Debug, PartialEq, Clone,
+            DecodeAsType, codec::Encode, scale_info::TypeInfo, Debug, PartialEq, Clone,
         )]
         #[decode_as_type(crate_path = "crate")]
         struct Foo {
@@ -873,7 +873,7 @@ mod test {
 
     #[test]
     fn decode_composites_to_tuples() {
-        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[derive(codec::Encode, scale_info::TypeInfo)]
         struct Foo {
             hello: bool,
             other: (u8, u32),
@@ -951,7 +951,7 @@ mod test {
             other_field_to_skip: usize,
         }
 
-        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[derive(codec::Encode, scale_info::TypeInfo)]
         struct FooPartial {
             some_field: u8,
             value: u16,
@@ -976,7 +976,7 @@ mod test {
         #[decode_as_type(crate_path = "crate")]
         struct Foo(u8, #[decode_as_type(skip)] bool, #[decode_as_type(skip)] usize);
 
-        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[derive(codec::Encode, scale_info::TypeInfo)]
         struct FooPartial {
             some_field: u8,
         }
@@ -1008,7 +1008,7 @@ mod test {
             UnnamedField(bool, #[decode_as_type(skip)] usize, String),
         }
 
-        #[derive(scale_encode::EncodeAsType, scale_info::TypeInfo)]
+        #[derive(codec::Encode, scale_info::TypeInfo)]
         enum FooPartial {
             NamedField { some_field: u8, value: u16 },
             UnnamedField(bool, String),
