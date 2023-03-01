@@ -13,24 +13,123 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This crate makes it easy to decode SCALE encoded bytes into a custom data structure with the help of [`scale_info`] types.
-//! By using this type information to guide decoding (instead of just trying to decode bytes based on the shape of the target type),
-//! it's possible to be much more flexible in how data is decoded and mapped to some target type.
-//!
-//! The main trait used to decode types is a [`Visitor`] trait (example below). By implementing this trait, you can describe how to
-//! take SCALE decoded values and map them to some custom type of your choosing (whether it is a dynamically shaped type or some
-//! static type you'd like to decode into). Implementations of this [`Visitor`] trait exist for many existing Rust types in the standard
-//! library.
-//!
-//! There also exists an [`IntoVisitor`] trait, which is implemented on many existing rust types and maps a given type to some visitor
-//! implementation capable of decoding into it.
-//!
-//! Finally, a wrapper trait, [`DecodeAsType`], is auto-implemented for all types that have an [`IntoVisitor`] implementation,
-//! and whose visitor errors can be turned into a standard [`crate::Error`].
-//!
-//! For custom structs and enums, one can use the [`macro@DecodeAsType`] derive macro to have a [`DecodeAsType`] implementation automatically
-//! generated.
+/*!
+`parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those types.
+This crate builds on this, and allows bytes to be decoded into types based on [`scale_info`] type information, rather than the shape
+of the target type. At a high level, this crate just aims to do the reverse of the `scale-encode` crate.
 
+This crate exposes four traits:
+
+- A [`visitor::Visitor`] trait which when implemented on some type, can be used in conjunction with [`visitor::decode_with_visitor`]
+  to decode SCALE encoded bytes based on some type information into some arbitrary type.
+- An [`IntoVisitor`] trait which can be used to obtain the [`visitor::Visitor`] implementation for some type.
+- A [`DecodeAsType`] trait which is implemented for types which implement [`IntoVisitor`], and provides a high level interface for
+  decoding SCALE encoded bytes into some type with the help of a type ID and [`scale_info::PortableRegistry`].
+- A [`DecodeAsFields`] trait which when implemented on some type, describes how SCALE encoded bytes can be decoded
+  into it with the help of a slice of [`PortableField`]'s or [`PortableFieldId`]'s and type registry describing the
+  shape of the encoded bytes. This is generally only implemented for tuples and structs, since we need a set of fields
+  to map to the provided slices.
+
+Implementations for many built-in types are also provided for each trait, and the [`macro@DecodeAsType`] macro can be used to
+generate the relevant impls on new struct and enum types such that they get a [`DecodeAsType`] impl.
+
+The [`DecodeAsType`] and [`DecodeAsFields`] traits are basically the mirror of `scale-encode`'s `EncodeAsType` and `EncodeAsFields`
+traits in terms of their interface.
+
+# Motivation
+
+By de-coupling the shape of a type from how bytes are decoded into it, we make it much more likely that the decoding will succeed,
+and are no longer reliant on types having a precise layout in order to be decoded into correctly. Some examples of this follow.
+
+```rust
+use codec::Encode;
+use scale_decode::DecodeAsType;
+use scale_info::{PortableRegistry, TypeInfo};
+use std::fmt::Debug;
+
+// We are comonly provided type information, but for our examples we construct type info from
+// any type that implements `TypeInfo`.
+fn get_type_info<T: TypeInfo + 'static>() -> (u32, PortableRegistry) {
+    let m = scale_info::MetaType::new::<T>();
+    let mut types = scale_info::Registry::new();
+    let ty = types.register_type(&m);
+    let portable_registry: PortableRegistry = types.into();
+    (ty.id(), portable_registry)
+}
+
+// Encode the left value statically.
+// Decode those bytes into the right type via `DecodeAsType`.
+// Assert that the decoded bytes are identical to the right value.
+fn assert_decodes_to<A, B>(a: A, b: B)
+where
+    A: Encode + TypeInfo + 'static,
+    B: DecodeAsType + PartialEq + Debug,
+{
+    let (type_id, types) = get_type_info::<A>();
+    let a_bytes = a.encode();
+    let new_b = B::decode_as_type(&mut &*a_bytes, type_id, &types).unwrap();
+    assert_eq!(b, new_b);
+}
+
+// Start simple; a u8 can DecodeAsType into a u64 and vice versa. Numbers will all
+// try to convert into the desired output size, failing if this isn't possible:
+assert_decodes_to(123u64, 123u8);
+assert_decodes_to(123u8, 123u64);
+
+// Compact decoding is also handled "under the hood" by DecodeAsType, so no "compact"
+// annotations are needed on values.
+assert_decodes_to(codec::Compact(123u64), 123u64);
+
+// Enum variants are lined up by variant name, so no explicit "index" annotation are
+// needed either; DecodeAsType will take care of it.
+#[derive(Encode, TypeInfo)]
+enum Foo {
+    #[codec(index = 10)]
+    Something(u64),
+}
+#[derive(DecodeAsType, PartialEq, Debug)]
+enum FooTarget {
+    Something(u128),
+}
+assert_decodes_to(Foo::Something(123), FooTarget::Something(123));
+
+// DecodeAsType will skip annotated fields and not look for them in the encoded bytes.
+// #[codec(skip)] and #[decode_as_type(skip)] both work.
+#[derive(Encode, TypeInfo)]
+struct Bar {
+    a: bool,
+}
+#[derive(DecodeAsType, PartialEq, Debug)]
+struct BarTarget {
+    a: bool,
+    #[decode_as_type(skip)]
+    b: String,
+}
+assert_decodes_to(
+    Bar { a: true },
+    BarTarget { a: true, b: String::new() },
+);
+
+// DecodeAsType impls will generally skip through any newtype wrappers.
+#[derive(DecodeAsType, Encode, TypeInfo, PartialEq, Debug)]
+struct Wrapper {
+    value: u64
+}
+assert_decodes_to(
+    (Wrapper { value: 123 },),
+    123u64
+);
+
+// Things like arrays and sequences are generally interchangeable despite the
+// encoding format being slightly different:
+assert_decodes_to([1u8,2,3,4,5], vec![1u64,2,3,4,5]);
+assert_decodes_to(vec![1u64,2,3,4,5], [1u8,2,3,4,5]);
+```
+
+If this high level interface isn't suitable, you can implement your own [`visitor::Visitor`]'s. These can support zero-copy decoding
+(unlike the higher level [`DecodeAsType`] interface), and generally the Visitor construction and execution is zero alloc, allowing
+for efficient type based decoding.
+*/
 #![deny(missing_docs)]
 
 mod impls;
