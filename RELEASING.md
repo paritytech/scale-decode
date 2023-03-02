@@ -38,6 +38,7 @@ These steps assume that you've checked out the `scale-decode` repository and are
     cargo fmt
     cargo clippy --all-targets
     cargo test --all-targets
+    cargo test --doc
     ```
 
     If we're happy with everything, proceed with the release:
