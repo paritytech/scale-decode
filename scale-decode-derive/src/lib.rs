@@ -58,7 +58,7 @@ const VISITOR_TYPE_SUFFIX: &str = "ScaleDecodeVisitor";
 /// use alt_path::DecodeAsType;
 ///
 /// #[derive(DecodeAsType)]
-/// #[encode_as_type(crate_path = "alt_path")]
+/// #[decode_as_type(crate_path = "alt_path")]
 /// struct Foo<T> {
 ///    a: u64,
 ///    b: T
@@ -72,7 +72,7 @@ const VISITOR_TYPE_SUFFIX: &str = "ScaleDecodeVisitor";
 /// use scale_decode::DecodeAsType;
 ///
 /// #[derive(DecodeAsType)]
-/// #[encode_as_type(trait_bounds = "")]
+/// #[decode_as_type(trait_bounds = "")]
 /// struct Foo<T> {
 ///    a: u64,
 ///    b: bool,

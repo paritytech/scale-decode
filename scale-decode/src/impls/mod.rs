@@ -489,11 +489,13 @@ visit_number_impl!(u16 where |res| res.try_into().ok());
 visit_number_impl!(u32 where |res| res.try_into().ok());
 visit_number_impl!(u64 where |res| res.try_into().ok());
 visit_number_impl!(u128 where |res| res.try_into().ok());
+visit_number_impl!(usize where |res| res.try_into().ok());
 visit_number_impl!(i8 where |res| res.try_into().ok());
 visit_number_impl!(i16 where |res| res.try_into().ok());
 visit_number_impl!(i32 where |res| res.try_into().ok());
 visit_number_impl!(i64 where |res| res.try_into().ok());
 visit_number_impl!(i128 where |res| res.try_into().ok());
+visit_number_impl!(isize where |res| res.try_into().ok());
 visit_number_impl!(NonZeroU8 where |res| res.try_into().ok().and_then(NonZeroU8::new));
 visit_number_impl!(NonZeroU16 where |res| res.try_into().ok().and_then(NonZeroU16::new));
 visit_number_impl!(NonZeroU32 where |res| res.try_into().ok().and_then(NonZeroU32::new));
@@ -544,6 +546,41 @@ macro_rules! tuple_method_impl {
         ))
     }}
 }
+macro_rules! decode_inner_type_when_one_tuple_entry {
+    ($t:ident) => {
+        fn unchecked_decode_as_type<'scale, 'info>(
+            self,
+            input: &mut &'scale [u8],
+            type_id: TypeId,
+            types: &'info scale_info::PortableRegistry,
+        ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+            let Some(ty) = types.resolve(type_id.0) else {
+                        return DecodeAsTypeResult::Skipped(self);
+                    };
+
+            // Get the inner type ID if the thing we're trying to decode isn't
+            // a tuple or composite value. Else, fall back to default behaviour.
+            // This ensures that this function strictly improves on the default
+            // which would be to fail.
+            let inner_type_id = match ty.type_def() {
+                scale_info::TypeDef::Composite(_) => {
+                    return DecodeAsTypeResult::Skipped(self);
+                }
+                scale_info::TypeDef::Tuple(_) => {
+                    return DecodeAsTypeResult::Skipped(self);
+                }
+                _ => type_id.0,
+            };
+
+            let inner_res = decode_with_visitor(input, inner_type_id, types, <$t>::into_visitor());
+            let res = inner_res.map(|val| (val,)).map_err(|e| e.into());
+            DecodeAsTypeResult::Decoded(res)
+        }
+    };
+    ($($tt:tt)*) => {
+        /* nothing */
+    };
+}
 macro_rules! impl_decode_tuple {
     ($($t:ident)*) => {
         impl < $($t),* > Visitor for BasicVisitor<($($t,)*)>
@@ -554,6 +591,10 @@ macro_rules! impl_decode_tuple {
         {
             type Value<'scale, 'info> = ($($t,)*);
             type Error = Error;
+
+            // If we're trying to decode to a 1-tuple, and the type we're decoding
+            // isn't a tuple or composite, then decode thye inner type and add the tuple.
+            decode_inner_type_when_one_tuple_entry!($($t)*);
 
             fn visit_composite<'scale, 'info>(
                 self,

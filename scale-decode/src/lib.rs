@@ -119,6 +119,10 @@ assert_decodes_to(
     (Wrapper { value: 123 },),
     123u64
 );
+assert_decodes_to(
+    123u64,
+    (123,)
+);
 
 // Things like arrays and sequences are generally interchangeable despite the
 // encoding format being slightly different:
