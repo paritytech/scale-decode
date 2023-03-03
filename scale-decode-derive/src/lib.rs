@@ -15,11 +15,10 @@
 
 use darling::FromAttributes;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
 const ATTR_NAME: &str = "decode_as_type";
-const VISITOR_TYPE_SUFFIX: &str = "ScaleDecodeVisitor";
 
 /// The `DecodeAsType` derive macro can be used to implement `DecodeAsType` on structs and enums whose
 /// fields all implement `DecodeAsType`. Under the hood, the macro generates `scale_decode::visitor::Visitor`
@@ -136,7 +135,6 @@ fn generate_enum_impl(
     let (impl_generics, ty_generics, where_clause, phantomdata_type) =
         handle_generics(&attrs, &input.generics);
     let variant_names = details.variants.iter().map(|v| v.ident.to_string());
-    let visitor_struct_name = format_ident!("{}{VISITOR_TYPE_SUFFIX}", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of enum fields
     // that we're trying to generate output for.
@@ -204,57 +202,58 @@ fn generate_enum_impl(
     });
 
     quote!(
-        #[doc(hidden)]
-        #visibility struct #visitor_struct_name #impl_generics (
-            ::std::marker::PhantomData<#phantomdata_type>
-        );
+        const _: () = {
+            #visibility struct Visitor #impl_generics (
+                ::std::marker::PhantomData<#phantomdata_type>
+            );
 
-        impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
-            type Visitor = #visitor_struct_name #ty_generics;
-            fn into_visitor() -> Self::Visitor {
-                #visitor_struct_name(::std::marker::PhantomData)
-            }
-        }
-
-        impl #impl_generics #path_to_scale_decode::Visitor for #visitor_struct_name #ty_generics #where_clause {
-            type Error = #path_to_scale_decode::Error;
-            type Value<'scale, 'info> = #path_to_type #ty_generics;
-
-            fn visit_variant<'scale, 'info>(
-                self,
-                value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
-                type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                #(
-                    #variant_ifs
-                )*
-                Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindVariant {
-                    got: value.name().to_string(),
-                    expected: vec![#(#variant_names),*]
-                }))
-            }
-            // Allow an enum to be decoded through nested 1-field composites and tuples:
-            fn visit_composite<'scale, 'info>(
-                self,
-                value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
-                _type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                if value.remaining() != 1 {
-                    return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
+            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
+                type Visitor = Visitor #ty_generics;
+                fn into_visitor() -> Self::Visitor {
+                    Visitor(::std::marker::PhantomData)
                 }
-                value.decode_item(self).unwrap()
             }
-            fn visit_tuple<'scale, 'info>(
-                self,
-                value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
-                _type_id: #path_to_scale_decode::visitor::TypeId,
-            ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                if value.remaining() != 1 {
-                    return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
+
+            impl #impl_generics #path_to_scale_decode::Visitor for Visitor #ty_generics #where_clause {
+                type Error = #path_to_scale_decode::Error;
+                type Value<'scale, 'info> = #path_to_type #ty_generics;
+
+                fn visit_variant<'scale, 'info>(
+                    self,
+                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
+                    type_id: #path_to_scale_decode::visitor::TypeId,
+                ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+                    #(
+                        #variant_ifs
+                    )*
+                    Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindVariant {
+                        got: value.name().to_string(),
+                        expected: vec![#(#variant_names),*]
+                    }))
                 }
-                value.decode_item(self).unwrap()
+                // Allow an enum to be decoded through nested 1-field composites and tuples:
+                fn visit_composite<'scale, 'info>(
+                    self,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
+                    _type_id: #path_to_scale_decode::visitor::TypeId,
+                ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+                    if value.remaining() != 1 {
+                        return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
+                    }
+                    value.decode_item(self).unwrap()
+                }
+                fn visit_tuple<'scale, 'info>(
+                    self,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
+                    _type_id: #path_to_scale_decode::visitor::TypeId,
+                ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+                    if value.remaining() != 1 {
+                        return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
+                    }
+                    value.decode_item(self).unwrap()
+                }
             }
-        }
+        };
     )
 }
 
@@ -268,7 +267,6 @@ fn generate_struct_impl(
     let path_to_type: syn::Path = input.ident.clone().into();
     let (impl_generics, ty_generics, where_clause, phantomdata_type) =
         handle_generics(&attrs, &input.generics);
-    let visitor_struct_name = format_ident!("{}{VISITOR_TYPE_SUFFIX}", input.ident);
 
     // determine what the body of our visitor functions will be based on the type of struct
     // that we're trying to generate output for.
@@ -331,60 +329,44 @@ fn generate_struct_impl(
     };
 
     quote!(
-        #[doc(hidden)]
-        #visibility struct #visitor_struct_name #impl_generics (
-            ::std::marker::PhantomData<#phantomdata_type>
-        );
-
         const _: () = {
-            use #path_to_scale_decode::{
-                Error,
-                IntoVisitor,
-                DecodeAsFields,
-                Visitor,
-                PortableField,
-                PortableRegistry,
-                visitor::{
-                    types::{
-                        Composite,
-                        Tuple
-                    },
-                    TypeId,
-                }
-            };
+            #visibility struct Visitor #impl_generics (
+                ::std::marker::PhantomData<#phantomdata_type>
+            );
 
-            impl #impl_generics IntoVisitor for #path_to_type #ty_generics #where_clause {
-                type Visitor = #visitor_struct_name #ty_generics;
+            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
+                type Visitor = Visitor #ty_generics;
                 fn into_visitor() -> Self::Visitor {
-                    #visitor_struct_name(::std::marker::PhantomData)
+                    Visitor(::std::marker::PhantomData)
                 }
             }
 
-            impl #impl_generics Visitor for #visitor_struct_name #ty_generics #where_clause {
-                type Error = Error;
+            impl #impl_generics #path_to_scale_decode::Visitor for Visitor #ty_generics #where_clause {
+                type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
                 fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut Composite<'scale, 'info>,
-                    type_id: TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
+                    type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
                 fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut Tuple<'scale, 'info>,
-                    type_id: TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
+                    type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_tuple_body
                 }
             }
 
-            impl #impl_generics DecodeAsFields for #path_to_type #ty_generics #where_clause  {
-                fn decode_as_fields(input: &mut &[u8], fields: &[PortableField], types: &PortableRegistry) -> Result<Self, Error> {
+            impl #impl_generics #path_to_scale_decode::DecodeAsFields for #path_to_type #ty_generics #where_clause  {
+                fn decode_as_fields(input: &mut &[u8], fields: &[#path_to_scale_decode::PortableField], types: &#path_to_scale_decode::PortableRegistry) -> Result<Self, #path_to_scale_decode::Error> {
                     let path = Default::default();
-                    let mut composite = Composite::new(input, &path, fields, types);
-                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, TypeId(0))?;
+                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, &path, fields, types);
+                    use #path_to_scale_decode::{ Visitor, IntoVisitor };
+                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, #path_to_scale_decode::visitor::TypeId(0))?;
                     // Consume any remaining bytes and update input:
                     composite.skip_decoding()?;
                     *input = composite.bytes_from_undecoded();
