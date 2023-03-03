@@ -16,7 +16,6 @@
 //! This module provides a [`Context`] type, which tracks the path
 //! that we're attempting to encode to aid in error reporting.
 
-use super::linkedlist::LinkedList;
 use std::borrow::Cow;
 
 /// A cheaply clonable opaque context which allows us to track the current
@@ -24,7 +23,7 @@ use std::borrow::Cow;
 /// error reporting.
 #[derive(Clone, Default, Debug)]
 pub struct Context {
-    path: LinkedList<Location>,
+    path: Vec<Location>,
 }
 
 impl Context {
@@ -33,9 +32,8 @@ impl Context {
         Default::default()
     }
     /// Return a new context with the given location appended.
-    pub fn at(&self, loc: Location) -> Context {
-        let path = self.path.clone().push(loc);
-        Context { path }
+    pub fn push(&mut self, loc: Location) {
+        self.path.push(loc);
     }
     /// Return the current path.
     pub fn path(&self) -> Path<'_> {
@@ -44,27 +42,22 @@ impl Context {
 }
 
 /// The current path that we're trying to encode.
-pub struct Path<'a>(Cow<'a, LinkedList<Location>>);
+pub struct Path<'a>(Cow<'a, Vec<Location>>);
 
 impl<'a> Path<'a> {
     /// Cheaply convert the path to an owned version.
     pub fn into_owned(self) -> Path<'static> {
         Path(Cow::Owned(self.0.into_owned()))
     }
-    /// Return each location visited, most recent first.
+    /// Return each location visited, oldest first
     pub fn locations(&self) -> impl Iterator<Item = &Location> {
-        self.0.iter_back()
+        self.0.iter()
     }
 }
 
 impl<'a> std::fmt::Display for Path<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut items = Vec::with_capacity(self.0.len());
-        for item in self.0.iter_back() {
-            items.push(item);
-        }
-
-        for (idx, loc) in items.iter().rev().enumerate() {
+        for (idx, loc) in self.0.iter().enumerate() {
             if idx != 0 {
                 f.write_str(".")?;
             }

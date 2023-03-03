@@ -15,7 +15,6 @@
 
 //! An error that is emitted whenever some decoding fails.
 mod context;
-mod linkedlist;
 
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -47,20 +46,24 @@ impl Error {
         &self.context
     }
     /// Give some context to the error.
-    pub fn at(self, loc: Location) -> Self {
-        Error { context: self.context.at(loc), kind: self.kind }
+    pub fn at(mut self, loc: Location) -> Self {
+        self.context.push(loc);
+        Error { context: self.context, kind: self.kind }
     }
     /// Note which sequence index the error occurred in.
-    pub fn at_idx(self, idx: usize) -> Self {
-        Error { context: self.context.at(Location::idx(idx)), kind: self.kind }
+    pub fn at_idx(mut self, idx: usize) -> Self {
+        self.context.push(Location::idx(idx));
+        Error { context: self.context, kind: self.kind }
     }
     /// Note which field the error occurred in.
-    pub fn at_field(self, field: impl Into<Cow<'static, str>>) -> Self {
-        Error { context: self.context.at(Location::field(field)), kind: self.kind }
+    pub fn at_field(mut self, field: impl Into<Cow<'static, str>>) -> Self {
+        self.context.push(Location::field(field));
+        Error { context: self.context, kind: self.kind }
     }
     /// Note which variant the error occurred in.
-    pub fn at_variant(self, variant: impl Into<Cow<'static, str>>) -> Self {
-        Error { context: self.context.at(Location::variant(variant)), kind: self.kind }
+    pub fn at_variant(mut self, variant: impl Into<Cow<'static, str>>) -> Self {
+        self.context.push(Location::variant(variant));
+        Error { context: self.context, kind: self.kind }
     }
 }
 
