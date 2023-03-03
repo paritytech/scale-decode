@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! This module provides a [`Context`] type that must be provided with every
-//! attempt to encode some type. Internally, the [`Context`] tracks the path
+//! This module provides a [`Context`] type, which tracks the path
 //! that we're attempting to encode to aid in error reporting.
 
 use super::linkedlist::LinkedList;

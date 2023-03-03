@@ -47,8 +47,8 @@ use scale_decode::DecodeAsType;
 use scale_info::{PortableRegistry, TypeInfo};
 use std::fmt::Debug;
 
-// We are comonly provided type information, but for our examples we construct type info from
-// any type that implements `TypeInfo`.
+// We normally expect to have type information to hand, but for our examples
+// we construct type info from any type that implements `TypeInfo`.
 fn get_type_info<T: TypeInfo + 'static>() -> (u32, PortableRegistry) {
     let m = scale_info::MetaType::new::<T>();
     let mut types = scale_info::Registry::new();
@@ -159,9 +159,9 @@ pub type PortableFieldId = scale_info::interner::UntrackedSymbol<std::any::TypeI
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
 /// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.
 pub trait DecodeAsType: Sized {
-    /// Given some input bytes, a `type_id`, type registry and context, attempt to decode said bytes into
-    /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes not used
-    /// in the course of decoding are still pointed to after decoding is complete.
+    /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
+    /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
+    /// not used in the course of decoding are still pointed to after decoding is complete.
     fn decode_as_type(
         input: &mut &[u8],
         type_id: u32,
