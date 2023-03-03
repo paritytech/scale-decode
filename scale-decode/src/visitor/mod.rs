@@ -42,7 +42,7 @@ pub trait Visitor: Sized {
     ///
     /// Unlike the other `visit_*` methods, it is completely up to the implementor to decode and advance the
     /// bytes in a sensible way, and thus also possible for the implementor to screw this up. As a result,
-    /// It's suggested that you don't implement this unlesss you know what you're doing.
+    /// it's suggested that you don't implement this unless you know what you're doing.
     fn unchecked_decode_as_type<'scale, 'info>(
         self,
         _input: &mut &'scale [u8],
@@ -70,7 +70,7 @@ pub trait Visitor: Sized {
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.visit_unexpected(Unexpected::Bool)
     }
-    /// Called when a bool is seen in the input bytes.
+    /// Called when a char is seen in the input bytes.
     fn visit_char<'scale, 'info>(
         self,
         _value: char,
