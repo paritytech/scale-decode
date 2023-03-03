@@ -554,9 +554,12 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
             type_id: TypeId,
             types: &'info scale_info::PortableRegistry,
         ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+            // [jsdw]: See https://github.com/rust-lang/rustfmt/issues/5062.
+            // let else formatting not stable in macros; will keep indenting!
+            #[rustfmt::skip]
             let Some(ty) = types.resolve(type_id.0) else {
-                        return DecodeAsTypeResult::Skipped(self);
-                    };
+                return DecodeAsTypeResult::Skipped(self);
+            };
 
             // Get the inner type ID if the thing we're trying to decode isn't
             // a tuple or composite value. Else, fall back to default behaviour.

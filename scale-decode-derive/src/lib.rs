@@ -395,7 +395,7 @@ fn generate_struct_impl(
     )
 }
 
-// Given some named fields, generate impls like `field_name: get_field_value()` for each field. Do this for the compoiste and tuple impls.
+// Given some named fields, generate impls like `field_name: get_field_value()` for each field. Do this for the composite and tuple impls.
 fn named_field_keyvals<'f>(
     path_to_scale_decode: &'f syn::Path,
     fields: &'f syn::FieldsNamed,
@@ -485,7 +485,6 @@ fn handle_generics<'a>(
         for param in generics.type_params() {
             let ty = &param.ident;
             where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
-            where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
             where_clause.predicates.push(syn::parse_quote!(#path_to_crate::Error: From<<<#ty as #path_to_crate::IntoVisitor>::Visitor as #path_to_crate::Visitor>::Error>));
         }
     }
@@ -499,9 +498,7 @@ fn handle_generics<'a>(
             }
             syn::GenericParam::Lifetime(lt) => {
                 let lt = &lt.lifetime;
-                // [jsdw]: This is dumb, but for some reason `#lt ()` leads to
-                // an error (seems to output `'a, ()`) whereas this does not:
-                Some(syn::parse_quote!(::std::borrow::Cow<#lt, str>))
+                Some(syn::parse_quote!(& #lt ()))
             }
             // We don't need to mention const's in the PhantomData type.
             syn::GenericParam::Const(_) => None,
