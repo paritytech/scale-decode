@@ -829,7 +829,6 @@ mod test {
         // assert_encode_decode_to(&vec![1u8,2,3], &BinaryHeap::from_iter([1u8,2,3])); // No partialEq for BinaryHeap
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decode_types_via_tuples_or_composites() {
         // Some type we know will be a composite type because we made it..
@@ -886,7 +885,6 @@ mod test {
         check(Wibble::Bar(12345));
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decode_tuples() {
         // Some struct with the same shape as our tuples.
@@ -972,7 +970,6 @@ mod test {
         try_decode_hxxx([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decoding_can_skip_named_struct_fields() {
         #[derive(DecodeAsType, PartialEq, Debug)]
@@ -1004,7 +1001,6 @@ mod test {
         );
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decoding_can_skip_unnamed_struct_fields() {
         #[derive(DecodeAsType, PartialEq, Debug)]
@@ -1025,7 +1021,6 @@ mod test {
         );
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decoding_can_skip_enum_variant_fields() {
         #[derive(DecodeAsType, PartialEq, Debug)]
@@ -1064,7 +1059,6 @@ mod test {
         );
     }
 
-    #[cfg(feature = "derive")]
     #[test]
     fn decode_as_fields_works() {
         use std::fmt::Debug;
