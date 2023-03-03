@@ -632,7 +632,13 @@ macro_rules! impl_decode_tuple {
             fn decode_as_fields(input: &mut &[u8], fields: &[scale_info::Field<scale_info::form::PortableForm>], types: &scale_info::PortableRegistry) -> Result<Self, Error> {
                 let path = Default::default();
                 let mut composite = crate::visitor::types::Composite::new(input, &path, fields, types);
-                <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0))
+                let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
+
+                // Skip over bytes that we decoded:
+                composite.skip_decoding()?;
+                *input = composite.bytes_from_undecoded();
+
+                val
             }
         }
     }
@@ -745,14 +751,22 @@ mod test {
             + codec::Encode
             + 'static,
     {
-        let (ty, types) = make_type::<Foo>();
-        let scale_info::TypeDef::Composite(c) = types.resolve(ty).unwrap().type_def() else {
-            panic!("Expected composite type def")
-        };
-
         let foo_encoded = foo.encode();
         let foo_encoded_cursor = &mut &*foo_encoded;
-        let new_foo = Foo::decode_as_fields(foo_encoded_cursor, c.fields(), &types).unwrap();
+
+        let (ty, types) = make_type::<Foo>();
+
+        let new_foo = match types.resolve(ty).unwrap().type_def() {
+            scale_info::TypeDef::Composite(c) => {
+                Foo::decode_as_fields(foo_encoded_cursor, c.fields(), &types).unwrap()
+            }
+            scale_info::TypeDef::Tuple(t) => {
+                Foo::decode_as_field_ids(foo_encoded_cursor, t.fields(), &types).unwrap()
+            }
+            _ => {
+                panic!("Expected composite or tuple type def")
+            }
+        };
 
         assert_eq!(foo, new_foo);
         assert_eq!(
@@ -1083,5 +1097,8 @@ mod test {
         struct Foo3;
 
         assert_encode_decode_as_fields(Foo3);
+
+        // Tuples should work, too:
+        assert_encode_decode_as_fields((true, 123u8, "hello".to_string()));
     }
 }

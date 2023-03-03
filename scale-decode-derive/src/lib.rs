@@ -366,11 +366,13 @@ fn generate_struct_impl(
                     let path = Default::default();
                     let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, &path, fields, types);
                     use #path_to_scale_decode::{ Visitor, IntoVisitor };
-                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, #path_to_scale_decode::visitor::TypeId(0))?;
+                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, #path_to_scale_decode::visitor::TypeId(0));
+
                     // Consume any remaining bytes and update input:
                     composite.skip_decoding()?;
                     *input = composite.bytes_from_undecoded();
-                    Ok(val)
+
+                    val.map_err(From::from)
                 }
             }
         };
