@@ -20,7 +20,7 @@ use std::collections::HashMap;
 // We have some struct Foo that we'll encode to bytes. The aim of this example is
 // to manually write a decoder for it.
 //
-// Note: we can derive this autoamtically via the `DecodeAsType` derive macro.
+// Note: we can derive this automatically via the `DecodeAsType` derive macro.
 #[derive(scale_info::TypeInfo, codec::Encode, PartialEq, Debug)]
 struct Foo {
     bar: bool,
@@ -48,7 +48,7 @@ impl Visitor for FooVisitor {
 
     // Support decoding from composite types. We support decoding from either named or
     // unnamed fields (matching by field index if unnamed) and add context to errors via
-    // `.map_err(|e| e.at_x(..))` calls to give back more precise inforamtion about where
+    // `.map_err(|e| e.at_x(..))` calls to give back more precise information about where
     // decoding failed, if it does.
     fn visit_composite<'scale, 'info>(
         self,

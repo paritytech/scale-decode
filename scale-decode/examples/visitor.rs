@@ -273,7 +273,7 @@ impl visitor::Visitor for ValueVisitor {
     }
 }
 
-// Now we can decode arbitratry SCALE encoded types into these values (provided we have
+// Now we can decode arbitrary SCALE encoded types into these values (provided we have
 // a type registry to hand)..
 fn main() {
     // Some type that we want to decode from:

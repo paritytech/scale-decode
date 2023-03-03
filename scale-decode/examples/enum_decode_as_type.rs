@@ -20,7 +20,7 @@ use std::collections::HashMap;
 // We have some enum Foo that we'll encode to bytes. The aim of this example is
 // to manually write a decoder for it.
 //
-// Note: we can derive this autoamtically via the `DecodeAsType` derive macro.
+// Note: we can derive this automatically via the `DecodeAsType` derive macro.
 #[derive(scale_info::TypeInfo, codec::Encode, PartialEq, Debug)]
 enum Foo {
     Bar { bar: bool },

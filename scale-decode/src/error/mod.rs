@@ -88,7 +88,7 @@ pub enum ErrorKind {
     /// We cannot decode the number seen into the target type; it's out of range.
     #[error("Number {value} is out of range")]
     NumberOutOfRange {
-        /// A string represenatation of the numeric value that was out of range.
+        /// A string representation of the numeric value that was out of range.
         value: String,
     },
     /// We cannot find the variant we're trying to decode from in the target type.
