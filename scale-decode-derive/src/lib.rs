@@ -416,15 +416,18 @@ fn named_field_keyvals<'f>(
         }
 
         (
+            // Should we use this field (false means we'll not count it):
             true,
+            // For turning named fields in scale typeinfo into named fields on struct like type:
             quote!(#field_ident: {
                 let val = *vals
                     .get(&Some(#field_name))
                     .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
                 val.decode_as_type().map_err(|e| e.at_field(#field_name))?
             }),
+            // For turning named fields in scale typeinfo into unnamed fields on tuple like type:
             quote!(#field_ident: {
-                let val = vals.next().unwrap()?;
+                let val = vals.next().expect("field count should have been checked already on tuple type; please file a bug report")?;
                 val.decode_as_type().map_err(|e| e.at_field(#field_name))?
             })
         )
@@ -453,9 +456,11 @@ fn unnamed_field_vals<'f>(
         }
 
         (
+            // Should we use this field (false means we'll not count it):
             true,
+            // For turning unnamed fields in scale typeinfo into unnamed fields on tuple like type:
             quote!({
-                let val = vals.next().unwrap()?;
+                let val = vals.next().expect("field count should have been checked already on tuple type; please file a bug report")?;
                 val.decode_as_type().map_err(|e| e.at_idx(#idx))?
             }),
         )
