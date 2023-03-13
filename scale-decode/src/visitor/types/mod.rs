@@ -12,3 +12,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//! Types used in the [`super::Visitor`] trait definition.
+
+mod array;
+mod bit_sequence;
+mod compact;
+mod composite;
+mod sequence;
+mod str;
+mod tuple;
+mod variant;
+
+pub use self::str::Str;
+pub use array::Array;
+pub use bit_sequence::BitSequence;
+pub use compact::{Compact, CompactLocation};
+pub use composite::Composite;
+pub use sequence::Sequence;
+pub use tuple::Tuple;
+pub use variant::Variant;

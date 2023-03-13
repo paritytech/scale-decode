@@ -1,5 +1,5 @@
-// Copyright (C) 2022 Parity Technologies (UK) Ltd. (admin@parity.io)
-// This file is a part of the scale-value crate.
+// Copyright (C) 2023 Parity Technologies (UK) Ltd. (admin@parity.io)
+// This file is a part of the scale-decode crate.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,4 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod stack_vec;
+#[test]
+fn macro_compile_tests() {
+    let t = trybuild::TestCases::new();
+    t.pass("tests/macros/pass_*.rs");
+    t.compile_fail("tests/macros/fail_*.rs");
+}

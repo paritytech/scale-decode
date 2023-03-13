@@ -14,14 +14,6 @@ These steps assume that you've checked out the `scale-decode` repository and are
     cargo doc --open --all-features
     ```
 
-    CI checks for broken internal links at the moment. Optionally you can also confirm that any external links
-    are still valid like so:
-
-    ```
-    cargo install cargo-deadlinks
-    cargo deadlinks --check-http -- --all-features
-    ```
-
     If there are minor issues with the documentation, they can be fixed in the release branch.
 
 4.  Bump the crate version in `Cargo.toml` to whatever was decided in step 2.
@@ -41,14 +33,17 @@ These steps assume that you've checked out the `scale-decode` repository and are
 
     Checkout `main`, ensuring we're looking at that latest merge (`git pull`).
 
-    Next, do a dry run to make sure that things seem sane:
+    Next, do a final sanity check to make sure there are no new issues:
     ```
-    cargo publish --dry-run
+    cargo fmt
+    cargo clippy --all-targets
+    cargo test --all-targets
+    cargo test --doc
     ```
 
     If we're happy with everything, proceed with the release:
     ```
-    cargo publish
+    (cd scale-decode-derive && cargo publish) && (cd scale-decode && cargo publish)
     ```
 
 9.  If the release was successful, then tag the commit that we released in the `main` branch with the
