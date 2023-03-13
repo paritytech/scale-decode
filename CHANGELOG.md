@@ -4,6 +4,28 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.5.0
+
+This release shifts `scale-decode` to being a mirror of a new `scale-encode` crate, and:
+- Adds a new `IntoVisitor` trait that types can implement if there is a `Visitor` which can be used to decode
+  into them.
+- Adds a new `DecodeAsType` trait to mirror the `EncodeAsType` trait there; any type that implements `IntoVisitor`
+  automatically implements `DecodeAsType`.
+- Adds a new `DecodeAsFields` trait to mirror `EncodeAsFields`, implemented for tuple and struct types.
+- Moves the `Visitor` trait into a sub module and re-works the interface to allow zero copy decoding, allow more
+  concise implementations of it, and provide a fallback escape hatch to allow for more arbitrary `DecodeAsType`
+  implementations from it.
+- Implements `DecodeAsType` (via `Visitor` and `IntoVisitor` impls) and `DecodeAsFields` on common types.
+- Adds a `DecodeAsType` derive macro to auto-generate impls on custom struct and enum types.
+
+Any `Visitor` impls wil need to be updated to use the refined `Visitor` trait; this should be fairly mechanical
+(check out the examples and follow the compiler guidance to do this). Otherwise, the rest of the changes are
+additive and just make it easier to implement this trait and obtain a `DecodeAsType` implementation, if desired.
+
+## Changed
+
+- Add DecodeAsType backed by Visitor impls for standard types. ([#11](https://github.com/paritytech/scale-decode/pull/11))
+
 ## 0.4.0
 
 This release removes `bitvec` and the 32bit feature flag needed to play nicely with it and leans on `scale-bits` instead to decode bit sequences. We add a CI check to ensure that it can be compiled to WASM.
