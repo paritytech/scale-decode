@@ -18,7 +18,7 @@ This release shifts `scale-decode` to being a mirror of a new `scale-encode` cra
 - Implements `DecodeAsType` (via `Visitor` and `IntoVisitor` impls) and `DecodeAsFields` on common types.
 - Adds a `DecodeAsType` derive macro to auto-generate impls on custom struct and enum types.
 
-Any `Visitor` impls wil need to be updated to use the refined `Visitor` trait; this should be fairly mechanical
+Any `Visitor` impls will need to be updated to use the refined `Visitor` trait; this should be fairly mechanical
 (check out the examples and follow the compiler guidance to do this). Otherwise, the rest of the changes are
 additive and just make it easier to implement this trait and obtain a `DecodeAsType` implementation, if desired.
 
