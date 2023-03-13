@@ -12,3 +12,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+use scale_decode::DecodeAsType;
+
+// struct is public, which means any geenrated visitor which can be returned via
+// IntoVisitor needs to also be public.
+#[derive(DecodeAsType)]
+pub struct Foo(String);
+
+
+fn can_decode_as_type<T: DecodeAsType>() {}
+
+fn main() {
+    // assert that the trait is implemented:
+    can_decode_as_type::<Foo>();
+}
