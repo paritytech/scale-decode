@@ -43,9 +43,9 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
 
     let ty = types.resolve(ty_id).ok_or(DecodeError::TypeIdNotFound(ty_id))?;
     let ty_id = TypeId(ty_id);
-    let path = ty.path();
+    let path = &ty.path;
 
-    match ty.type_def() {
+    match &ty.type_def {
         TypeDef::Composite(inner) => {
             decode_composite_value(data, ty_id, path, inner, types, visitor)
         }
@@ -69,7 +69,7 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Composite::new(data, path, ty.fields(), types);
+    let mut items = Composite::new(data, path, &ty.fields, types);
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -104,7 +104,7 @@ fn decode_sequence_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Sequence::new(data, ty.type_param().id(), types)?;
+    let mut items = Sequence::new(data, ty.type_param.id, types)?;
     let res = visitor.visit_sequence(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -121,8 +121,8 @@ fn decode_array_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let len = ty.len() as usize;
-    let mut arr = Array::new(data, ty.type_param().id(), len, types);
+    let len = ty.len as usize;
+    let mut arr = Array::new(data, ty.type_param.id, len, types);
     let res = visitor.visit_array(&mut arr, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -139,7 +139,7 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Tuple::new(data, ty.fields(), types);
+    let mut items = Tuple::new(data, ty.fields.as_slice(), types);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -254,7 +254,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
         use TypeDefPrimitive::*;
-        match inner.type_def() {
+        match &inner.type_def {
             // It's obvious how to decode basic primitive unsigned types, since we have impls for them.
             TypeDef::Primitive(U8) => {
                 locations.push(CompactLocation::Primitive(current_type_id));
@@ -288,22 +288,22 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
             }
             // A struct with exactly 1 field containing one of the above types can be sensibly compact encoded/decoded.
             TypeDef::Composite(composite) => {
-                if composite.fields().len() != 1 {
+                if composite.fields.len() != 1 {
                     return Err(DecodeError::CannotDecodeCompactIntoType(inner.clone()).into());
                 }
 
                 // What type is the 1 field that we are able to decode?
-                let field = &composite.fields()[0];
+                let field = &composite.fields[0];
 
                 // Record this composite location.
-                match field.name() {
+                match &field.name {
                     Some(name) => {
                         locations.push(CompactLocation::NamedComposite(current_type_id, name))
                     }
                     None => locations.push(CompactLocation::UnnamedComposite(current_type_id)),
                 }
 
-                let field_type_id = field.ty().id();
+                let field_type_id = field.ty.id;
                 let inner_ty = types
                     .resolve(field_type_id)
                     .ok_or(DecodeError::TypeIdNotFound(field_type_id))?;
@@ -328,7 +328,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
     }
 
     // The type ID of the thing encoded into a Compact type.
-    let inner_ty_id = ty.type_param().id();
+    let inner_ty_id = ty.type_param.id;
 
     // Attempt to compact-decode this inner type.
     let inner = types.resolve(inner_ty_id).ok_or(DecodeError::TypeIdNotFound(inner_ty_id))?;

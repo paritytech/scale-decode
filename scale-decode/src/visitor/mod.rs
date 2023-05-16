@@ -695,7 +695,7 @@ mod test {
         let id = types.register_type(&m);
         let portable_registry: PortableRegistry = types.into();
 
-        (id.id(), portable_registry)
+        (id.id, portable_registry)
     }
 
     /// This just tests that if we try to decode some values we've encoded using a visitor
