@@ -311,5 +311,5 @@ fn make_type<T: scale_info::TypeInfo + 'static>() -> (u32, scale_info::PortableR
     let id = types.register_type(&m);
     let portable_registry: scale_info::PortableRegistry = types.into();
 
-    (id.id(), portable_registry)
+    (id.id, portable_registry)
 }

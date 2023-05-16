@@ -565,7 +565,7 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
             // a tuple or composite value. Else, fall back to default behaviour.
             // This ensures that this function strictly improves on the default
             // which would be to fail.
-            let inner_type_id = match ty.type_def() {
+            let inner_type_id = match ty.type_def {
                 scale_info::TypeDef::Composite(_) => {
                     return DecodeAsTypeResult::Skipped(self);
                 }
@@ -698,7 +698,7 @@ mod test {
         let id = types.register_type(&m);
         let portable_registry: scale_info::PortableRegistry = types.into();
 
-        (id.id(), portable_registry)
+        (id.id, portable_registry)
     }
 
     // For most of our tests, we'll assert that whatever type we encode, we can decode back again to the given type.
@@ -756,12 +756,12 @@ mod test {
 
         let (ty, types) = make_type::<Foo>();
 
-        let new_foo = match types.resolve(ty).unwrap().type_def() {
+        let new_foo = match &types.resolve(ty).unwrap().type_def {
             scale_info::TypeDef::Composite(c) => {
-                Foo::decode_as_fields(foo_encoded_cursor, c.fields(), &types).unwrap()
+                Foo::decode_as_fields(foo_encoded_cursor, c.fields.as_slice(), &types).unwrap()
             }
             scale_info::TypeDef::Tuple(t) => {
-                Foo::decode_as_field_ids(foo_encoded_cursor, t.fields(), &types).unwrap()
+                Foo::decode_as_field_ids(foo_encoded_cursor, t.fields.as_slice(), &types).unwrap()
             }
             _ => {
                 panic!("Expected composite or tuple type def")
