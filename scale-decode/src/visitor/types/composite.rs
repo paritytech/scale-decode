@@ -70,7 +70,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     }
     /// Return whether any of the fields are unnamed.
     pub fn has_unnamed_fields(&self) -> bool {
-        self.fields.iter().any(|f| f.name().is_none())
+        self.fields.iter().any(|f| f.name.is_none())
     }
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
@@ -80,7 +80,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
     pub fn peek_name(&self) -> Option<&'info str> {
-        self.fields.get(0).and_then(|f| f.name().map(|n| &**n))
+        self.fields.get(0).and_then(|f| f.name.as_deref())
     }
     /// Decode the next field in the composite type by providing a visitor to handle it. This is more
     /// efficient than iterating over the key/value pairs if you already know how you want to decode the
@@ -97,7 +97,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         let b = &mut &*self.item_bytes;
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, field.ty().id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, field.ty.id, self.types, visitor);
 
         // Update self to point to the next item, now:
         self.item_bytes = *b;
@@ -149,7 +149,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     }
     /// The type ID associated with this field.
     pub fn type_id(&self) -> u32 {
-        self.field.ty().id()
+        self.field.ty.id
     }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
@@ -158,14 +158,14 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
         crate::visitor::decode_with_visitor(
             &mut &*self.bytes,
-            self.field.ty().id(),
+            self.field.ty.id,
             self.types,
             visitor,
         )
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
-        T::decode_as_type(&mut &*self.bytes, self.field.ty().id(), self.types)
+        T::decode_as_type(&mut &*self.bytes, self.field.ty.id, self.types)
     }
 }
 

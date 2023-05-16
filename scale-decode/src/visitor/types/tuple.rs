@@ -160,8 +160,8 @@ impl<'info> TupleFieldIds<'info> {
     }
     fn first(&self) -> Option<u32> {
         match self {
-            TupleFieldIds::Ids(fs) => fs.get(0).map(|f| f.id()),
-            TupleFieldIds::Fields(fs) => fs.get(0).map(|f| f.ty().id()),
+            TupleFieldIds::Ids(fs) => fs.get(0).map(|f| f.id),
+            TupleFieldIds::Fields(fs) => fs.get(0).map(|f| f.ty.id),
         }
     }
     fn pop_front_unwrap(&mut self) {

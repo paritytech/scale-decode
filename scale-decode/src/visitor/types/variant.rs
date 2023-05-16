@@ -36,13 +36,13 @@ impl<'scale, 'info> Variant<'scale, 'info> {
 
         // Does a variant exist with the index we're looking for?
         let variant = ty
-            .variants()
+            .variants
             .iter()
-            .find(|v| v.index() == index)
+            .find(|v| v.index == index)
             .ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
 
         // Allow decoding of the fields:
-        let fields = Composite::new(item_bytes, path, variant.fields(), types);
+        let fields = Composite::new(item_bytes, path, variant.fields.as_slice(), types);
 
         Ok(Variant { bytes, variant, fields })
     }
@@ -66,11 +66,11 @@ impl<'scale, 'info> Variant<'scale, 'info> {
     }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {
-        self.variant.name()
+        self.variant.name.as_str()
     }
     /// The index of the variant.
     pub fn index(&self) -> u8 {
-        self.variant.index()
+        self.variant.index
     }
     /// Access the variant fields.
     pub fn fields(&mut self) -> &mut Composite<'scale, 'info> {
