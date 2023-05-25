@@ -26,9 +26,8 @@ This crate exposes four traits:
 - A [`DecodeAsType`] trait which is implemented for types which implement [`IntoVisitor`], and provides a high level interface for
   decoding SCALE encoded bytes into some type with the help of a type ID and [`scale_info::PortableRegistry`].
 - A [`DecodeAsFields`] trait which when implemented on some type, describes how SCALE encoded bytes can be decoded
-  into it with the help of a slice of [`PortableField`]'s or [`PortableFieldId`]'s and type registry describing the
-  shape of the encoded bytes. This is generally only implemented for tuples and structs, since we need a set of fields
-  to map to the provided slices.
+  into it with the help of an iterator of [`Field`]s and a type registry describing the shape of the encoded bytes. This is
+  generally only implemented for tuples and structs, since we need a set of fields to map to the provided slices.
 
 Implementations for many built-in types are also provided for each trait, and the [`macro@DecodeAsType`] macro can be used to
 generate the relevant impls on new struct and enum types such that they get a [`DecodeAsType`] impl.
