@@ -18,7 +18,7 @@
 mod decode;
 pub mod types;
 
-use crate::Field;
+use crate::FieldIter;
 use scale_info::form::PortableForm;
 use types::*;
 
@@ -184,7 +184,7 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::Sequence)
     }
     /// Called when a composite value is seen in the input bytes.
-    fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
         self,
         _value: &mut Composite<'scale, 'info, I>,
         _type_id: TypeId,
@@ -192,7 +192,7 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::Composite)
     }
     /// Called when a tuple of values is seen in the input bytes.
-    fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
         self,
         _value: &mut Tuple<'scale, 'info, I>,
         _type_id: TypeId,
@@ -208,7 +208,7 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::Str)
     }
     /// Called when a variant is seen in the input bytes.
-    fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
         self,
         _value: &mut Variant<'scale, 'info, I>,
         _type_id: TypeId,
@@ -618,7 +618,7 @@ mod test {
             }
             Ok(Value::Sequence(vals))
         }
-        fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+        fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
             self,
             value: &mut Composite<'scale, 'info, I>,
             _type_id: TypeId,
@@ -632,7 +632,7 @@ mod test {
             }
             Ok(Value::Composite(vals))
         }
-        fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+        fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
             self,
             value: &mut Tuple<'scale, 'info, I>,
             _type_id: TypeId,
@@ -651,7 +651,7 @@ mod test {
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             Ok(Value::Str(value.as_str()?.to_owned()))
         }
-        fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+        fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
             self,
             value: &mut Variant<'scale, 'info, I>,
             _type_id: TypeId,
@@ -957,7 +957,7 @@ mod test {
             type Value<'scale, 'info> = (&'scale str, &'scale str);
             type Error = DecodeError;
 
-            fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+            fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
                 self,
                 value: &mut Tuple<'scale, 'info, I>,
                 _type_id: TypeId,
@@ -1008,7 +1008,7 @@ mod test {
             type Value<'scale, 'info> = std::collections::BTreeMap<&'info str, &'scale str>;
             type Error = DecodeError;
 
-            fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+            fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
                 self,
                 value: &mut Composite<'scale, 'info, I>,
                 _type_id: TypeId,

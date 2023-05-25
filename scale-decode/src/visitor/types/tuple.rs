@@ -15,7 +15,7 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType, Field,
+    DecodeAsType, FieldIter,
 };
 use scale_info::PortableRegistry;
 
@@ -29,7 +29,7 @@ pub struct Tuple<'scale, 'info, I> {
 
 impl<'scale, 'info, I> Tuple<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     pub(crate) fn new(
         bytes: &'scale [u8],
@@ -88,7 +88,7 @@ where
 // Iterating returns a representation of each field in the tuple type.
 impl<'scale, 'info, I> Iterator for Tuple<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     type Item = Result<TupleField<'scale, 'info>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -143,7 +143,7 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
 
 impl<'scale, 'info, I> crate::visitor::DecodeItemIterator<'scale, 'info> for Tuple<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     fn decode_item<'a, V: Visitor>(
         &mut self,

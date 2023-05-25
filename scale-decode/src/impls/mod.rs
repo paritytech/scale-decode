@@ -22,7 +22,7 @@ use crate::{
         self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, TypeId,
         Visitor,
     },
-    DecodeAsFields, Field, IntoVisitor,
+    DecodeAsFields, FieldIter, IntoVisitor,
 };
 use codec::Compact;
 use core::num::{
@@ -63,7 +63,7 @@ macro_rules! impl_into_visitor {
 /// Ignore single-field tuples/composites and visit the single field inside instead.
 macro_rules! visit_single_field_composite_tuple_impls {
     () => {
-        fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+        fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
             self,
             value: &mut $crate::visitor::types::Composite<'scale, 'info, I>,
             _type_id: $crate::visitor::TypeId,
@@ -73,7 +73,7 @@ macro_rules! visit_single_field_composite_tuple_impls {
             }
             value.decode_item(self).unwrap()
         }
-        fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+        fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
             self,
             value: &mut $crate::visitor::types::Tuple<'scale, 'info, I>,
             _type_id: $crate::visitor::TypeId,
@@ -154,7 +154,7 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
     type Error = Error;
     type Value<'scale, 'info> = PhantomData<T>;
 
-    fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
         self,
         value: &mut Tuple<'scale, 'info, I>,
         _type_id: visitor::TypeId,
@@ -165,7 +165,7 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
             self.visit_unexpected(visitor::Unexpected::Tuple)
         }
     }
-    fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
         self,
         value: &mut Composite<'scale, 'info, I>,
         _type_id: visitor::TypeId,
@@ -344,7 +344,7 @@ where
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
-    fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
         self,
         value: &mut Composite<'scale, 'info, I>,
         _type_id: visitor::TypeId,
@@ -377,7 +377,7 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
-    fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
         self,
         value: &mut Variant<'scale, 'info, I>,
         _type_id: visitor::TypeId,
@@ -413,7 +413,7 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
-    fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
+    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
         self,
         value: &mut Variant<'scale, 'info, I>,
         _type_id: visitor::TypeId,
@@ -599,16 +599,16 @@ macro_rules! impl_decode_tuple {
             // isn't a tuple or composite, then decode thye inner type and add the tuple.
             decode_inner_type_when_one_tuple_entry!($($t)*);
 
-            fn visit_composite<'scale, 'info, FieldsIter: Iterator<Item=Field<'info>> + Clone>(
+            fn visit_composite<'scale, 'info, FI: FieldIter<'info>>(
                 self,
-                value: &mut Composite<'scale, 'info, FieldsIter>,
+                value: &mut Composite<'scale, 'info, FI>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
             }
-            fn visit_tuple<'scale, 'info, FieldsIter: Iterator<Item=Field<'info>> + Clone>(
+            fn visit_tuple<'scale, 'info, FI: FieldIter<'info>>(
                 self,
-                value: &mut Tuple<'scale, 'info, FieldsIter>,
+                value: &mut Tuple<'scale, 'info, FI>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
@@ -629,9 +629,7 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > DecodeAsFields for ($($t,)*)
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
-            fn decode_as_fields<'info, FieldsIter>(input: &mut &[u8], fields: FieldsIter, types: &'info scale_info::PortableRegistry) -> Result<Self, Error>
-            where FieldsIter: Iterator<Item=Field<'info>> + Clone
-            {
+            fn decode_as_fields<'info, FI: FieldIter<'info>>(input: &mut &[u8], fields: FI, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
                 let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
@@ -690,7 +688,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::DecodeAsType;
+    use crate::{DecodeAsType, Field};
     use codec::Encode;
 
     /// Given a type definition, return type ID and registry representing it.

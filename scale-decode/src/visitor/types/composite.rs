@@ -15,7 +15,7 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType, Field,
+    DecodeAsType, Field, FieldIter,
 };
 use scale_info::{form::PortableForm, Path, PortableRegistry};
 
@@ -30,7 +30,7 @@ pub struct Composite<'scale, 'info, I> {
 
 impl<'scale, 'info, I> Composite<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     // Used in macros, but not really expected to be used elsewhere.
     #[doc(hidden)]
@@ -116,7 +116,7 @@ where
 // Iterating returns a representation of each field in the composite type.
 impl<'scale, 'info, I> Iterator for Composite<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     type Item = Result<CompositeField<'scale, 'info>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -176,7 +176,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
 impl<'scale, 'info, I> crate::visitor::DecodeItemIterator<'scale, 'info>
     for Composite<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     fn decode_item<'a, V: Visitor>(
         &mut self,

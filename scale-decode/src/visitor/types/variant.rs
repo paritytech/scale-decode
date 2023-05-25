@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use crate::visitor::{Composite, DecodeError};
-use crate::Field;
+use crate::{Field, FieldIter};
 use scale_info::form::PortableForm;
 use scale_info::{Path, PortableRegistry, TypeDefVariant};
 
@@ -31,8 +31,7 @@ impl<'scale, 'info, I> Variant<'scale, 'info, I> {
         path: &'info Path<PortableForm>,
         ty: &'info TypeDefVariant<PortableForm>,
         types: &'info PortableRegistry,
-    ) -> Result<Variant<'scale, 'info, impl Iterator<Item = Field<'info>> + Clone>, DecodeError>
-    {
+    ) -> Result<Variant<'scale, 'info, impl FieldIter<'info>>, DecodeError> {
         let index = *bytes.first().ok_or(DecodeError::NotEnoughInput)?;
         let item_bytes = &bytes[1..];
 
@@ -53,7 +52,7 @@ impl<'scale, 'info, I> Variant<'scale, 'info, I> {
 
 impl<'scale, 'info, I> Variant<'scale, 'info, I>
 where
-    I: Iterator<Item = Field<'info>> + Clone,
+    I: FieldIter<'info>,
 {
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
