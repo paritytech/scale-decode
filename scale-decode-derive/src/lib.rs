@@ -345,14 +345,14 @@ fn generate_struct_impl(
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-                fn visit_composite<'scale, 'info, I: Iterator<Item=#path_to_scale_decode::Field<'info>> + Clone>(
+                fn visit_composite<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, I>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
-                fn visit_tuple<'scale, 'info, I: Iterator<Item=#path_to_scale_decode::Field<'info>> + Clone>(
+                fn visit_tuple<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, I>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
