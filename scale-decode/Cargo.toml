@@ -23,7 +23,7 @@ primitive-types = ["dep:primitive-types"]
 derive = ["dep:scale-decode-derive"]
 
 [dependencies]
-scale-info = { version = "2.0.0", default-features = false, features = ["bit-vec", "std"] }
+scale-info = { version = "2.7.0", default-features = false, features = ["bit-vec", "std"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "full"] }
 thiserror = "1.0.24"
 scale-bits = { version = "0.3.0", default-features = false, features = ["scale-info"] }

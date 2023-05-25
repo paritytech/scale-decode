@@ -22,7 +22,7 @@ use crate::{
         self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, TypeId,
         Visitor,
     },
-    DecodeAsFields, IntoVisitor,
+    DecodeAsFields, Field, IntoVisitor,
 };
 use codec::Compact;
 use core::num::{
@@ -63,9 +63,9 @@ macro_rules! impl_into_visitor {
 /// Ignore single-field tuples/composites and visit the single field inside instead.
 macro_rules! visit_single_field_composite_tuple_impls {
     () => {
-        fn visit_composite<'scale, 'info>(
+        fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
             self,
-            value: &mut $crate::visitor::types::Composite<'scale, 'info>,
+            value: &mut $crate::visitor::types::Composite<'scale, 'info, I>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -73,9 +73,9 @@ macro_rules! visit_single_field_composite_tuple_impls {
             }
             value.decode_item(self).unwrap()
         }
-        fn visit_tuple<'scale, 'info>(
+        fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
             self,
-            value: &mut $crate::visitor::types::Tuple<'scale, 'info>,
+            value: &mut $crate::visitor::types::Tuple<'scale, 'info, I>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -154,9 +154,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
     type Error = Error;
     type Value<'scale, 'info> = PhantomData<T>;
 
-    fn visit_tuple<'scale, 'info>(
+    fn visit_tuple<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
         self,
-        value: &mut Tuple<'scale, 'info>,
+        value: &mut Tuple<'scale, 'info, I>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -165,9 +165,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
             self.visit_unexpected(visitor::Unexpected::Tuple)
         }
     }
-    fn visit_composite<'scale, 'info>(
+    fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
         self,
-        value: &mut Composite<'scale, 'info>,
+        value: &mut Composite<'scale, 'info, I>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -344,9 +344,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
-    fn visit_composite<'scale, 'info>(
+    fn visit_composite<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
         self,
-        value: &mut Composite<'scale, 'info>,
+        value: &mut Composite<'scale, 'info, I>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut map = BTreeMap::new();
@@ -377,9 +377,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
-    fn visit_variant<'scale, 'info>(
+    fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
         self,
-        value: &mut Variant<'scale, 'info>,
+        value: &mut Variant<'scale, 'info, I>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Some" && value.fields().remaining() == 1 {
@@ -413,9 +413,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
-    fn visit_variant<'scale, 'info>(
+    fn visit_variant<'scale, 'info, I: Iterator<Item = Field<'info>> + Clone>(
         self,
-        value: &mut Variant<'scale, 'info>,
+        value: &mut Variant<'scale, 'info, I>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Ok" && value.fields().remaining() == 1 {
@@ -565,7 +565,7 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
             // a tuple or composite value. Else, fall back to default behaviour.
             // This ensures that this function strictly improves on the default
             // which would be to fail.
-            let inner_type_id = match ty.type_def {
+            let inner_type_id = match &ty.type_def {
                 scale_info::TypeDef::Composite(_) => {
                     return DecodeAsTypeResult::Skipped(self);
                 }
@@ -599,16 +599,16 @@ macro_rules! impl_decode_tuple {
             // isn't a tuple or composite, then decode thye inner type and add the tuple.
             decode_inner_type_when_one_tuple_entry!($($t)*);
 
-            fn visit_composite<'scale, 'info>(
+            fn visit_composite<'scale, 'info, FieldsIter: Iterator<Item=Field<'info>> + Clone>(
                 self,
-                value: &mut Composite<'scale, 'info>,
+                value: &mut Composite<'scale, 'info, FieldsIter>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
             }
-            fn visit_tuple<'scale, 'info>(
+            fn visit_tuple<'scale, 'info, FieldsIter: Iterator<Item=Field<'info>> + Clone>(
                 self,
-                value: &mut Tuple<'scale, 'info>,
+                value: &mut Tuple<'scale, 'info, FieldsIter>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
@@ -629,9 +629,10 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > DecodeAsFields for ($($t,)*)
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
-            fn decode_as_fields(input: &mut &[u8], fields: &[scale_info::Field<scale_info::form::PortableForm>], types: &scale_info::PortableRegistry) -> Result<Self, Error> {
-                let path = Default::default();
-                let mut composite = crate::visitor::types::Composite::new(input, &path, fields, types);
+            fn decode_as_fields<'info, FieldsIter>(input: &mut &[u8], fields: FieldsIter, types: &'info scale_info::PortableRegistry) -> Result<Self, Error>
+            where FieldsIter: Iterator<Item=Field<'info>> + Clone
+            {
+                let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
                 // Skip over bytes that we decoded:
@@ -643,6 +644,7 @@ macro_rules! impl_decode_tuple {
         }
     }
 }
+
 impl_decode_tuple!();
 impl_decode_tuple!(A);
 impl_decode_tuple!(A B);
@@ -758,10 +760,12 @@ mod test {
 
         let new_foo = match &types.resolve(ty).unwrap().type_def {
             scale_info::TypeDef::Composite(c) => {
-                Foo::decode_as_fields(foo_encoded_cursor, c.fields.as_slice(), &types).unwrap()
+                let field_iter = c.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+                Foo::decode_as_fields(foo_encoded_cursor, field_iter, &types).unwrap()
             }
             scale_info::TypeDef::Tuple(t) => {
-                Foo::decode_as_field_ids(foo_encoded_cursor, t.fields.as_slice(), &types).unwrap()
+                let field_iter = t.fields.iter().map(|f| Field::unnamed(f.id));
+                Foo::decode_as_fields(foo_encoded_cursor, field_iter, &types).unwrap()
             }
             _ => {
                 panic!("Expected composite or tuple type def")
