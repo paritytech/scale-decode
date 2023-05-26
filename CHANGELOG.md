@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.6.0
+
+- Change `DecodeAsFields` to accept an iterator of fields to decode into. This makes it more flexible in what it
+  is able to decode. This bleeds into various other types, which inherit a generic parameter to represent this
+  iterator that is used to drive decoding.
+
 ## 0.5.0
 
 This release shifts `scale-decode` to being a mirror of a new `scale-encode` crate, and:
@@ -28,7 +34,8 @@ additive and just make it easier to implement this trait and obtain a `DecodeAsT
 
 ## 0.4.0
 
-This release removes `bitvec` and the 32bit feature flag needed to play nicely with it and leans on `scale-bits` instead to decode bit sequences. We add a CI check to ensure that it can be compiled to WASM.
+This release removes `bitvec` and the 32bit feature flag needed to play nicely with it and leans on `scale-bits` instead
+to decode bit sequences. We add a CI check to ensure that it can be compiled to WASM.
 
 ## Changed
 
