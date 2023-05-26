@@ -1,11 +1,17 @@
 [package]
 name = "scale-decode-derive"
+documentation = "https://docs.rs/scale-decode"
 description = "Derive macro for scale-decode"
-version = "0.5.0"
 readme = "README.md"
-authors = ["Parity Technologies <admin@parity.io>"]
-license = "Apache-2.0"
-edition = "2021"
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+include.workspace = true
 
 [lib]
 proc-macro = true
@@ -18,4 +24,4 @@ proc-macro-crate = "1"
 darling = "0.14.2"
 
 [dev-dependencies]
-scale-decode = { path = "../scale-decode" }
+scale-decode = { workspace = true }
