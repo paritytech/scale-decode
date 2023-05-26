@@ -14,23 +14,24 @@
 // limitations under the License.
 
 use crate::visitor::{Composite, DecodeError};
+use crate::{Field, FieldIter};
 use scale_info::form::PortableForm;
 use scale_info::{Path, PortableRegistry, TypeDefVariant};
 
 /// A representation of the a variant type.
-pub struct Variant<'scale, 'info> {
+pub struct Variant<'scale, 'info, I> {
     bytes: &'scale [u8],
     variant: &'info scale_info::Variant<PortableForm>,
-    fields: Composite<'scale, 'info>,
+    fields: Composite<'scale, 'info, I>,
 }
 
-impl<'scale, 'info> Variant<'scale, 'info> {
+impl<'scale, 'info, I> Variant<'scale, 'info, I> {
     pub(crate) fn new(
         bytes: &'scale [u8],
         path: &'info Path<PortableForm>,
         ty: &'info TypeDefVariant<PortableForm>,
         types: &'info PortableRegistry,
-    ) -> Result<Variant<'scale, 'info>, DecodeError> {
+    ) -> Result<Variant<'scale, 'info, impl FieldIter<'info>>, DecodeError> {
         let index = *bytes.first().ok_or(DecodeError::NotEnoughInput)?;
         let item_bytes = &bytes[1..];
 
@@ -42,10 +43,17 @@ impl<'scale, 'info> Variant<'scale, 'info> {
             .ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
 
         // Allow decoding of the fields:
-        let fields = Composite::new(item_bytes, path, variant.fields.as_slice(), types);
+        let fields_iter = variant.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+        let fields = Composite::new(item_bytes, path, fields_iter, types);
 
         Ok(Variant { bytes, variant, fields })
     }
+}
+
+impl<'scale, 'info, I> Variant<'scale, 'info, I>
+where
+    I: FieldIter<'info>,
+{
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
@@ -66,14 +74,14 @@ impl<'scale, 'info> Variant<'scale, 'info> {
     }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {
-        self.variant.name.as_str()
+        &self.variant.name
     }
     /// The index of the variant.
     pub fn index(&self) -> u8 {
         self.variant.index
     }
     /// Access the variant fields.
-    pub fn fields(&mut self) -> &mut Composite<'scale, 'info> {
+    pub fn fields(&mut self) -> &mut Composite<'scale, 'info, I> {
         &mut self.fields
     }
 }

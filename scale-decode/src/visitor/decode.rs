@@ -18,6 +18,7 @@ use crate::visitor::{
     Array, BitSequence, Compact, CompactLocation, Composite, DecodeAsTypeResult, DecodeError,
     Sequence, Str, Tuple, TypeId, Variant, Visitor,
 };
+use crate::Field;
 use codec::{self, Decode};
 use scale_info::{
     form::PortableForm, Path, PortableRegistry, TypeDef, TypeDefArray, TypeDefBitSequence,
@@ -69,7 +70,8 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Composite::new(data, path, &ty.fields, types);
+    let fields = ty.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+    let mut items = Composite::new(data, path, fields, types);
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -87,7 +89,7 @@ fn decode_variant_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut variant = Variant::new(data, path, ty, types)?;
+    let mut variant = Variant::<std::iter::Empty<Field<'info>>>::new(data, path, ty, types)?;
     let res = visitor.visit_variant(&mut variant, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -139,7 +141,8 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut items = Tuple::new(data, ty.fields.as_slice(), types);
+    let fields = ty.fields.iter().map(|f| Field::unnamed(f.id));
+    let mut items = Tuple::new(data, fields, types);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:

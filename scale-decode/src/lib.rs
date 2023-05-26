@@ -26,9 +26,8 @@ This crate exposes four traits:
 - A [`DecodeAsType`] trait which is implemented for types which implement [`IntoVisitor`], and provides a high level interface for
   decoding SCALE encoded bytes into some type with the help of a type ID and [`scale_info::PortableRegistry`].
 - A [`DecodeAsFields`] trait which when implemented on some type, describes how SCALE encoded bytes can be decoded
-  into it with the help of a slice of [`PortableField`]'s or [`PortableFieldId`]'s and type registry describing the
-  shape of the encoded bytes. This is generally only implemented for tuples and structs, since we need a set of fields
-  to map to the provided slices.
+  into it with the help of an iterator of [`Field`]s and a type registry describing the shape of the encoded bytes. This is
+  generally only implemented for tuples and structs, since we need a set of fields to map to the provided slices.
 
 Implementations for many built-in types are also provided for each trait, and the [`macro@DecodeAsType`] macro can be used to
 generate the relevant impls on new struct and enum types such that they get a [`DecodeAsType`] impl.
@@ -150,10 +149,6 @@ pub use scale_decode_derive::DecodeAsType;
 
 // Used in trait definitions.
 pub use scale_info::PortableRegistry;
-/// A description of a single field in a tuple or struct type.
-pub type PortableField = scale_info::Field<scale_info::form::PortableForm>;
-/// A type ID used to represent tuple fields.
-pub type PortableFieldId = scale_info::interner::UntrackedSymbol<std::any::TypeId>;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
@@ -189,25 +184,46 @@ where
 /// for tuple and struct types, and is automatically implemented via the [`macro@DecodeAsType`] macro.
 pub trait DecodeAsFields: Sized {
     /// Given some bytes and some fields denoting their structure, attempt to decode.
-    fn decode_as_fields(
+    fn decode_as_fields<'info, I: FieldIter<'info>>(
         input: &mut &[u8],
-        fields: &[PortableField],
-        types: &PortableRegistry,
+        fields: I,
+        types: &'info PortableRegistry,
     ) -> Result<Self, Error>;
+}
 
-    /// Given some bytes and some field IDs denoting their structure, attempt to decode.
-    fn decode_as_field_ids(
-        input: &mut &[u8],
-        field_ids: &[PortableFieldId],
-        types: &PortableRegistry,
-    ) -> Result<Self, Error> {
-        // [TODO jsdw]: It would be good to use a more efficient data structure
-        // here to avoid allocating with smaller numbers of fields.
-        let fields: Vec<PortableField> =
-            field_ids.iter().map(|f| PortableField::new(None, *f, None, Vec::new())).collect();
-        Self::decode_as_fields(input, &fields, types)
+/// A representation of a single field to be encoded via [`DecodeAsFields::decode_as_fields`].
+#[derive(Debug, Clone, Copy)]
+pub struct Field<'a> {
+    name: Option<&'a str>,
+    id: u32,
+}
+
+impl<'a> Field<'a> {
+    /// Construct a new field with an ID and optional name.
+    pub fn new(id: u32, name: Option<&'a str>) -> Self {
+        Field { id, name }
+    }
+    /// Create a new unnamed field.
+    pub fn unnamed(id: u32) -> Self {
+        Field { name: None, id }
+    }
+    /// Create a new named field.
+    pub fn named(id: u32, name: &'a str) -> Self {
+        Field { name: Some(name), id }
+    }
+    /// The field name, if any.
+    pub fn name(&self) -> Option<&'a str> {
+        self.name
+    }
+    /// The field ID.
+    pub fn id(&self) -> u32 {
+        self.id
     }
 }
+
+/// An iterator over a set of fields.
+pub trait FieldIter<'a>: Iterator<Item = Field<'a>> + Clone {}
+impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> + Clone {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
 /// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has
@@ -218,3 +234,9 @@ pub trait IntoVisitor {
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
 }
+
+// In a few places, we need an empty path with a lifetime that outlives 'info,
+// so here's one that lives forever that we can use.
+#[doc(hidden)]
+pub static EMPTY_SCALE_INFO_PATH: &scale_info::Path<scale_info::form::PortableForm> =
+    &scale_info::Path { segments: Vec::new() };

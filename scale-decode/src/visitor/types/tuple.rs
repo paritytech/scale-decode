@@ -15,31 +15,34 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType,
+    DecodeAsType, FieldIter,
 };
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
-pub struct Tuple<'scale, 'info> {
+pub struct Tuple<'scale, 'info, I> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    fields: TupleFieldIds<'info>,
+    fields: I,
     types: &'info PortableRegistry,
 }
 
-impl<'scale, 'info> Tuple<'scale, 'info> {
+impl<'scale, 'info, I> Tuple<'scale, 'info, I>
+where
+    I: FieldIter<'info>,
+{
     pub(crate) fn new(
         bytes: &'scale [u8],
-        fields: impl Into<TupleFieldIds<'info>>,
+        fields: I,
         types: &'info PortableRegistry,
-    ) -> Tuple<'scale, 'info> {
-        Tuple { bytes, item_bytes: bytes, fields: fields.into(), types }
+    ) -> Tuple<'scale, 'info, I> {
+        Tuple { bytes, item_bytes: bytes, fields, types }
     }
     /// Skip over all bytes associated with this tuple. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this tuple.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
-        while !self.fields.is_empty() {
-            self.decode_item(IgnoreVisitor).transpose()?;
+        while let Some(field) = self.fields.next() {
+            self.decode_item_with_id(field.id(), IgnoreVisitor).transpose()?;
         }
         Ok(())
     }
@@ -54,41 +57,49 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     }
     /// The number of un-decoded items remaining in the tuple.
     pub fn remaining(&self) -> usize {
-        self.fields.len()
+        self.fields.clone().count()
     }
     /// Decode the next item from the tuple by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
-        if self.fields.is_empty() {
-            return None;
-        }
+        let field = self.fields.next()?;
+        self.decode_item_with_id(field.id(), visitor)
+    }
 
+    fn decode_item_with_id<V: Visitor>(
+        &mut self,
+        id: u32,
+        visitor: V,
+    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         let b = &mut &*self.item_bytes;
-        let type_id = self.fields.first().expect("not empty; checked above");
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, type_id, self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, id, self.types, visitor);
 
-        // Update self to point to the next item, now:
+        // Move our bytes cursor forwards:
         self.item_bytes = *b;
-        self.fields.pop_front_unwrap();
 
         Some(res)
     }
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
+impl<'scale, 'info, I> Iterator for Tuple<'scale, 'info, I>
+where
+    I: FieldIter<'info>,
+{
     type Item = Result<TupleField<'scale, 'info>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
+        let field = self.fields.next()?;
+
         // Record details we need before we decode and skip over the thing:
-        let type_id = self.fields.first()?;
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
-        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+        // Now, skip over the item we're going to hand back:
+        if let Err(e) = self.decode_item_with_id(field.id(), IgnoreVisitor)? {
             return Some(Err(e));
         };
 
@@ -96,7 +107,7 @@ impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
 
-        Some(Ok(TupleField { bytes: res_bytes, type_id, types: self.types }))
+        Some(Ok(TupleField { bytes: res_bytes, type_id: field.id(), types: self.types }))
     }
 }
 
@@ -130,63 +141,14 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Tuple<'scale, 'info> {
+impl<'scale, 'info, I> crate::visitor::DecodeItemIterator<'scale, 'info> for Tuple<'scale, 'info, I>
+where
+    I: FieldIter<'info>,
+{
     fn decode_item<'a, V: Visitor>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         self.decode_item(visitor)
-    }
-}
-
-#[derive(Copy, Clone)]
-pub enum TupleFieldIds<'info> {
-    Ids(&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]),
-    Fields(&'info [scale_info::Field<scale_info::form::PortableForm>]),
-}
-
-impl<'info> TupleFieldIds<'info> {
-    fn len(&self) -> usize {
-        match self {
-            TupleFieldIds::Ids(fs) => fs.len(),
-            TupleFieldIds::Fields(fs) => fs.len(),
-        }
-    }
-    fn is_empty(&self) -> bool {
-        match self {
-            TupleFieldIds::Ids(fs) => fs.is_empty(),
-            TupleFieldIds::Fields(fs) => fs.is_empty(),
-        }
-    }
-    fn first(&self) -> Option<u32> {
-        match self {
-            TupleFieldIds::Ids(fs) => fs.get(0).map(|f| f.id),
-            TupleFieldIds::Fields(fs) => fs.get(0).map(|f| f.ty.id),
-        }
-    }
-    fn pop_front_unwrap(&mut self) {
-        match self {
-            TupleFieldIds::Ids(fs) => {
-                *fs = &fs[1..];
-            }
-            TupleFieldIds::Fields(fs) => {
-                *fs = &fs[1..];
-            }
-        }
-    }
-}
-
-impl<'info> From<&'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]>
-    for TupleFieldIds<'info>
-{
-    fn from(fields: &'info [scale_info::interner::UntrackedSymbol<std::any::TypeId>]) -> Self {
-        TupleFieldIds::Ids(fields)
-    }
-}
-impl<'info> From<&'info [scale_info::Field<scale_info::form::PortableForm>]>
-    for TupleFieldIds<'info>
-{
-    fn from(fields: &'info [scale_info::Field<scale_info::form::PortableForm>]) -> Self {
-        TupleFieldIds::Fields(fields)
     }
 }
