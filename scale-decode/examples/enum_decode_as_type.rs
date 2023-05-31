@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::{error::ErrorKind, DecodeAsType, Error, FieldIter, IntoVisitor, Visitor};
+use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor};
 use std::collections::HashMap;
 
 // We have some enum Foo that we'll encode to bytes. The aim of this example is
@@ -50,9 +50,9 @@ impl Visitor for FooVisitor {
     // We have opted here to be quite flexible in what we support; we'll happily ignore fields in the input that we
     // don't care about and support unnamed to named fields. You could choose to be more strict if you prefer. We also
     // add context to any errors coming from decoding sub-types via `.map_err(|e| e.at_x(..))` calls.
-    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Variant<'scale, 'info, I>,
+        value: &mut scale_decode::visitor::types::Variant<'scale, 'info>,
         _type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Bar" {

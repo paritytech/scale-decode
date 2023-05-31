@@ -20,83 +20,7 @@ use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
 const ATTR_NAME: &str = "decode_as_type";
 
-/// The `DecodeAsType` derive macro can be used to implement `DecodeAsType` on structs and enums whose
-/// fields all implement `DecodeAsType`. Under the hood, the macro generates `scale_decode::visitor::Visitor`
-/// and `scale_decode::IntoVisitor` implementations for each type (as well as an associated `Visitor` struct),
-/// which in turn means that the type will automatically implement `scale_decode::DecodeAsType`.
-///
-/// # Examples
-///
-/// This can be applied to structs and enums:
-///
-/// ```rust
-/// use scale_decode::DecodeAsType;
-///
-/// #[derive(DecodeAsType)]
-/// struct Foo(String);
-///
-/// #[derive(DecodeAsType)]
-/// struct Bar {
-///     a: u64,
-///     b: bool
-/// }
-///
-/// #[derive(DecodeAsType)]
-/// enum Wibble<T> {
-///     A(usize, bool, T),
-///     B { value: String },
-///     C
-/// }
-/// ```
-///
-/// If you aren't directly depending on `scale_decode`, you must tell the macro what the path
-/// to it is so that it knows how to generate the relevant impls:
-///
-/// ```rust
-/// # use scale_decode as alt_path;
-/// use alt_path::DecodeAsType;
-///
-/// #[derive(DecodeAsType)]
-/// #[decode_as_type(crate_path = "alt_path")]
-/// struct Foo<T> {
-///    a: u64,
-///    b: T
-/// }
-/// ```
-///
-/// If you use generics, the macro will assume that each of them also implements `EncodeAsType`.
-/// This can be overridden when it's not the case (the compiler will ensure that you can't go wrong here):
-///
-/// ```rust
-/// use scale_decode::DecodeAsType;
-///
-/// #[derive(DecodeAsType)]
-/// #[decode_as_type(trait_bounds = "")]
-/// struct Foo<T> {
-///    a: u64,
-///    b: bool,
-///    #[decode_as_type(skip)]
-///    c: std::marker::PhantomData<T>
-/// }
-/// ```
-///
-/// You'll note that we can also opt to skip fields that we don't want to decode into; such fields will receive
-/// their default value and no attempt to decode SCALE bytes into them will occur.
-///
-/// # Attributes
-///
-/// - `#[decode_as_type(crate_path = "::path::to::scale_decode")]`:
-///   By default, the macro expects `scale_decode` to be a top level dependency,
-///   available as `::scale_decode`. If this is not the case, you can provide the
-///   crate path here.
-/// - `#[decode_as_type(trait_bounds = "T: Foo, U::Input: DecodeAsType")]`:
-///   By default, for each generate type parameter, the macro will add trait bounds such
-///   that these type parameters must implement `DecodeAsType` too. You can override this
-///   behaviour and provide your own trait bounds instead using this option.
-/// - `#[decode_as_type(skip)]` (or `#[codec(skip)]`):
-///   Any fields annotated with this will be skipped when attempting to decode into the
-///   type, and instead will be populated with their default value (and therefore must
-///   implement [`std::default::Default`]).
+// Macro docs in main crate; don't add any docs here.
 #[proc_macro_derive(DecodeAsType, attributes(decode_as_type, codec))]
 pub fn derive_macro(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -218,9 +142,9 @@ fn generate_enum_impl(
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-                fn visit_variant<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_variant<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #(
@@ -232,9 +156,9 @@ fn generate_enum_impl(
                     }))
                 }
                 // Allow an enum to be decoded through nested 1-field composites and tuples:
-                fn visit_composite<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                     _type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
@@ -242,9 +166,9 @@ fn generate_enum_impl(
                     }
                     value.decode_item(self).unwrap()
                 }
-                fn visit_tuple<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                     _type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
@@ -345,16 +269,16 @@ fn generate_struct_impl(
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-                fn visit_composite<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
-                fn visit_tuple<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_tuple_body
@@ -362,9 +286,8 @@ fn generate_struct_impl(
             }
 
             impl #impl_generics #path_to_scale_decode::DecodeAsFields for #path_to_type #ty_generics #where_clause  {
-                fn decode_as_fields<'info, DecodeAsTypeFieldsIter>(input: &mut &[u8], fields: DecodeAsTypeFieldsIter, types: &'info #path_to_scale_decode::PortableRegistry)
+                fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn #path_to_scale_decode::FieldIter<'info>, types: &'info #path_to_scale_decode::PortableRegistry)
                     -> Result<Self, #path_to_scale_decode::Error>
-                where DecodeAsTypeFieldsIter: #path_to_scale_decode::FieldIter<'info>
                 {
                     let path = #path_to_scale_decode::EMPTY_SCALE_INFO_PATH;
                     let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, path, fields, types);

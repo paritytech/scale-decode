@@ -63,9 +63,9 @@ macro_rules! impl_into_visitor {
 /// Ignore single-field tuples/composites and visit the single field inside instead.
 macro_rules! visit_single_field_composite_tuple_impls {
     () => {
-        fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
+        fn visit_composite<'scale, 'info>(
             self,
-            value: &mut $crate::visitor::types::Composite<'scale, 'info, I>,
+            value: &mut $crate::visitor::types::Composite<'scale, 'info>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -73,9 +73,9 @@ macro_rules! visit_single_field_composite_tuple_impls {
             }
             value.decode_item(self).unwrap()
         }
-        fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
+        fn visit_tuple<'scale, 'info>(
             self,
-            value: &mut $crate::visitor::types::Tuple<'scale, 'info, I>,
+            value: &mut $crate::visitor::types::Tuple<'scale, 'info>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -154,9 +154,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
     type Error = Error;
     type Value<'scale, 'info> = PhantomData<T>;
 
-    fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, 'info, I>,
+        value: &mut Tuple<'scale, 'info>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -165,9 +165,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
             self.visit_unexpected(visitor::Unexpected::Tuple)
         }
     }
-    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, 'info, I>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -344,9 +344,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
-    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, 'info, I>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut map = BTreeMap::new();
@@ -377,9 +377,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
-    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, 'info, I>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Some" && value.fields().remaining() == 1 {
@@ -413,9 +413,9 @@ where
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
-    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, 'info, I>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Ok" && value.fields().remaining() == 1 {
@@ -599,16 +599,16 @@ macro_rules! impl_decode_tuple {
             // isn't a tuple or composite, then decode thye inner type and add the tuple.
             decode_inner_type_when_one_tuple_entry!($($t)*);
 
-            fn visit_composite<'scale, 'info, FI: FieldIter<'info>>(
+            fn visit_composite<'scale, 'info>(
                 self,
-                value: &mut Composite<'scale, 'info, FI>,
+                value: &mut Composite<'scale, 'info>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
             }
-            fn visit_tuple<'scale, 'info, FI: FieldIter<'info>>(
+            fn visit_tuple<'scale, 'info>(
                 self,
-                value: &mut Tuple<'scale, 'info, FI>,
+                value: &mut Tuple<'scale, 'info>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
@@ -629,7 +629,7 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > DecodeAsFields for ($($t,)*)
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
-            fn decode_as_fields<'info, FI: FieldIter<'info>>(input: &mut &[u8], fields: FI, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
+            fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
                 let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
@@ -685,6 +685,7 @@ where
     })
 }
 
+#[cfg(all(feature = "derive", feature = "primitive-types"))]
 #[cfg(test)]
 mod test {
     use super::*;
@@ -758,12 +759,13 @@ mod test {
 
         let new_foo = match &types.resolve(ty).unwrap().type_def {
             scale_info::TypeDef::Composite(c) => {
-                let field_iter = c.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
-                Foo::decode_as_fields(foo_encoded_cursor, field_iter, &types).unwrap()
+                let mut field_iter =
+                    c.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+                Foo::decode_as_fields(foo_encoded_cursor, &mut field_iter, &types).unwrap()
             }
             scale_info::TypeDef::Tuple(t) => {
-                let field_iter = t.fields.iter().map(|f| Field::unnamed(f.id));
-                Foo::decode_as_fields(foo_encoded_cursor, field_iter, &types).unwrap()
+                let mut field_iter = t.fields.iter().map(|f| Field::unnamed(f.id));
+                Foo::decode_as_fields(foo_encoded_cursor, &mut field_iter, &types).unwrap()
             }
             _ => {
                 panic!("Expected composite or tuple type def")

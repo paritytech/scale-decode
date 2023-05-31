@@ -22,6 +22,3 @@ quote = "1"
 proc-macro2 = "1"
 proc-macro-crate = "1"
 darling = "0.14.2"
-
-[dev-dependencies]
-scale-decode = { workspace = true }

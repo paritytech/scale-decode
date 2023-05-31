@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::utils::stack_vec::StackVec;
 use crate::visitor::{
     Array, BitSequence, Compact, CompactLocation, Composite, DecodeAsTypeResult, DecodeError,
     Sequence, Str, Tuple, TypeId, Variant, Visitor,
@@ -70,8 +69,8 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let fields = ty.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
-    let mut items = Composite::new(data, path, fields, types);
+    let mut fields = ty.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+    let mut items = Composite::new(data, path, &mut fields, types);
     let res = visitor.visit_composite(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -89,7 +88,7 @@ fn decode_variant_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut variant = Variant::<std::iter::Empty<Field<'info>>>::new(data, path, ty, types)?;
+    let mut variant = Variant::new(data, path, ty, types)?;
     let res = visitor.visit_variant(&mut variant, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -141,8 +140,8 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     types: &'info PortableRegistry,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let fields = ty.fields.iter().map(|f| Field::unnamed(f.id));
-    let mut items = Tuple::new(data, fields, types);
+    let mut fields = ty.fields.iter().map(|f| Field::unnamed(f.id));
+    let mut items = Tuple::new(data, &mut fields, types);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -251,7 +250,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
         data: &mut &'scale [u8],
         outermost_ty_id: TypeId,
         current_type_id: TypeId,
-        mut locations: StackVec<CompactLocation<'info>, 8>,
+        mut locations: smallvec::SmallVec<[CompactLocation<'info>; 8]>,
         inner: &'info scale_info::Type<PortableForm>,
         types: &'info PortableRegistry,
         visitor: V,
@@ -337,7 +336,7 @@ fn decode_compact_value<'scale, 'info, V: Visitor>(
     let inner = types.resolve(inner_ty_id).ok_or(DecodeError::TypeIdNotFound(inner_ty_id))?;
 
     // Track any inner type IDs we encounter.
-    let locations = StackVec::<CompactLocation, 8>::new();
+    let locations = smallvec::SmallVec::<[CompactLocation; 8]>::new();
 
     decode_compact(data, ty_id, TypeId(inner_ty_id), locations, inner, types, visitor)
 }

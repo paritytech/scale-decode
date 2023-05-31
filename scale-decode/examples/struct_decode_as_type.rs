@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::{error::ErrorKind, DecodeAsType, Error, FieldIter, IntoVisitor, Visitor};
+use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor};
 use std::collections::HashMap;
 
 // We have some struct Foo that we'll encode to bytes. The aim of this example is
@@ -50,9 +50,9 @@ impl Visitor for FooVisitor {
     // unnamed fields (matching by field index if unnamed) and add context to errors via
     // `.map_err(|e| e.at_x(..))` calls to give back more precise information about where
     // decoding failed, if it does.
-    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Composite<'scale, 'info, I>,
+        value: &mut scale_decode::visitor::types::Composite<'scale, 'info>,
         type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.has_unnamed_fields() {
@@ -77,9 +77,9 @@ impl Visitor for FooVisitor {
     }
 
     // If we like, we can also support decoding from tuples of matching lengths:
-    fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info, I>,
+        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info>,
         _type_id: scale_decode::visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() != 2 {
