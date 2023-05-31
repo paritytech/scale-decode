@@ -19,7 +19,6 @@ use scale_decode::visitor::{
     types::{Array, BitSequence, Compact, Composite, Sequence, Str, Tuple, Variant},
     TypeId,
 };
-use scale_decode::FieldIter;
 
 // A custom type we'd like to decode into:
 #[derive(Debug, PartialEq)]
@@ -204,9 +203,9 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Sequence(vals))
     }
-    fn visit_composite<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, 'info, I>,
+        value: &mut Composite<'scale, 'info>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
@@ -218,9 +217,9 @@ impl visitor::Visitor for ValueVisitor {
         }
         Ok(Value::Composite(vals))
     }
-    fn visit_tuple<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, 'info, I>,
+        value: &mut Tuple<'scale, 'info>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
@@ -237,9 +236,9 @@ impl visitor::Visitor for ValueVisitor {
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Str(value.as_str()?.to_owned()))
     }
-    fn visit_variant<'scale, 'info, I: FieldIter<'info>>(
+    fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, 'info, I>,
+        value: &mut Variant<'scale, 'info>,
         _type_id: TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];

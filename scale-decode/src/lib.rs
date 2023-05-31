@@ -184,9 +184,9 @@ where
 /// for tuple and struct types, and is automatically implemented via the [`macro@DecodeAsType`] macro.
 pub trait DecodeAsFields: Sized {
     /// Given some bytes and some fields denoting their structure, attempt to decode.
-    fn decode_as_fields<'info, I: FieldIter<'info>>(
+    fn decode_as_fields<'info>(
         input: &mut &[u8],
-        fields: I,
+        fields: &mut dyn FieldIter<'info>,
         types: &'info PortableRegistry,
     ) -> Result<Self, Error>;
 }
@@ -222,8 +222,8 @@ impl<'a> Field<'a> {
 }
 
 /// An iterator over a set of fields.
-pub trait FieldIter<'a>: Iterator<Item = Field<'a>> + Clone {}
-impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> + Clone {}
+pub trait FieldIter<'a>: Iterator<Item = Field<'a>> {}
+impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
 /// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has

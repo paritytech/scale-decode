@@ -218,9 +218,9 @@ fn generate_enum_impl(
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-                fn visit_variant<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_variant<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #(
@@ -232,9 +232,9 @@ fn generate_enum_impl(
                     }))
                 }
                 // Allow an enum to be decoded through nested 1-field composites and tuples:
-                fn visit_composite<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                     _type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
@@ -242,9 +242,9 @@ fn generate_enum_impl(
                     }
                     value.decode_item(self).unwrap()
                 }
-                fn visit_tuple<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                     _type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
@@ -345,16 +345,16 @@ fn generate_struct_impl(
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
 
-                fn visit_composite<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
-                fn visit_tuple<'scale, 'info, I: #path_to_scale_decode::FieldIter<'info>>(
+                fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, I>,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
                     type_id: #path_to_scale_decode::visitor::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_tuple_body
@@ -362,9 +362,8 @@ fn generate_struct_impl(
             }
 
             impl #impl_generics #path_to_scale_decode::DecodeAsFields for #path_to_type #ty_generics #where_clause  {
-                fn decode_as_fields<'info, DecodeAsTypeFieldsIter>(input: &mut &[u8], fields: DecodeAsTypeFieldsIter, types: &'info #path_to_scale_decode::PortableRegistry)
+                fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn #path_to_scale_decode::FieldIter<'info>, types: &'info #path_to_scale_decode::PortableRegistry)
                     -> Result<Self, #path_to_scale_decode::Error>
-                where DecodeAsTypeFieldsIter: #path_to_scale_decode::FieldIter<'info>
                 {
                     let path = #path_to_scale_decode::EMPTY_SCALE_INFO_PATH;
                     let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, path, fields, types);

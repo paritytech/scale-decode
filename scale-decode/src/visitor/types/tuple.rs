@@ -15,34 +15,33 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType, FieldIter,
+    DecodeAsType, Field, FieldIter,
 };
 use scale_info::PortableRegistry;
 
 /// This represents a tuple of values.
-pub struct Tuple<'scale, 'info, I> {
+pub struct Tuple<'scale, 'info> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    fields: I,
+    fields: smallvec::SmallVec<[Field<'info>; 16]>,
+    next_field_idx: usize,
     types: &'info PortableRegistry,
 }
 
-impl<'scale, 'info, I> Tuple<'scale, 'info, I>
-where
-    I: FieldIter<'info>,
-{
+impl<'scale, 'info> Tuple<'scale, 'info> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        fields: I,
+        fields: &mut dyn FieldIter<'info>,
         types: &'info PortableRegistry,
-    ) -> Tuple<'scale, 'info, I> {
-        Tuple { bytes, item_bytes: bytes, fields, types }
+    ) -> Tuple<'scale, 'info> {
+        let fields = smallvec::SmallVec::from_iter(fields);
+        Tuple { bytes, item_bytes: bytes, fields, types, next_field_idx: 0 }
     }
     /// Skip over all bytes associated with this tuple. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this tuple.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
-        while let Some(field) = self.fields.next() {
-            self.decode_item_with_id(field.id(), IgnoreVisitor).transpose()?;
+        while let Some(res) = self.decode_item(IgnoreVisitor) {
+            res?;
         }
         Ok(())
     }
@@ -57,49 +56,40 @@ where
     }
     /// The number of un-decoded items remaining in the tuple.
     pub fn remaining(&self) -> usize {
-        self.fields.clone().count()
+        self.fields.len()
     }
     /// Decode the next item from the tuple by providing a visitor to handle it.
     pub fn decode_item<V: Visitor>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
-        let field = self.fields.next()?;
-        self.decode_item_with_id(field.id(), visitor)
-    }
-
-    fn decode_item_with_id<V: Visitor>(
-        &mut self,
-        id: u32,
-        visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+        let field = self.fields.get(self.next_field_idx)?;
         let b = &mut &*self.item_bytes;
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, id, self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
 
-        // Move our bytes cursor forwards:
-        self.item_bytes = *b;
+        if res.is_ok() {
+            // Move our cursors forwards only if decode was OK:
+            self.item_bytes = *b;
+            self.next_field_idx += 1;
+        }
 
         Some(res)
     }
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info, I> Iterator for Tuple<'scale, 'info, I>
-where
-    I: FieldIter<'info>,
-{
+impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
     type Item = Result<TupleField<'scale, 'info>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
-        let field = self.fields.next()?;
-
         // Record details we need before we decode and skip over the thing:
+        let field = *self.fields.get(self.next_field_idx)?;
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
-        // Now, skip over the item we're going to hand back:
-        if let Err(e) = self.decode_item_with_id(field.id(), IgnoreVisitor)? {
+        // Now, decode and skip over the item we're going to hand back:
+        if let Err(e) = self.decode_item(IgnoreVisitor)? {
             return Some(Err(e));
         };
 
@@ -141,10 +131,7 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info, I> crate::visitor::DecodeItemIterator<'scale, 'info> for Tuple<'scale, 'info, I>
-where
-    I: FieldIter<'info>,
-{
+impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Tuple<'scale, 'info> {
     fn decode_item<'a, V: Visitor>(
         &mut self,
         visitor: V,
