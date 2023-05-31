@@ -136,7 +136,6 @@ for efficient type based decoding.
 #![deny(missing_docs)]
 
 mod impls;
-mod utils;
 
 pub mod error;
 pub mod visitor;

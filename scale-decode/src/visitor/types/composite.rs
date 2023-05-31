@@ -82,7 +82,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
     pub fn peek_name(&self) -> Option<&'info str> {
-        self.fields.iter().next().and_then(|f| f.name())
+        self.fields.get(self.next_field_idx).and_then(|f| f.name())
     }
     /// Decode the next field in the composite type by providing a visitor to handle it. This is more
     /// efficient than iterating over the key/value pairs if you already know how you want to decode the
@@ -101,6 +101,9 @@ impl<'scale, 'info> Composite<'scale, 'info> {
             // Move our cursors forwards only if decode was OK:
             self.item_bytes = *b;
             self.next_field_idx += 1;
+        } else {
+            // Otherwise, skip to end to prevent any future iterations:
+            self.next_field_idx = self.fields.len()
         }
 
         Some(res)

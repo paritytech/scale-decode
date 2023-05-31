@@ -4,6 +4,12 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.7.0
+
+- Change `DecodeAsFields` again; remove the generic iterator parameter and use `&mut dyn FieldIter` instead. This
+  Simplifies the call signatures in a bunch of places and is consistent with how `scale-encode` works.
+- Use `smallvec` instead of our own stack allocated vec.
+
 ## 0.6.0
 
 - Change `DecodeAsFields` to accept an iterator of fields to decode into. This makes it more flexible in what it

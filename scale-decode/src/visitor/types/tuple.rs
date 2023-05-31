@@ -73,6 +73,9 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
             // Move our cursors forwards only if decode was OK:
             self.item_bytes = *b;
             self.next_field_idx += 1;
+        } else {
+            // Otherwise, skip to end to prevent any future iterations:
+            self.next_field_idx = self.fields.len()
         }
 
         Some(res)
