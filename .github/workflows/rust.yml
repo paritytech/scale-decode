@@ -41,6 +41,12 @@ jobs:
           command: check
           args: --lib --bins --examples --no-default-features --workspace
 
+      - name: Check no features primitive Types
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          args: --lib --bins --examples --no-default-features --workspace --features primitive-types
+
   wasm:
     name: Check WASM compatibility
     runs-on: ubuntu-latest
