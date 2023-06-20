@@ -23,12 +23,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install Rust stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+      - name: init-rust-target
+        run: rustup show
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
