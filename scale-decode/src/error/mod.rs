@@ -21,9 +21,10 @@ pub use context::{Context, Location};
 use crate::visitor::DecodeError;
 use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 use core::fmt::Display;
+use derive_more::From;
 
 /// An error produced while attempting to decode some type.
-#[derive(Debug)]
+#[derive(Debug, From)]
 pub struct Error {
     context: Context,
     kind: ErrorKind,
