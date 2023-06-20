@@ -144,6 +144,7 @@ pub use crate::error::Error;
 pub use visitor::Visitor;
 
 // Used in trait definitions.
+use scale_info::form::PortableForm;
 pub use scale_info::PortableRegistry;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
@@ -214,6 +215,12 @@ impl<'a> Field<'a> {
     /// The field ID.
     pub fn id(&self) -> u32 {
         self.id
+    }
+}
+
+impl<'a> From<&'a scale_info::Field<PortableForm>> for Field<'a> {
+    fn from(value: &'a scale_info::Field<PortableForm>) -> Self {
+        Field { name: value.name.as_deref(), id: value.ty.id }
     }
 }
 
