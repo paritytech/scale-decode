@@ -1,5 +1,7 @@
 name: Rust
 
+name: Rust
+
 on:
   push:
     # Run jobs when commits are pushed to
@@ -23,8 +25,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
@@ -39,13 +45,7 @@ jobs:
         uses: actions-rs/cargo@v1.0.3
         with:
           command: check
-          args: --lib --bins --examples --no-default-features --workspace
-
-      - name: Check no features primitive Types
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: check
-          args: --lib --bins --examples --no-default-features --workspace --features primitive-types
+          args: --all-targets --no-default-features --workspace
 
   wasm:
     name: Check WASM compatibility
@@ -54,8 +54,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
@@ -68,6 +73,33 @@ jobs:
           # we run tests using BitVec<u64,_> which doesn't.
           args: --all-features --target wasm32-unknown-unknown
 
+  no_std:
+    name: Check no_std build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      # no_std version currently needs nightly due to error_in_core feature
+      - name: Install Rust nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: aarch64-unknown-none
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.3.0
+
+      - name: Check no_std build
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          # The aarch64-unknown-none doesn't support `std`, so this
+          # will fail if the crate is not no_std compatible.
+          args: --no-default-features --target aarch64-unknown-none --features derive,primitive-types
+
   fmt:
     name: Cargo fmt
     runs-on: ubuntu-latest
@@ -75,8 +107,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            override: true
+            components: rustfmt
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
@@ -94,8 +131,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
@@ -110,8 +151,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0
@@ -135,8 +180,13 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup show
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            profile: minimal
+            toolchain: stable
+            components: clippy
+            override: true
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@060bda31e0be4f453bb6ed2d7e5427b31734ad01 # v2.3.0

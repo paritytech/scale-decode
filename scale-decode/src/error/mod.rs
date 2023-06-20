@@ -23,6 +23,13 @@ use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 use core::fmt::Display;
 use derive_more::From;
 
+// Error in core is currently only available as nightly feature. Therefore, we
+// differentiate here between std and no_std environments.
+#[cfg(not(feature = "std"))]
+use core::error::Error as StdError;
+#[cfg(feature = "std")]
+use std::error::Error as StdError;
+
 /// An error produced while attempting to decode some type.
 #[derive(Debug, From)]
 pub struct Error {
@@ -113,7 +120,7 @@ pub enum ErrorKind {
         /// Name of the field which was not provided.
         name: String,
     },
-    /// A custom error
+    /// A custom error.
     Custom(CustomError),
 }
 
@@ -129,7 +136,7 @@ impl From<CustomError> for ErrorKind {
     }
 }
 
-type CustomError = Box<dyn core::error::Error + Send + Sync + 'static>;
+type CustomError = Box<dyn StdError + Send + Sync + 'static>;
 
 #[cfg(test)]
 mod test {
@@ -141,7 +148,7 @@ mod test {
         Foo,
     }
 
-    impl core::error::Error for MyError {}
+    impl StdError for MyError {}
 
     #[test]
     fn custom_error() {

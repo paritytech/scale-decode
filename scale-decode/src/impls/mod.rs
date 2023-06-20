@@ -45,6 +45,7 @@ use core::{
     time::Duration,
 };
 use scale_bits::Bits;
+
 pub struct BasicVisitor<T> {
     _marker: core::marker::PhantomData<T>,
 }
