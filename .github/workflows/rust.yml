@@ -1,7 +1,4 @@
 name: Rust
-
-name: Rust
-
 on:
   push:
     # Run jobs when commits are pushed to
