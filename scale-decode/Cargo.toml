@@ -23,7 +23,7 @@ std = ["scale-info/std"]
 primitive-types = ["dep:primitive-types"]
 
 # Enable the `DecodeAsType` macro. This is only availbale in std.
-derive = ["dep:scale-decode-derive"]
+derive = ["dep:scale-decode-derive", "std"]
 
 [dependencies]
 scale-info = { version = "2.7.0", default-features = false, features = ["bit-vec"] }
