@@ -22,7 +22,7 @@ std = ["scale-info/std"]
 # Impls for primitive-types.
 primitive-types = ["dep:primitive-types"]
 
-# Enable the `DecodeAsType` macro.
+# Enable the `DecodeAsType` macro. This is only availbale in std.
 derive = ["dep:scale-decode-derive"]
 
 [dependencies]
