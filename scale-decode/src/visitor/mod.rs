@@ -278,35 +278,44 @@ pub trait Visitor: Sized {
 }
 
 /// An error decoding SCALE bytes.
-#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
     /// We ran into an error trying to decode a bit sequence.
-    #[error("Cannot decode bit sequence: {0}")]
-    BitSequenceError(#[from] BitSequenceError),
+    BitSequenceError(BitSequenceError),
     /// The type we're trying to decode is supposed to be compact encoded, but that is not possible.
-    #[error("Could not decode compact encoded type into {0:?}")]
     CannotDecodeCompactIntoType(scale_info::Type<PortableForm>),
     /// Failure to decode bytes into a string.
-    #[error("Could not decode string: {0}")]
-    InvalidStr(#[from] std::str::Utf8Error),
+    InvalidStr(alloc::str::Utf8Error),
     /// We could not convert the [`u32`] that we found into a valid [`char`].
-    #[error("{0} is expected to be a valid char, but is not")]
     InvalidChar(u32),
     /// We expected more bytes to finish decoding, but could not find them.
-    #[error("Ran out of data during decoding")]
     NotEnoughInput,
     /// We found a variant that does not match with any in the type we're trying to decode from.
-    #[error("Could not find variant with index {0} in {1:?}")]
     VariantNotFound(u8, scale_info::TypeDefVariant<PortableForm>),
     /// Some error emitted from a [`codec::Decode`] impl.
-    #[error("{0}")]
-    CodecError(#[from] codec::Error),
+    CodecError(codec::Error),
     /// We could not find the type given in the type registry provided.
-    #[error("Cannot find type with ID {0}")]
     TypeIdNotFound(u32),
     /// This is returned by default if a visitor function is not implemented.
-    #[error("Unexpected type {0}")]
     Unexpected(Unexpected),
+}
+
+impl From<codec::Error> for DecodeError {
+    fn from(err: codec::Error) -> Self {
+        Self::CodecError(err)
+    }
+}
+
+impl From<BitSequenceError> for DecodeError {
+    fn from(err: BitSequenceError) -> Self {
+        Self::BitSequenceError(err)
+    }
+}
+
+impl From<alloc::str::Utf8Error> for DecodeError {
+    fn from(err: alloc::str::Utf8Error) -> Self {
+        Self::InvalidStr(err)
+    }
 }
 
 /// This is returned by default when a visitor function isn't implemented.
@@ -336,8 +345,8 @@ pub enum Unexpected {
     Bitsequence,
 }
 
-impl std::fmt::Display for Unexpected {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Unexpected {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Unexpected::Bool => "bool",
             Unexpected::Char => "char",

@@ -16,13 +16,14 @@
 //! An error that is emitted whenever some decoding fails.
 mod context;
 
-use std::borrow::Cow;
-use std::fmt::Display;
-
 pub use context::{Context, Location};
 
+use crate::visitor::DecodeError;
+use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
+use core::fmt::Display;
+
 /// An error produced while attempting to decode some type.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub struct Error {
     context: Context,
     kind: ErrorKind,
@@ -68,34 +69,31 @@ impl Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let path = self.context.path();
         let kind = &self.kind;
-        write!(f, "Error at {path}: {kind}")
+        write!(f, "Error at {path}: {kind:?}")
     }
 }
 
-impl From<crate::visitor::DecodeError> for Error {
-    fn from(err: crate::visitor::DecodeError) -> Error {
+impl From<DecodeError> for Error {
+    fn from(err: DecodeError) -> Error {
         Error::new(err.into())
     }
 }
 
 /// The underlying nature of the error.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
-    #[error("Error decoding bytes given the type ID and registry provided: {0}")]
-    VisitorDecodeError(#[from] crate::visitor::DecodeError),
+    VisitorDecodeError(DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
-    #[error("Number {value} is out of range")]
     NumberOutOfRange {
         /// A string representation of the numeric value that was out of range.
         value: String,
     },
     /// We cannot find the variant we're trying to decode from in the target type.
-    #[error("Cannot find variant {got}; expects one of {expected:?}")]
     CannotFindVariant {
         /// The variant that we are given back from the encoded bytes.
         got: String,
@@ -103,7 +101,6 @@ pub enum ErrorKind {
         expected: Vec<&'static str>,
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
-    #[error("Cannot decode from type; expected length {expected_len} but got length {actual_len}")]
     WrongLength {
         /// Length of the type we are trying to decode from
         actual_len: usize,
@@ -111,27 +108,39 @@ pub enum ErrorKind {
         expected_len: usize,
     },
     /// Cannot find a field that we need to decode to our target type
-    #[error("Field {name} does not exist in our encoded data")]
     CannotFindField {
         /// Name of the field which was not provided.
         name: String,
     },
-    /// A custom error.
-    #[error("Custom error: {0}")]
+    /// A custom error
     Custom(CustomError),
 }
 
-type CustomError = Box<dyn std::error::Error + Send + Sync + 'static>;
+impl From<DecodeError> for ErrorKind {
+    fn from(err: DecodeError) -> ErrorKind {
+        ErrorKind::VisitorDecodeError(err)
+    }
+}
+
+impl From<CustomError> for ErrorKind {
+    fn from(err: CustomError) -> ErrorKind {
+        ErrorKind::Custom(err)
+    }
+}
+
+type CustomError = Box<dyn core::error::Error + Send + Sync + 'static>;
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use derive_more::Display;
 
-    #[derive(thiserror::Error, Debug)]
+    #[derive(Debug, Display)]
     enum MyError {
-        #[error("Foo!")]
         Foo,
     }
+
+    impl core::error::Error for MyError {}
 
     #[test]
     fn custom_error() {

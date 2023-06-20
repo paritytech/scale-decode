@@ -24,24 +24,29 @@ use crate::{
     },
     DecodeAsFields, FieldIter, IntoVisitor,
 };
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+    rc::Rc,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
 use codec::Compact;
 use core::num::{
     NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
     NonZeroU32, NonZeroU64, NonZeroU8,
 };
-use scale_bits::Bits;
-use std::ops::{Range, RangeInclusive};
-use std::rc::Rc;
-use std::sync::Arc;
-use std::time::Duration;
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+use core::{
     marker::PhantomData,
+    ops::{Range, RangeInclusive},
+    time::Duration,
 };
-
+use scale_bits::Bits;
 pub struct BasicVisitor<T> {
-    _marker: std::marker::PhantomData<T>,
+    _marker: core::marker::PhantomData<T>,
 }
 
 /// Generate an [`IntoVisitor`] impl for basic types `T` where `BasicVisitor<T>` impls `Visitor`.
@@ -54,7 +59,7 @@ macro_rules! impl_into_visitor {
         {
             type Visitor = BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor { _marker: std::marker::PhantomData }
+                BasicVisitor { _marker: core::marker::PhantomData }
             }
         }
     };
@@ -247,7 +252,7 @@ where
 {
     type Visitor = BasicVisitor<Cow<'a, T>>;
     fn into_visitor() -> Self::Visitor {
-        BasicVisitor { _marker: std::marker::PhantomData }
+        BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
@@ -332,7 +337,7 @@ where
 {
     type Visitor = BasicVisitor<[T; N]>;
     fn into_visitor() -> Self::Visitor {
-        BasicVisitor { _marker: std::marker::PhantomData }
+        BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
@@ -621,7 +626,7 @@ macro_rules! impl_decode_tuple {
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor { _marker: std::marker::PhantomData }
+                BasicVisitor { _marker: core::marker::PhantomData }
             }
         }
 
@@ -676,7 +681,7 @@ where
     D: DecodeItemIterator<'scale, 'info>,
 {
     let mut idx = 0;
-    std::iter::from_fn(move || {
+    core::iter::from_fn(move || {
         let item = decoder
             .decode_item(T::into_visitor())
             .map(|res| res.map_err(|e| Error::from(e).at_idx(idx)));

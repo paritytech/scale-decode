@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+#![feature(error_in_core)]
+
 /*!
 `parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those types.
 This crate builds on this, and allows bytes to be decoded into types based on [`scale_info`] type information, rather than the shape
@@ -134,6 +137,10 @@ If this high level interface isn't suitable, you can implement your own [`visito
 for efficient type based decoding.
 */
 #![deny(missing_docs)]
+
+extern crate alloc;
+
+use alloc::vec::Vec;
 
 mod impls;
 
