@@ -1,0 +1,16 @@
+[package]
+name = "test-no-std"
+description = "Testing no_std build of scale-decode"
+readme = "README.md"
+
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+include.workspace = true
+
+[dependencies]
+scale-decode = { path = "../../scale-decode", default-features = false, features = ["primitive-types", "derive"] }

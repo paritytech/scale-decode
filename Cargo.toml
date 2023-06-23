@@ -2,6 +2,7 @@
 members = [
     "scale-decode",
     "scale-decode-derive",
+    "testing/no_std",
 ]
 
 [workspace.package]
