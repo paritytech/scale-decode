@@ -712,7 +712,7 @@ mod test {
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
         A: Encode,
-        B: DecodeAsType + PartialEq + std::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         let (type_id, types) = make_type::<T>();
@@ -726,7 +726,7 @@ mod test {
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
         A: Encode + scale_info::TypeInfo + 'static,
-        B: DecodeAsType + PartialEq + std::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
     }
@@ -734,7 +734,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode_with<T, A>(a: &A)
     where
-        A: Encode + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: Encode + DecodeAsType + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         assert_encode_decode_to_with::<T, A, A>(a, a)
@@ -743,7 +743,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode<A>(a: &A)
     where
-        A: Encode + scale_info::TypeInfo + 'static + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: Encode + scale_info::TypeInfo + 'static + DecodeAsType + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to(a, a)
     }
@@ -754,7 +754,7 @@ mod test {
         Foo: scale_info::TypeInfo
             + DecodeAsFields
             + PartialEq
-            + std::fmt::Debug
+            + core::fmt::Debug
             + codec::Encode
             + 'static,
     {
@@ -876,7 +876,7 @@ mod test {
                 + 'static
                 + DecodeAsType
                 + PartialEq
-                + std::fmt::Debug
+                + core::fmt::Debug
                 + Clone,
         {
             let tup = ((a.clone(),),);
@@ -1085,7 +1085,7 @@ mod test {
 
     #[test]
     fn decode_as_fields_works() {
-        use std::fmt::Debug;
+        use core::fmt::Debug;
 
         #[derive(DecodeAsType, codec::Encode, PartialEq, Debug, scale_info::TypeInfo)]
         #[decode_as_type(crate_path = "crate")]

@@ -984,7 +984,7 @@ mod test {
 
     #[test]
     fn zero_copy_using_info_and_scale_lifetimes() {
-        use std::collections::BTreeMap;
+        use alloc::collections::BTreeMap;
 
         #[derive(codec::Encode, scale_info::TypeInfo)]
         struct Foo {
@@ -1013,7 +1013,7 @@ mod test {
         // This zero-copy decodes a composite into map of strings:
         struct ZeroCopyMapVisitor;
         impl Visitor for ZeroCopyMapVisitor {
-            type Value<'scale, 'info> = std::collections::BTreeMap<&'info str, &'scale str>;
+            type Value<'scale, 'info> = alloc::collections::BTreeMap<&'info str, &'scale str>;
             type Error = DecodeError;
 
             fn visit_composite<'scale, 'info>(
@@ -1021,7 +1021,7 @@ mod test {
                 value: &mut Composite<'scale, 'info>,
                 _type_id: TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                let mut vals = std::collections::BTreeMap::<&'info str, &'scale str>::new();
+                let mut vals = alloc::collections::BTreeMap::<&'info str, &'scale str>::new();
                 for item in value {
                     let item = item?;
                     let Some(key) = item.name() else { continue };
@@ -1069,7 +1069,7 @@ mod test {
 
         // We can also use this functionality to "fall-back" to a Decode impl
         // (though obviously with the caveat that this may be incorrect).
-        struct CodecDecodeVisitor<T>(std::marker::PhantomData<T>);
+        struct CodecDecodeVisitor<T>(core::marker::PhantomData<T>);
         impl<T: codec::Decode> Visitor for CodecDecodeVisitor<T> {
             type Value<'scale, 'info> = T;
             type Error = DecodeError;
@@ -1089,7 +1089,7 @@ mod test {
             &mut &*input_encoded,
             ty_id,
             &types,
-            CodecDecodeVisitor(std::marker::PhantomData),
+            CodecDecodeVisitor(core::marker::PhantomData),
         )
         .unwrap();
         assert_eq!(decoded, ("hello".to_string(), "world".to_string()));

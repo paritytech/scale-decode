@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg_attr(not(feature = "std"), no_std, feature(error_in_core))]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 /*!
 `parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those types.
@@ -139,8 +139,6 @@ for efficient type based decoding.
 
 extern crate alloc;
 
-use alloc::vec::Vec;
-
 mod impls;
 
 pub mod error;
@@ -151,6 +149,11 @@ pub use visitor::Visitor;
 
 // Used in trait definitions.
 pub use scale_info::PortableRegistry;
+
+pub use alloc::string::ToString;
+pub use alloc::vec;
+
+use alloc::vec::Vec;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
