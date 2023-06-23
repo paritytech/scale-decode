@@ -21,17 +21,9 @@ pub use context::{Context, Location};
 use crate::visitor::DecodeError;
 use alloc::{borrow::Cow, boxed::Box, string::String, vec::Vec};
 use core::fmt::Display;
-use derive_more::From;
-
-// Error in core is currently only available as nightly feature. Therefore, we
-// differentiate here between std and no_std environments.
-#[cfg(not(feature = "std"))]
-use core::error::Error as StdError;
-#[cfg(feature = "std")]
-use std::error::Error as StdError;
 
 /// An error produced while attempting to decode some type.
-#[derive(Debug, From)]
+#[derive(Debug)]
 pub struct Error {
     context: Context,
     kind: ErrorKind,
@@ -80,7 +72,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let path = self.context.path();
         let kind = &self.kind;
-        write!(f, "Error at {path}: {kind:?}")
+        write!(f, "Error at {path}: {kind}")
     }
 }
 
@@ -136,19 +128,61 @@ impl From<CustomError> for ErrorKind {
     }
 }
 
-type CustomError = Box<dyn StdError + Send + Sync + 'static>;
+impl Display for ErrorKind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ErrorKind::VisitorDecodeError(decode_error) => {
+                write!(f, "Error decoding bytes given the type ID and registry provided: {decode_error:?}")
+            }
+            ErrorKind::NumberOutOfRange { value } => {
+                write!(f, "Number {value} is out of range")
+            }
+            ErrorKind::CannotFindVariant { got, expected } => {
+                write!(f, "Cannot find variant {got}; expects one of {expected:?}")
+            }
+            ErrorKind::WrongLength { actual_len, expected_len } => {
+                write!(f, "Cannot decode from type; expected length {expected_len} but got length {actual_len}")
+            }
+            ErrorKind::CannotFindField { name } => {
+                write!(f, "Field {name} does not exist in our encoded data")
+            }
+            ErrorKind::Custom(custom_error) => {
+                write!(f, "Custom error: {custom_error:?}")
+            }
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+type CustomError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+#[cfg(not(feature = "std"))]
+type CustomError = Box<dyn core::fmt::Debug + Send + Sync + 'static>;
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use derive_more::Display;
 
-    #[derive(Debug, Display)]
+    #[derive(Debug)]
     enum MyError {
         Foo,
     }
 
-    impl StdError for MyError {}
+    impl Display for MyError {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "{self:?}")
+        }
+    }
+
+    #[cfg(feature = "std")]
+    impl std::error::Error for MyError {}
+
+    #[cfg(not(feature = "std"))]
+    impl Into<CustomError> for MyError {
+        fn into(self) -> CustomError {
+            Box::new(self)
+        }
+    }
 
     #[test]
     fn custom_error() {
