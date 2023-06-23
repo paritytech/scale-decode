@@ -419,6 +419,10 @@ mod test {
     use crate::visitor::TypeId;
 
     use super::*;
+    use alloc::borrow::ToOwned;
+    use alloc::string::{String, ToString};
+    use alloc::vec;
+    use alloc::vec::Vec;
     use codec::{self, Encode};
     use scale_info::PortableRegistry;
 
