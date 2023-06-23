@@ -22,7 +22,7 @@ pub enum NoTraitBounds<T> {
 // Structs (and const bounds) impl EncodeAsType OK.
 #[derive(DecodeAsType)]
 pub struct MyStruct<const V: usize, Bar: Clone + PartialEq> {
-    array: [Bar; V],
+    _array: [Bar; V],
 }
 
 pub fn can_decode_as_type<T: DecodeAsType>() {}

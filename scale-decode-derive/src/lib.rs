@@ -264,7 +264,8 @@ fn generate_struct_impl(
                 ::core::marker::PhantomData<#phantomdata_type>
             );
 
-
+            use #path_to_scale_decode::vec;
+            use #path_to_scale_decode::ToString;
 
             impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
                 type Visitor = Visitor #ty_generics;
