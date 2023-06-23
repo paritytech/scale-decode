@@ -13,6 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate alloc;
+
+use alloc::string::ToString;
 use darling::FromAttributes;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
@@ -86,7 +89,7 @@ fn generate_enum_impl(
                         let vals = fields;
                         Ok(#path_to_type::#variant_ident { #(#field_tuple_keyvals),* })
                     } else {
-                        let vals: ::std::collections::HashMap<Option<&str>, _> = fields
+                        let vals: ::alloc::collections::BTreeMap<Option<&str>, _> = fields
                             .map(|res| res.map(|item| (item.name(), item)))
                             .collect::<Result<_, _>>()?;
                         Ok(#path_to_type::#variant_ident { #(#field_composite_keyvals),* })
@@ -128,13 +131,16 @@ fn generate_enum_impl(
     quote!(
         const _: () = {
             #visibility struct Visitor #impl_generics (
-                ::std::marker::PhantomData<#phantomdata_type>
+                ::core::marker::PhantomData<#phantomdata_type>
             );
+
+            use #path_to_scale_decode::vec;
+            use #path_to_scale_decode::ToString;
 
             impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
                 type Visitor = Visitor #ty_generics;
                 fn into_visitor() -> Self::Visitor {
-                    Visitor(::std::marker::PhantomData)
+                    Visitor(::core::marker::PhantomData)
                 }
             }
 
@@ -152,7 +158,7 @@ fn generate_enum_impl(
                     )*
                     Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindVariant {
                         got: value.name().to_string(),
-                        expected: vec![#(#variant_names),*]
+                        expected: #path_to_scale_decode::vec![#(#variant_names),*]
                     }))
                 }
                 // Allow an enum to be decoded through nested 1-field composites and tuples:
@@ -205,7 +211,7 @@ fn generate_struct_impl(
                        return self.visit_tuple(&mut value.as_tuple(), type_id)
                     }
 
-                    let vals: ::std::collections::HashMap<Option<&str>, _> =
+                    let vals: ::alloc::collections::BTreeMap<Option<&str>, _> =
                         value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
                     Ok(#path_to_type { #(#field_composite_keyvals),* })
@@ -255,13 +261,15 @@ fn generate_struct_impl(
     quote!(
         const _: () = {
             #visibility struct Visitor #impl_generics (
-                ::std::marker::PhantomData<#phantomdata_type>
+                ::core::marker::PhantomData<#phantomdata_type>
             );
+
+
 
             impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
                 type Visitor = Visitor #ty_generics;
                 fn into_visitor() -> Self::Visitor {
-                    Visitor(::std::marker::PhantomData)
+                    Visitor(::core::marker::PhantomData)
                 }
             }
 
@@ -320,8 +328,8 @@ fn named_field_keyvals<'f>(
         if skip_field {
             return (
                 false,
-                quote!(#field_ident: ::std::default::Default::default()),
-                quote!(#field_ident: ::std::default::Default::default())
+                quote!(#field_ident: ::core::default::Default::default()),
+                quote!(#field_ident: ::core::default::Default::default())
             )
         }
 
@@ -332,7 +340,7 @@ fn named_field_keyvals<'f>(
             quote!(#field_ident: {
                 let val = *vals
                     .get(&Some(#field_name))
-                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_owned() }))?;
+                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_string() }))?;
                 val.decode_as_type().map_err(|e| e.at_field(#field_name))?
             }),
             // For turning named fields in scale typeinfo into unnamed fields on tuple like type:
@@ -362,7 +370,7 @@ fn unnamed_field_vals<'f>(
 
         // If a field is skipped, we expect it to have a Default impl to use to populate it instead.
         if skip_field {
-            return (false, quote!(::std::default::Default::default()));
+            return (false, quote!(::core::default::Default::default()));
         }
 
         (
