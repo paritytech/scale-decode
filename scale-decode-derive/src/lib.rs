@@ -89,7 +89,7 @@ fn generate_enum_impl(
                         let vals = fields;
                         Ok(#path_to_type::#variant_ident { #(#field_tuple_keyvals),* })
                     } else {
-                        let vals: ::alloc::collections::BTreeMap<Option<&str>, _> = fields
+                        let vals: #path_to_scale_decode::BTreeMap<Option<&str>, _> = fields
                             .map(|res| res.map(|item| (item.name(), item)))
                             .collect::<Result<_, _>>()?;
                         Ok(#path_to_type::#variant_ident { #(#field_composite_keyvals),* })
@@ -211,7 +211,7 @@ fn generate_struct_impl(
                        return self.visit_tuple(&mut value.as_tuple(), type_id)
                     }
 
-                    let vals: ::alloc::collections::BTreeMap<Option<&str>, _> =
+                    let vals: #path_to_scale_decode::BTreeMap<Option<&str>, _> =
                         value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
                     Ok(#path_to_type { #(#field_composite_keyvals),* })
