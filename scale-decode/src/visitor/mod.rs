@@ -18,6 +18,7 @@
 mod decode;
 pub mod types;
 
+use core::fmt::Display;
 use scale_info::form::PortableForm;
 use types::*;
 
@@ -315,6 +316,40 @@ impl From<BitSequenceError> for DecodeError {
 impl From<alloc::str::Utf8Error> for DecodeError {
     fn from(err: alloc::str::Utf8Error) -> Self {
         Self::InvalidStr(err)
+    }
+}
+
+impl Display for DecodeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DecodeError::BitSequenceError(error) => {
+                write!(f, "Cannot decode bit sequence: {error:?}")
+            }
+            DecodeError::CannotDecodeCompactIntoType(portable_type) => {
+                write!(f, "Could not decode compact encoded type into {portable_type:?}")
+            }
+            DecodeError::InvalidStr(error) => {
+                write!(f, "Could not decode string: {error:?}")
+            }
+            DecodeError::InvalidChar(char) => {
+                write!(f, "{char} is expected to be a valid char, but is not")
+            }
+            DecodeError::NotEnoughInput => {
+                write!(f, "Ran out of data during decoding")
+            }
+            DecodeError::VariantNotFound(index, type_def_variant) => {
+                write!(f, "Could not find variant with index {index} in {type_def_variant:?}")
+            }
+            DecodeError::CodecError(error) => {
+                write!(f, "{error}")
+            }
+            DecodeError::TypeIdNotFound(id) => {
+                write!(f, "Cannot find type with ID {id}")
+            }
+            DecodeError::Unexpected(unexpected) => {
+                write!(f, "Unexpected type {0}")
+            }
+        }
     }
 }
 
