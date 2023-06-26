@@ -347,7 +347,7 @@ impl Display for DecodeError {
                 write!(f, "Cannot find type with ID {id}")
             }
             DecodeError::Unexpected(unexpected) => {
-                write!(f, "Unexpected type {0}")
+                write!(f, "Unexpected type {unexpected}")
             }
         }
     }
