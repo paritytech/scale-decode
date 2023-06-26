@@ -150,9 +150,9 @@ pub use visitor::Visitor;
 // Used in trait definitions.
 pub use scale_info::PortableRegistry;
 
-pub use alloc::collections::BTreeMap;
-pub use alloc::string::ToString;
-pub use alloc::vec;
+// This is exported for generated derive code to use, to be compatible with std or no-std as needed.
+#[doc(hidden)]
+pub use alloc::{collections::BTreeMap, string::ToString, vec};
 
 use alloc::vec::Vec;
 
