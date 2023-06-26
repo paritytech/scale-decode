@@ -5,24 +5,25 @@ use scale_decode::DecodeAsType;
 
 pub struct NotDecodeAsType;
 
-// Enums with generic params can impl EncodeAsType.
+// Enums with generic params and even lifetimes can impl DecodeAsType.
 #[derive(DecodeAsType)]
-pub enum Bar<T, U, V> {
+pub enum Bar<'a, T, U, V> {
     Wibble(bool, T, U, V),
     Wobble,
+    Boo(alloc::borrow::Cow<'a, str>),
 }
 
-// This impls EncodeAsType ok; we set no default trait bounds.
+// This impls DecodeAsType ok; we set no default trait bounds.
 #[derive(DecodeAsType)]
 #[decode_as_type(trait_bounds = "")]
 pub enum NoTraitBounds<T> {
     Wibble(core::marker::PhantomData<T>),
 }
 
-// Structs (and const bounds) impl EncodeAsType OK.
+// Structs (and const bounds) impl DecodeAsType OK.
 #[derive(DecodeAsType)]
 pub struct MyStruct<const V: usize, Bar: Clone + PartialEq> {
-    _array: [Bar; V],
+    pub array: [Bar; V],
 }
 
 pub fn can_decode_as_type<T: DecodeAsType>() {}
