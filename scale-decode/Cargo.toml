@@ -16,7 +16,7 @@ include.workspace = true
 [features]
 default = ["std", "derive", "primitive-types"]
 
-# Activates std feature
+# Activates std feature.
 std = ["scale-info/std"]
 
 # Impls for primitive-types.
