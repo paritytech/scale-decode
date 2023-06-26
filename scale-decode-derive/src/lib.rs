@@ -158,7 +158,7 @@ fn generate_enum_impl(
                     )*
                     Err(#path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindVariant {
                         got: value.name().to_string(),
-                        expected: #path_to_scale_decode::vec![#(#variant_names),*]
+                        expected: vec![#(#variant_names),*]
                     }))
                 }
                 // Allow an enum to be decoded through nested 1-field composites and tuples:
