@@ -154,6 +154,12 @@ pub use scale_info::PortableRegistry;
 #[doc(hidden)]
 pub use alloc::{collections::BTreeMap, string::ToString, vec};
 
+/// Re-exports of external crates.
+pub mod ext {
+    #[cfg(feature = "primitive-types")]
+    pub use primitive_types;
+}
+
 use alloc::vec::Vec;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
