@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog].
 
 ## 0.8.0
 
-- Add support for `no_std` (+alloc) builds [#26](https://github.com/paritytech/scale-decode/pull/26)). Thankyou @haerdib!
+- Add support for `no_std` (+alloc) builds ([#26](https://github.com/paritytech/scale-decode/pull/26)). Thankyou @haerdib!
 
 ## 0.7.0
 
