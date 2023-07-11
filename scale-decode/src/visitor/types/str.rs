@@ -56,6 +56,6 @@ impl<'scale> Str<'scale> {
     pub fn as_str(&self) -> Result<&'scale str, DecodeError> {
         let start = self.compact_len;
         let end = start + self.len;
-        std::str::from_utf8(&self.bytes[start..end]).map_err(DecodeError::InvalidStr)
+        alloc::str::from_utf8(&self.bytes[start..end]).map_err(DecodeError::InvalidStr)
     }
 }

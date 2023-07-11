@@ -24,24 +24,30 @@ use crate::{
     },
     DecodeAsFields, FieldIter, IntoVisitor,
 };
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+    rc::Rc,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
 use codec::Compact;
 use core::num::{
     NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
     NonZeroU32, NonZeroU64, NonZeroU8,
 };
-use scale_bits::Bits;
-use std::ops::{Range, RangeInclusive};
-use std::rc::Rc;
-use std::sync::Arc;
-use std::time::Duration;
-use std::{
-    borrow::Cow,
-    collections::{BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque},
+use core::{
     marker::PhantomData,
+    ops::{Range, RangeInclusive},
+    time::Duration,
 };
+use scale_bits::Bits;
 
 pub struct BasicVisitor<T> {
-    _marker: std::marker::PhantomData<T>,
+    _marker: core::marker::PhantomData<T>,
 }
 
 /// Generate an [`IntoVisitor`] impl for basic types `T` where `BasicVisitor<T>` impls `Visitor`.
@@ -54,7 +60,7 @@ macro_rules! impl_into_visitor {
         {
             type Visitor = BasicVisitor<$ty $(< $($lt,)* $($param),* >)?>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor { _marker: std::marker::PhantomData }
+                BasicVisitor { _marker: core::marker::PhantomData }
             }
         }
     };
@@ -247,7 +253,7 @@ where
 {
     type Visitor = BasicVisitor<Cow<'a, T>>;
     fn into_visitor() -> Self::Visitor {
-        BasicVisitor { _marker: std::marker::PhantomData }
+        BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
@@ -332,7 +338,7 @@ where
 {
     type Visitor = BasicVisitor<[T; N]>;
     fn into_visitor() -> Self::Visitor {
-        BasicVisitor { _marker: std::marker::PhantomData }
+        BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
@@ -621,7 +627,7 @@ macro_rules! impl_decode_tuple {
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
-                BasicVisitor { _marker: std::marker::PhantomData }
+                BasicVisitor { _marker: core::marker::PhantomData }
             }
         }
 
@@ -676,7 +682,7 @@ where
     D: DecodeItemIterator<'scale, 'info>,
 {
     let mut idx = 0;
-    std::iter::from_fn(move || {
+    core::iter::from_fn(move || {
         let item = decoder
             .decode_item(T::into_visitor())
             .map(|res| res.map_err(|e| Error::from(e).at_idx(idx)));
@@ -706,7 +712,7 @@ mod test {
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
         A: Encode,
-        B: DecodeAsType + PartialEq + std::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         let (type_id, types) = make_type::<T>();
@@ -720,7 +726,7 @@ mod test {
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
         A: Encode + scale_info::TypeInfo + 'static,
-        B: DecodeAsType + PartialEq + std::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
     }
@@ -728,7 +734,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode_with<T, A>(a: &A)
     where
-        A: Encode + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: Encode + DecodeAsType + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         assert_encode_decode_to_with::<T, A, A>(a, a)
@@ -737,7 +743,7 @@ mod test {
     // Most of the time we'll just make sure that we can encode and decode back to the same type.
     fn assert_encode_decode<A>(a: &A)
     where
-        A: Encode + scale_info::TypeInfo + 'static + DecodeAsType + PartialEq + std::fmt::Debug,
+        A: Encode + scale_info::TypeInfo + 'static + DecodeAsType + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to(a, a)
     }
@@ -748,7 +754,7 @@ mod test {
         Foo: scale_info::TypeInfo
             + DecodeAsFields
             + PartialEq
-            + std::fmt::Debug
+            + core::fmt::Debug
             + codec::Encode
             + 'static,
     {
@@ -870,7 +876,7 @@ mod test {
                 + 'static
                 + DecodeAsType
                 + PartialEq
-                + std::fmt::Debug
+                + core::fmt::Debug
                 + Clone,
         {
             let tup = ((a.clone(),),);
@@ -1079,7 +1085,7 @@ mod test {
 
     #[test]
     fn decode_as_fields_works() {
-        use std::fmt::Debug;
+        use core::fmt::Debug;
 
         #[derive(DecodeAsType, codec::Encode, PartialEq, Debug, scale_info::TypeInfo)]
         #[decode_as_type(crate_path = "crate")]

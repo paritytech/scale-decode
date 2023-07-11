@@ -71,6 +71,32 @@ jobs:
           # we run tests using BitVec<u64,_> which doesn't.
           args: --all-features --target wasm32-unknown-unknown
 
+  no_std:
+    name: Check no_std build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: aarch64-unknown-none
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v1.3.0
+
+      - name: Check no_std build
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: check
+          # The aarch64-unknown-none doesn't support `std`, so this
+          # will fail if the crate is not no_std compatible.
+          args: --no-default-features --target aarch64-unknown-none --features primitive-types,derive
+
   fmt:
     name: Cargo fmt
     runs-on: ubuntu-latest
@@ -137,6 +163,12 @@ jobs:
         with:
           command: test
           args: --all-targets --workspace
+
+      - name: Cargo test no_std
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: test
+          args: --all-targets --workspace --no-default-features --features derive,primitive-types
 
       - name: Cargo test docs
         uses: actions-rs/cargo@v1.0.3

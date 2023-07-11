@@ -18,6 +18,7 @@
 mod decode;
 pub mod types;
 
+use core::fmt::Display;
 use scale_info::form::PortableForm;
 use types::*;
 
@@ -278,35 +279,78 @@ pub trait Visitor: Sized {
 }
 
 /// An error decoding SCALE bytes.
-#[derive(Debug, Clone, thiserror::Error, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
     /// We ran into an error trying to decode a bit sequence.
-    #[error("Cannot decode bit sequence: {0}")]
-    BitSequenceError(#[from] BitSequenceError),
+    BitSequenceError(BitSequenceError),
     /// The type we're trying to decode is supposed to be compact encoded, but that is not possible.
-    #[error("Could not decode compact encoded type into {0:?}")]
     CannotDecodeCompactIntoType(scale_info::Type<PortableForm>),
     /// Failure to decode bytes into a string.
-    #[error("Could not decode string: {0}")]
-    InvalidStr(#[from] std::str::Utf8Error),
+    InvalidStr(alloc::str::Utf8Error),
     /// We could not convert the [`u32`] that we found into a valid [`char`].
-    #[error("{0} is expected to be a valid char, but is not")]
     InvalidChar(u32),
     /// We expected more bytes to finish decoding, but could not find them.
-    #[error("Ran out of data during decoding")]
     NotEnoughInput,
     /// We found a variant that does not match with any in the type we're trying to decode from.
-    #[error("Could not find variant with index {0} in {1:?}")]
     VariantNotFound(u8, scale_info::TypeDefVariant<PortableForm>),
     /// Some error emitted from a [`codec::Decode`] impl.
-    #[error("{0}")]
-    CodecError(#[from] codec::Error),
+    CodecError(codec::Error),
     /// We could not find the type given in the type registry provided.
-    #[error("Cannot find type with ID {0}")]
     TypeIdNotFound(u32),
     /// This is returned by default if a visitor function is not implemented.
-    #[error("Unexpected type {0}")]
     Unexpected(Unexpected),
+}
+
+impl From<codec::Error> for DecodeError {
+    fn from(err: codec::Error) -> Self {
+        Self::CodecError(err)
+    }
+}
+
+impl From<BitSequenceError> for DecodeError {
+    fn from(err: BitSequenceError) -> Self {
+        Self::BitSequenceError(err)
+    }
+}
+
+impl From<alloc::str::Utf8Error> for DecodeError {
+    fn from(err: alloc::str::Utf8Error) -> Self {
+        Self::InvalidStr(err)
+    }
+}
+
+impl Display for DecodeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DecodeError::BitSequenceError(error) => {
+                write!(f, "Cannot decode bit sequence: {error:?}")
+            }
+            DecodeError::CannotDecodeCompactIntoType(portable_type) => {
+                write!(f, "Could not decode compact encoded type into {portable_type:?}")
+            }
+            DecodeError::InvalidStr(error) => {
+                write!(f, "Could not decode string: {error:?}")
+            }
+            DecodeError::InvalidChar(char) => {
+                write!(f, "{char} is expected to be a valid char, but is not")
+            }
+            DecodeError::NotEnoughInput => {
+                write!(f, "Ran out of data during decoding")
+            }
+            DecodeError::VariantNotFound(index, type_def_variant) => {
+                write!(f, "Could not find variant with index {index} in {type_def_variant:?}")
+            }
+            DecodeError::CodecError(error) => {
+                write!(f, "{error}")
+            }
+            DecodeError::TypeIdNotFound(id) => {
+                write!(f, "Cannot find type with ID {id}")
+            }
+            DecodeError::Unexpected(unexpected) => {
+                write!(f, "Unexpected type {unexpected}")
+            }
+        }
+    }
 }
 
 /// This is returned by default when a visitor function isn't implemented.
@@ -336,8 +380,8 @@ pub enum Unexpected {
     Bitsequence,
 }
 
-impl std::fmt::Display for Unexpected {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Unexpected {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let s = match self {
             Unexpected::Bool => "bool",
             Unexpected::Char => "char",
@@ -410,6 +454,10 @@ mod test {
     use crate::visitor::TypeId;
 
     use super::*;
+    use alloc::borrow::ToOwned;
+    use alloc::string::{String, ToString};
+    use alloc::vec;
+    use alloc::vec::Vec;
     use codec::{self, Encode};
     use scale_info::PortableRegistry;
 
@@ -975,7 +1023,7 @@ mod test {
 
     #[test]
     fn zero_copy_using_info_and_scale_lifetimes() {
-        use std::collections::BTreeMap;
+        use alloc::collections::BTreeMap;
 
         #[derive(codec::Encode, scale_info::TypeInfo)]
         struct Foo {
@@ -1004,7 +1052,7 @@ mod test {
         // This zero-copy decodes a composite into map of strings:
         struct ZeroCopyMapVisitor;
         impl Visitor for ZeroCopyMapVisitor {
-            type Value<'scale, 'info> = std::collections::BTreeMap<&'info str, &'scale str>;
+            type Value<'scale, 'info> = alloc::collections::BTreeMap<&'info str, &'scale str>;
             type Error = DecodeError;
 
             fn visit_composite<'scale, 'info>(
@@ -1012,7 +1060,7 @@ mod test {
                 value: &mut Composite<'scale, 'info>,
                 _type_id: TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-                let mut vals = std::collections::BTreeMap::<&'info str, &'scale str>::new();
+                let mut vals = alloc::collections::BTreeMap::<&'info str, &'scale str>::new();
                 for item in value {
                     let item = item?;
                     let Some(key) = item.name() else { continue };
@@ -1060,7 +1108,7 @@ mod test {
 
         // We can also use this functionality to "fall-back" to a Decode impl
         // (though obviously with the caveat that this may be incorrect).
-        struct CodecDecodeVisitor<T>(std::marker::PhantomData<T>);
+        struct CodecDecodeVisitor<T>(core::marker::PhantomData<T>);
         impl<T: codec::Decode> Visitor for CodecDecodeVisitor<T> {
             type Value<'scale, 'info> = T;
             type Error = DecodeError;
@@ -1080,7 +1128,7 @@ mod test {
             &mut &*input_encoded,
             ty_id,
             &types,
-            CodecDecodeVisitor(std::marker::PhantomData),
+            CodecDecodeVisitor(core::marker::PhantomData),
         )
         .unwrap();
         assert_eq!(decoded, ("hello".to_string(), "world".to_string()));

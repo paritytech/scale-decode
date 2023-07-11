@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 /*!
 `parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those types.
 This crate builds on this, and allows bytes to be decoded into types based on [`scale_info`] type information, rather than the shape
@@ -135,6 +137,8 @@ for efficient type based decoding.
 */
 #![deny(missing_docs)]
 
+extern crate alloc;
+
 mod impls;
 
 pub mod error;
@@ -146,6 +150,18 @@ pub use visitor::Visitor;
 // Used in trait definitions.
 use scale_info::form::PortableForm;
 pub use scale_info::PortableRegistry;
+
+// This is exported for generated derive code to use, to be compatible with std or no-std as needed.
+#[doc(hidden)]
+pub use alloc::{collections::BTreeMap, string::ToString, vec};
+
+/// Re-exports of external crates.
+pub mod ext {
+    #[cfg(feature = "primitive-types")]
+    pub use primitive_types;
+}
+
+use alloc::vec::Vec;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around

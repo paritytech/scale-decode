@@ -16,7 +16,7 @@
 //! This module provides a [`Context`] type, which tracks the path
 //! that we're attempting to encode to aid in error reporting.
 
-use std::borrow::Cow;
+use alloc::{borrow::Cow, vec::Vec};
 
 /// A cheaply clonable opaque context which allows us to track the current
 /// location into a type that we're trying to encode, to aid in
@@ -55,8 +55,8 @@ impl<'a> Path<'a> {
     }
 }
 
-impl<'a> std::fmt::Display for Path<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'a> core::fmt::Display for Path<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for (idx, loc) in self.0.iter().enumerate() {
             if idx != 0 {
                 f.write_str(".")?;
