@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.8.0
+
+- Add support for `no_std` (+alloc) builds ([#26](https://github.com/paritytech/scale-decode/pull/26)). Thankyou @haerdib!
+
 ## 0.7.0
 
 - Change `DecodeAsFields` again; remove the generic iterator parameter and use `&mut dyn FieldIter` instead. This
