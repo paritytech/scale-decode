@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.9.0 - 2023-07-28
+
+- Improve custom error handling: custom errors now require `Debug + Display` on `no_std` or `Error` on `std`.
+  `Error::custom()` now accepts anything implementing these traits rather than depending on `Into<Error>`.
+
 ## 0.8.0
 
 - Add support for `no_std` (+alloc) builds ([#26](https://github.com/paritytech/scale-decode/pull/26)). Thankyou @haerdib!
