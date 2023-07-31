@@ -292,14 +292,8 @@ fn main() {
 
     // Use scale_decode + type information to decode these bytes into our Value type:
     assert_eq!(
-        scale_decode::visitor::decode_with_visitor(
-            &mut &*bytes,
-            type_id,
-            &types,
-            ValueVisitor,
-            false
-        )
-        .unwrap(),
+        scale_decode::visitor::decode_with_visitor(&mut &*bytes, type_id, &types, ValueVisitor)
+            .unwrap(),
         Value::Variant(
             "Bar".to_owned(),
             vec![

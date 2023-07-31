@@ -97,7 +97,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         let b = &mut &*self.item_bytes;
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(
+        let res = crate::visitor::decode_with_visitor_maybe_compact(
             b,
             field.id(),
             self.types,
@@ -166,7 +166,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
-        crate::visitor::decode_with_visitor(
+        crate::visitor::decode_with_visitor_maybe_compact(
             &mut &*self.bytes,
             self.field.id(),
             self.types,

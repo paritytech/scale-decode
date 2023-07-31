@@ -34,6 +34,15 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     ty_id: u32,
     types: &'info PortableRegistry,
     visitor: V,
+) -> Result<V::Value<'scale, 'info>, V::Error> {
+    decode_with_visitor_maybe_compact(data, ty_id, types, visitor, false)
+}
+
+pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
+    data: &mut &'scale [u8],
+    ty_id: u32,
+    types: &'info PortableRegistry,
+    visitor: V,
     is_compact: bool,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
     // Provide option to "bail out" and do something custom first.
@@ -68,7 +77,7 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
             decode_primitive_value(data, ty_id, inner, visitor, is_compact)
         }
         TypeDef::Compact(inner) => {
-            decode_with_visitor(data, inner.type_param.id, types, visitor, true)
+            decode_with_visitor_maybe_compact(data, inner.type_param.id, types, visitor, true)
         }
         TypeDef::BitSequence(inner) => {
             decode_bit_sequence_value(data, ty_id, inner, types, visitor)

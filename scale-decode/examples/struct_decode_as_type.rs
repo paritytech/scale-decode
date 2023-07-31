@@ -114,14 +114,9 @@ fn main() {
     let foo_via_decode_as_type_arc =
         <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
     // Or we can also manually use our `Visitor` impl:
-    let foo_via_visitor = scale_decode::visitor::decode_with_visitor(
-        &mut &*foo_bytes,
-        type_id,
-        &types,
-        FooVisitor,
-        false,
-    )
-    .unwrap();
+    let foo_via_visitor =
+        scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, type_id, &types, FooVisitor)
+            .unwrap();
 
     assert_eq!(foo_original, foo_via_decode_as_type);
     assert_eq!(&foo_original, &*foo_via_decode_as_type_arc);

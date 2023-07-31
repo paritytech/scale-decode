@@ -41,7 +41,6 @@ macro_rules! impl_visitor {
                     type_id.0,
                     types,
                     BasicVisitor::<[u8; $len / 8]> { _marker: core::marker::PhantomData },
-                    false,
                 )
                 .map(|res| <$ty>::from(res));
                 DecodeAsTypeResult::Decoded(res)

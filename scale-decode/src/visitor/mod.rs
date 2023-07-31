@@ -22,6 +22,7 @@ use scale_info::form::PortableForm;
 use types::*;
 
 pub use decode::decode_with_visitor;
+pub(crate) use decode::decode_with_visitor_maybe_compact;
 
 /// An implementation of the [`Visitor`] trait can be passed to the [`decode_with_visitor()`]
 /// function, and is handed back values as they are encountered. It's up to the implementation
@@ -709,7 +710,7 @@ mod test {
         let (id, types) = make_type::<Ty>();
 
         let bytes = &mut &*encoded;
-        let val = decode_with_visitor(bytes, id, &types, ValueVisitor, false)
+        let val = decode_with_visitor(bytes, id, &types, ValueVisitor)
             .expect("decoding should not error");
 
         assert_eq!(bytes.len(), 0, "Decoding should consume all bytes");
@@ -970,8 +971,7 @@ mod test {
 
         let (ty_id, types) = make_type::<(&str, &str)>();
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyPairVisitor, false)
-                .unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyPairVisitor).unwrap();
         assert_eq!(decoded, ("hello", "world"));
     }
 
@@ -1028,8 +1028,7 @@ mod test {
         // Decode and check:
         let (ty_id, types) = make_type::<Foo>();
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyMapVisitor, false)
-                .unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyMapVisitor).unwrap();
         assert_eq!(decoded, BTreeMap::from_iter([("hello", "hi"), ("world", "planet")]));
     }
 
@@ -1058,8 +1057,7 @@ mod test {
         }
 
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, ty_id, &types, BailOutVisitor, false)
-                .unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, BailOutVisitor).unwrap();
         assert_eq!(decoded, (&*input_encoded, ty_id));
 
         // We can also use this functionality to "fall-back" to a Decode impl
@@ -1085,7 +1083,6 @@ mod test {
             ty_id,
             &types,
             CodecDecodeVisitor(core::marker::PhantomData),
-            false,
         )
         .unwrap();
         assert_eq!(decoded, ("hello".to_string(), "world".to_string()));
