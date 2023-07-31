@@ -29,14 +29,35 @@ pub struct Error {
     kind: ErrorKind,
 }
 
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
 impl Error {
     /// Construct a new error given an error kind.
     pub fn new(kind: ErrorKind) -> Error {
         Error { context: Context::new(), kind }
     }
     /// Construct a new, custom error.
-    pub fn custom(error: impl Into<CustomError>) -> Error {
-        Error::new(ErrorKind::Custom(error.into()))
+    pub fn custom(error: impl CustomError) -> Error {
+        Error::new(ErrorKind::Custom(Box::new(error)))
+    }
+    /// Construct a custom error from a static string.
+    pub fn custom_str(error: &'static str) -> Error {
+        #[derive(derive_more::Display, Debug)]
+        pub struct StrError(pub &'static str);
+        #[cfg(feature = "std")]
+        impl std::error::Error for StrError {}
+
+        Error::new(ErrorKind::Custom(Box::new(StrError(error))))
+    }
+    /// Construct a custom error from an owned string.
+    pub fn custom_string(error: String) -> Error {
+        #[derive(derive_more::Display, Debug)]
+        pub struct StringError(String);
+        #[cfg(feature = "std")]
+        impl std::error::Error for StringError {}
+
+        Error::new(ErrorKind::Custom(Box::new(StringError(error))))
     }
     /// Retrieve more information about what went wrong.
     pub fn kind(&self) -> &ErrorKind {
@@ -83,17 +104,21 @@ impl From<DecodeError> for Error {
 }
 
 /// The underlying nature of the error.
-#[derive(Debug)]
+#[derive(Debug, derive_more::From, derive_more::Display)]
 pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
+    #[from]
+    #[display(fmt = "Error decoding bytes given the type ID and registry provided: {_0}")]
     VisitorDecodeError(DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
+    #[display(fmt = "Number {value} is out of range")]
     NumberOutOfRange {
         /// A string representation of the numeric value that was out of range.
         value: String,
     },
     /// We cannot find the variant we're trying to decode from in the target type.
+    #[display(fmt = "Cannot find variant {got}; expects one of {expected:?}")]
     CannotFindVariant {
         /// The variant that we are given back from the encoded bytes.
         got: String,
@@ -101,6 +126,9 @@ pub enum ErrorKind {
         expected: Vec<&'static str>,
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
+    #[display(
+        fmt = "Cannot decode from type; expected length {expected_len} but got length {actual_len}"
+    )]
     WrongLength {
         /// Length of the type we are trying to decode from
         actual_len: usize,
@@ -108,81 +136,40 @@ pub enum ErrorKind {
         expected_len: usize,
     },
     /// Cannot find a field that we need to decode to our target type
+    #[display(fmt = "Field {name} does not exist in our encoded data")]
     CannotFindField {
         /// Name of the field which was not provided.
         name: String,
     },
     /// A custom error.
-    Custom(CustomError),
+    #[from]
+    #[display(fmt = "Custom error: {_0}")]
+    Custom(Box<dyn CustomError>),
 }
 
-impl From<DecodeError> for ErrorKind {
-    fn from(err: DecodeError) -> ErrorKind {
-        ErrorKind::VisitorDecodeError(err)
-    }
-}
-
-impl From<CustomError> for ErrorKind {
-    fn from(err: CustomError) -> ErrorKind {
-        ErrorKind::Custom(err)
-    }
-}
-
-impl Display for ErrorKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            ErrorKind::VisitorDecodeError(decode_error) => {
-                write!(f, "Error decoding bytes given the type ID and registry provided: {decode_error:?}")
-            }
-            ErrorKind::NumberOutOfRange { value } => {
-                write!(f, "Number {value} is out of range")
-            }
-            ErrorKind::CannotFindVariant { got, expected } => {
-                write!(f, "Cannot find variant {got}; expects one of {expected:?}")
-            }
-            ErrorKind::WrongLength { actual_len, expected_len } => {
-                write!(f, "Cannot decode from type; expected length {expected_len} but got length {actual_len}")
-            }
-            ErrorKind::CannotFindField { name } => {
-                write!(f, "Field {name} does not exist in our encoded data")
-            }
-            ErrorKind::Custom(custom_error) => {
-                write!(f, "Custom error: {custom_error:?}")
-            }
-        }
-    }
-}
-
+/// Anything implementing this trait can be used in [`ErrorKind::Custom`].
 #[cfg(feature = "std")]
-type CustomError = Box<dyn std::error::Error + Send + Sync + 'static>;
+pub trait CustomError: std::error::Error + Send + Sync + 'static {}
+#[cfg(feature = "std")]
+impl<T: std::error::Error + Send + Sync + 'static> CustomError for T {}
 
+/// Anything implementing this trait can be used in [`ErrorKind::Custom`].
 #[cfg(not(feature = "std"))]
-type CustomError = Box<dyn core::fmt::Debug + Send + Sync + 'static>;
+pub trait CustomError: core::fmt::Debug + core::fmt::Display + Send + Sync + 'static {}
+#[cfg(not(feature = "std"))]
+impl<T: core::fmt::Debug + core::fmt::Display + Send + Sync + 'static> CustomError for T {}
 
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, derive_more::Display)]
     enum MyError {
         Foo,
     }
 
-    impl Display for MyError {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            write!(f, "{self:?}")
-        }
-    }
-
     #[cfg(feature = "std")]
     impl std::error::Error for MyError {}
-
-    #[cfg(not(feature = "std"))]
-    impl Into<CustomError> for MyError {
-        fn into(self) -> CustomError {
-            Box::new(self)
-        }
-    }
 
     #[test]
     fn custom_error() {
