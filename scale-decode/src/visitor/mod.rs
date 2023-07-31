@@ -289,7 +289,7 @@ pub enum DecodeError {
     CannotDecodeCompactIntoType(scale_info::Type<PortableForm>),
     /// Failure to decode bytes into a string.
     #[from]
-    #[display(fmt = "Could not decode string: '{_0}'")]
+    #[display(fmt = "Could not decode string: {_0}")]
     InvalidStr(alloc::str::Utf8Error),
     /// We could not convert the [`u32`] that we found into a valid [`char`].
     #[display(fmt = "{_0} is expected to be a valid char, but is not")]

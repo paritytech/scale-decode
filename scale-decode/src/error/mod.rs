@@ -112,7 +112,7 @@ pub enum ErrorKind {
     #[display(fmt = "Error decoding bytes given the type ID and registry provided: {_0}")]
     VisitorDecodeError(DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
-    #[display(fmt = "Number '{value}' is out of range")]
+    #[display(fmt = "Number {value} is out of range")]
     NumberOutOfRange {
         /// A string representation of the numeric value that was out of range.
         value: String,
