@@ -136,7 +136,12 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
 
-        Some(Ok(CompositeField { bytes: res_bytes, field, types: self.types }))
+        Some(Ok(CompositeField {
+            bytes: res_bytes,
+            field,
+            types: self.types,
+            is_compact: self.is_compact,
+        }))
     }
 }
 
@@ -146,6 +151,7 @@ pub struct CompositeField<'scale, 'info> {
     bytes: &'scale [u8],
     field: Field<'info>,
     types: &'info PortableRegistry,
+    is_compact: bool,
 }
 
 impl<'scale, 'info> CompositeField<'scale, 'info> {
@@ -171,7 +177,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
             self.field.id(),
             self.types,
             visitor,
-            false,
+            self.is_compact,
         )
     }
     /// Decode this field into a specific type via [`DecodeAsType`].

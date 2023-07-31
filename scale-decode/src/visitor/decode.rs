@@ -254,10 +254,7 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
         }
         TypeDefPrimitive::U32 => {
             let n = if is_compact {
-                dbg!(&data);
-                println!("Hello!!!");
-                Ok(123)
-                // codec::Compact::<u32>::decode(data).map(|c| c.0)
+                codec::Compact::<u32>::decode(data).map(|c| c.0)
             } else {
                 u32::decode(data)
             }
