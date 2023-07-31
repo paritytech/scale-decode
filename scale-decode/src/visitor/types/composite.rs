@@ -19,10 +19,36 @@ use crate::{
 };
 use scale_info::{form::PortableForm, Path, PortableRegistry};
 
+pub enum CompositeBytes<'scale> {
+    Borrowed { bytes: &'scale [u8], item_bytes: &'scale [u8] },
+    OwnedOneField { bytes: Vec<u8>, decoded: bool },
+}
+
+// impl<'scale> CompositeBytes<'scale> {
+//     fn from_start(&'scale self) -> &'scale [u8] {
+//         match &self {
+//             CompositeBytes::Borrowed { bytes, item_bytes: _ } => bytes,
+//             CompositeBytes::OwnedOneField { bytes, decoded: _ } => bytes,
+//         }
+//     }
+
+//     fn from_undecoded(&'scale self) -> &'scale [u8] {
+//         match &self {
+//             CompositeBytes::Borrowed { item_bytes, bytes: _ } => item_bytes,
+//             CompositeBytes::OwnedOneField { bytes, decoded } => {
+//                 if *decoded {
+//                     &bytes[bytes.len()..]
+//                 } else {
+//                     &bytes
+//                 }
+//             }
+//         }
+//     }
+// }
+
 /// This represents a composite type.
 pub struct Composite<'scale, 'info> {
-    bytes: &'scale [u8],
-    item_bytes: &'scale [u8],
+    bytes: CompositeBytes<'scale>,
     path: &'info Path<PortableForm>,
     fields: smallvec::SmallVec<[Field<'info>; 16]>,
     next_field_idx: usize,
@@ -39,8 +65,31 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         types: &'info PortableRegistry,
     ) -> Composite<'scale, 'info> {
         let fields = smallvec::SmallVec::from_iter(fields);
-        Composite { bytes, path, item_bytes: bytes, fields, types, next_field_idx: 0 }
+        Composite {
+            bytes: CompositeBytes::Borrowed { bytes, item_bytes: bytes },
+            path,
+            fields,
+            types,
+            next_field_idx: 0,
+        }
     }
+
+    pub fn new_owned_one_field(
+        bytes: Vec<u8>,
+        path: &'info Path<PortableForm>,
+        fields: &mut dyn FieldIter<'info>,
+        types: &'info PortableRegistry,
+    ) -> Composite<'scale, 'info> {
+        let fields = smallvec::SmallVec::from_iter(fields);
+        Composite {
+            bytes: CompositeBytes::OwnedOneField { bytes, decoded: false },
+            path,
+            fields,
+            types,
+            next_field_idx: 0,
+        }
+    }
+
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
@@ -50,13 +99,25 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         Ok(())
     }
     /// The bytes representing this composite type and anything following it.
-    pub fn bytes_from_start(&self) -> &'scale [u8] {
-        self.bytes
+    pub fn bytes_from_start<'a>(&'a self) -> &'a [u8] {
+        match &self.bytes {
+            CompositeBytes::Borrowed { bytes, item_bytes: _ } => bytes,
+            CompositeBytes::OwnedOneField { bytes, decoded: _ } => bytes,
+        }
     }
     /// The bytes that have not yet been decoded in this composite type and anything
     /// following it.
-    pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
-        self.item_bytes
+    pub fn bytes_from_undecoded(&self) -> &[u8] {
+        match &self.bytes {
+            CompositeBytes::Borrowed { item_bytes, bytes: _ } => item_bytes,
+            CompositeBytes::OwnedOneField { bytes, decoded } => {
+                if *decoded {
+                    &bytes[bytes.len()..]
+                } else {
+                    &bytes
+                }
+            }
+        }
     }
     /// The number of un-decoded items remaining in this composite type.
     pub fn remaining(&self) -> usize {
@@ -77,7 +138,11 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
     pub fn as_tuple(&self) -> super::Tuple<'scale, 'info> {
-        super::Tuple::new(self.item_bytes, &mut self.fields.iter().copied(), self.types)
+        super::Tuple::new(
+            &self.bytes_from_undecoded(),
+            &mut self.fields.iter().copied(),
+            self.types,
+        )
     }
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
@@ -92,14 +157,15 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         let field = self.fields.get(self.next_field_idx)?;
-        let b = &mut &*self.item_bytes;
+        let undecoded_bytes_len = self.bytes_from_undecoded().len();
+        let b: &mut &[u8] = &mut &*self.bytes;
 
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
 
         if res.is_ok() {
             // Move our cursors forwards only if decode was OK:
-            self.item_bytes = *b;
+
             self.next_field_idx += 1;
         } else {
             // Otherwise, skip to end to prevent any future iterations:
@@ -116,8 +182,8 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
         let field = *self.fields.get(self.next_field_idx)?;
-        let num_bytes_before = self.item_bytes.len();
-        let item_bytes = self.item_bytes;
+        let num_bytes_before = self.bytes_from_undecoded().len();
+        let item_bytes = self.bytes_from_undecoded();
 
         // Now, decode and skip over the item we're going to hand back:
         if let Err(e) = self.decode_item(IgnoreVisitor)? {
@@ -125,7 +191,7 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
         };
 
         // How many bytes did we skip over? What bytes represent the thing we decoded?
-        let num_bytes_after = self.item_bytes.len();
+        let num_bytes_after = self.bytes_from_undecoded().len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
 
         Some(Ok(CompositeField { bytes: res_bytes, field, types: self.types }))
