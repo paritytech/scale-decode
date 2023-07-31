@@ -97,7 +97,7 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     is_compact: bool,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
     // guard against invalid compact types: only composites with 1 field can be compact encoded
-    if ty.fields.len() != 1 {
+    if is_compact && ty.fields.len() != 1 {
         return Err(DecodeError::CannotDecodeCompactIntoType(ty_super.clone()).into());
     }
 
@@ -211,7 +211,9 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
                 | TypeDefPrimitive::U64
                 | TypeDefPrimitive::U128
         )
-    {}
+    {
+        return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone().into()).into());
+    }
 
     match ty {
         TypeDefPrimitive::Bool => {
@@ -252,7 +254,10 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
         }
         TypeDefPrimitive::U32 => {
             let n = if is_compact {
-                codec::Compact::<u32>::decode(data).map(|c| c.0)
+                dbg!(&data);
+                println!("Hello!!!");
+                Ok(123)
+                // codec::Compact::<u32>::decode(data).map(|c| c.0)
             } else {
                 u32::decode(data)
             }
