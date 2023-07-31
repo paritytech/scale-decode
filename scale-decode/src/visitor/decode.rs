@@ -14,16 +14,15 @@
 // limitations under the License.
 
 use crate::visitor::{
-    Array, BitSequence, Compact, CompactLocation, Composite, DecodeAsTypeResult, DecodeError,
-    Sequence, Str, Tuple, TypeId, Variant, Visitor,
+    Array, BitSequence, Composite, DecodeAsTypeResult, DecodeError, Sequence, Str, Tuple, TypeId,
+    Variant, Visitor,
 };
 use crate::Field;
-use codec::{self, Decode, Encode};
+use codec::{self, Decode};
 use scale_info::Type;
 use scale_info::{
     form::PortableForm, Path, PortableRegistry, TypeDef, TypeDefArray, TypeDefBitSequence,
-    TypeDefCompact, TypeDefComposite, TypeDefPrimitive, TypeDefSequence, TypeDefTuple,
-    TypeDefVariant,
+    TypeDefComposite, TypeDefPrimitive, TypeDefSequence, TypeDefTuple, TypeDefVariant,
 };
 
 /// Decode data according to the type ID and [`PortableRegistry`] provided.
@@ -35,6 +34,7 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     ty_id: u32,
     types: &'info PortableRegistry,
     visitor: V,
+    is_compact: bool,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
     // Provide option to "bail out" and do something custom first.
     let visitor = match visitor.unchecked_decode_as_type(data, TypeId(ty_id), types) {
@@ -46,16 +46,30 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     let ty_id = TypeId(ty_id);
     let path = &ty.path;
 
+    // guard against invalid compact types:
+    if is_compact
+        && !matches!(
+            ty.type_def,
+            TypeDef::Compact(_) | TypeDef::Primitive(_) | TypeDef::Composite(_)
+        )
+    {
+        return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone()).into());
+    }
+
     match &ty.type_def {
         TypeDef::Composite(inner) => {
-            decode_composite_value(data, ty_id, path, inner, types, visitor, None)
+            decode_composite_value(data, ty_id, path, inner, &ty, types, visitor, is_compact)
         }
         TypeDef::Variant(inner) => decode_variant_value(data, ty_id, path, inner, types, visitor),
         TypeDef::Sequence(inner) => decode_sequence_value(data, ty_id, inner, types, visitor),
         TypeDef::Array(inner) => decode_array_value(data, ty_id, inner, types, visitor),
         TypeDef::Tuple(inner) => decode_tuple_value(data, ty_id, inner, types, visitor),
-        TypeDef::Primitive(inner) => decode_primitive_value(data, ty_id, inner, visitor, false),
-        TypeDef::Compact(inner) => decode_compact_value(data, ty_id, inner, types, visitor),
+        TypeDef::Primitive(inner) => {
+            decode_primitive_value(data, ty_id, inner, visitor, is_compact)
+        }
+        TypeDef::Compact(inner) => {
+            decode_with_visitor(data, inner.type_param.id, types, visitor, true)
+        }
         TypeDef::BitSequence(inner) => {
             decode_bit_sequence_value(data, ty_id, inner, types, visitor)
         }
@@ -68,36 +82,20 @@ fn decode_composite_value<'scale, 'info, V: Visitor>(
     ty_id: TypeId,
     path: &'info Path<PortableForm>,
     ty: &'info TypeDefComposite<PortableForm>,
+    ty_super: &'info Type<PortableForm>,
     types: &'info PortableRegistry,
     visitor: V,
-    compact_type: Option<TypeDefPrimitive>,
+    is_compact: bool,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
-    let mut fields = ty.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
-    let mut items: Composite<'scale, 'info> = if let Some(compact_type) = compact_type {
-        let decoded_bytes = match compact_type {
-            TypeDefPrimitive::U8 => {
-                codec::Compact::<u8>::decode(data).map(|c| c.0).map_err(Into::into)?.encode()
-            }
-            TypeDefPrimitive::U16 => {
-                codec::Compact::<u16>::decode(data).map(|c| c.0).map_err(Into::into)?.encode()
-            }
-            TypeDefPrimitive::U32 => {
-                codec::Compact::<u32>::decode(data).map(|c| c.0).map_err(Into::into)?.encode()
-            }
-            TypeDefPrimitive::U64 => {
-                codec::Compact::<u64>::decode(data).map(|c| c.0).map_err(Into::into)?.encode()
-            }
-            TypeDefPrimitive::U128 => {
-                codec::Compact::<u128>::decode(data).map(|c| c.0).map_err(Into::into)?.encode()
-            }
-            _ => Err(DecodeError::CannotDecodeCompactIntoType(compact_type.into()))?,
-        };
+    // guard against invalid compact types: only composites with 1 field can be compact encoded
+    if ty.fields.len() != 1 {
+        return Err(DecodeError::CannotDecodeCompactIntoType(ty_super.clone()).into());
+    }
 
-        Composite::new_owned_one_field(decoded_bytes, path, &mut fields, types)
-    } else {
-        Composite::new(data, path, &mut fields, types)
-    };
+    let mut fields = ty.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
+    let mut items = Composite::new(data, path, &mut fields, types, is_compact);
     let res = visitor.visit_composite(&mut items, ty_id);
+
     // Skip over any bytes that the visitor chose not to decode:
     items.skip_decoding()?;
     *data = items.bytes_from_undecoded();
@@ -194,6 +192,18 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
         Ok(arr)
     }
 
+    // guard against invalid composite types: only `U8`, `U16`, `U32`, `U64` and `U128` can be compact encoded
+    if is_compact
+        && !matches!(
+            ty,
+            TypeDefPrimitive::U8
+                | TypeDefPrimitive::U16
+                | TypeDefPrimitive::U32
+                | TypeDefPrimitive::U64
+                | TypeDefPrimitive::U128
+        )
+    {}
+
     match ty {
         TypeDefPrimitive::Bool => {
             let b = bool::decode(data).map_err(|e| e.into())?;
@@ -286,83 +296,6 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
             let arr = decode_32_bytes(data)?;
             visitor.visit_i256(arr, ty_id)
         }
-    }
-}
-
-fn decode_compact_value<'scale, 'info, V: Visitor>(
-    data: &mut &'scale [u8],
-    ty_id: TypeId,
-    ty: &'info TypeDefCompact<PortableForm>,
-    types: &'info PortableRegistry,
-    visitor: V,
-) -> Result<V::Value<'scale, 'info>, V::Error> {
-    fn verify_type_can_be_compact(
-        ty: &Type<PortableForm>,
-        types: &PortableRegistry,
-    ) -> Result<TypeDefPrimitive, DecodeError> {
-        match &ty.type_def {
-            TypeDef::Composite(composite_ty) => {
-                verify_composite_type_can_be_compact(composite_ty, ty, types)
-            }
-            TypeDef::Primitive(ty) => verify_primitive_type_can_be_compact(ty),
-            _ => Err(DecodeError::CannotDecodeCompactIntoType(ty.clone()).into()),
-        }
-    }
-
-    fn verify_primitive_type_can_be_compact(
-        ty: &TypeDefPrimitive,
-    ) -> Result<TypeDefPrimitive, DecodeError> {
-        let compact_supported = matches!(
-            ty,
-            TypeDefPrimitive::U8
-                | TypeDefPrimitive::U16
-                | TypeDefPrimitive::U32
-                | TypeDefPrimitive::U64
-                | TypeDefPrimitive::U128
-        );
-        if compact_supported {
-            Ok(ty.clone())
-        } else {
-            Err(DecodeError::CannotDecodeCompactIntoType(ty.clone().into()))
-        }
-    }
-
-    fn verify_composite_type_can_be_compact(
-        composite_ty: &TypeDefComposite<PortableForm>,
-        ty: &Type<PortableForm>,
-        types: &PortableRegistry,
-    ) -> Result<TypeDefPrimitive, DecodeError> {
-        if composite_ty.fields.len() != 1 {
-            return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone()));
-        }
-        let field = &composite_ty.fields[0];
-        let field_type_id = field.ty.id;
-        let inner_ty =
-            types.resolve(field_type_id).ok_or(DecodeError::TypeIdNotFound(field_type_id))?;
-        verify_type_can_be_compact(inner_ty, types)
-    }
-
-    let inner_ty_id = ty.type_param.id;
-    let inner = types.resolve(inner_ty_id).ok_or(DecodeError::TypeIdNotFound(inner_ty_id))?;
-    let inner_path = &inner.path;
-
-    // verifies that only types that can be compact encoded make it through
-    let compact_primitive = verify_type_can_be_compact(inner, types)?;
-
-    match &inner.type_def {
-        TypeDef::Composite(inner_composite) => decode_composite_value(
-            data,
-            ty_id,
-            inner_path,
-            inner_composite,
-            types,
-            visitor,
-            Some(compact_primitive),
-        ),
-        TypeDef::Primitive(inner_primitive) => {
-            decode_primitive_value(data, ty_id, inner_primitive, visitor, true)
-        }
-        _ => panic!("cannot be reached, because of `verify_type_can_be_compact` above; qed"),
     }
 }
 

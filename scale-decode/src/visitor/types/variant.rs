@@ -44,7 +44,7 @@ impl<'scale, 'info> Variant<'scale, 'info> {
 
         // Allow decoding of the fields:
         let mut fields_iter = variant.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
-        let fields = Composite::new(item_bytes, path, &mut fields_iter, types);
+        let fields = Composite::new(item_bytes, path, &mut fields_iter, types, false);
 
         Ok(Variant { bytes, variant, fields })
     }

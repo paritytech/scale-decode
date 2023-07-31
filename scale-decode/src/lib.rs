@@ -187,7 +187,7 @@ where
         type_id: u32,
         types: &scale_info::PortableRegistry,
     ) -> Result<Self, Error> {
-        let res = visitor::decode_with_visitor(input, type_id, types, T::into_visitor())?;
+        let res = visitor::decode_with_visitor(input, type_id, types, T::into_visitor(), false)?;
         Ok(res)
     }
 }

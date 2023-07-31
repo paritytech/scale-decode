@@ -67,7 +67,7 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         let b = &mut &*self.item_bytes;
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor, false);
 
         if res.is_ok() {
             // Move our cursors forwards only if decode was OK:
@@ -126,7 +126,13 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
-        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
+        crate::visitor::decode_with_visitor(
+            &mut &*self.bytes,
+            self.type_id,
+            self.types,
+            visitor,
+            false,
+        )
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {

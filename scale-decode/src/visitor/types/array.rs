@@ -74,7 +74,7 @@ impl<'scale, 'info> Array<'scale, 'info> {
         let b = &mut self.item_bytes;
         // Don't return here; decrement bytes and remaining properly first and then return, so that
         // calling decode_item again works as expected.
-        let res = crate::visitor::decode_with_visitor(b, self.type_id, self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, self.type_id, self.types, visitor, false);
         self.item_bytes = *b;
         self.remaining -= 1;
         Some(res)
@@ -123,7 +123,13 @@ impl<'scale, 'info> ArrayItem<'scale, 'info> {
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
-        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
+        crate::visitor::decode_with_visitor(
+            &mut &*self.bytes,
+            self.type_id,
+            self.types,
+            visitor,
+            false,
+        )
     }
     /// Decode this item into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {

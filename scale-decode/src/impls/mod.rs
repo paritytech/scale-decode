@@ -204,7 +204,7 @@ macro_rules! impl_into_visitor_like {
                 types: &'info scale_info::PortableRegistry,
             ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
                 // Use the source visitor to decode into some type:
-                let inner_res = decode_with_visitor(input, type_id.0, types, <$source>::into_visitor());
+                let inner_res = decode_with_visitor(input, type_id.0, types, <$source>::into_visitor(), false);
                 // map this type into our desired output and return it:
                 let res = inner_res.map($mapper);
                 DecodeAsTypeResult::Decoded(res)
@@ -239,8 +239,13 @@ where
         types: &'info scale_info::PortableRegistry,
     ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
         // Use the ToOwned visitor to decode into some type:
-        let inner_res =
-            decode_with_visitor(input, type_id.0, types, <<T as ToOwned>::Owned>::into_visitor());
+        let inner_res = decode_with_visitor(
+            input,
+            type_id.0,
+            types,
+            <<T as ToOwned>::Owned>::into_visitor(),
+            false,
+        );
         // map this type into our owned Cow to return:
         let res = inner_res.map(Cow::Owned);
         DecodeAsTypeResult::Decoded(res)
@@ -581,7 +586,8 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
                 _ => type_id.0,
             };
 
-            let inner_res = decode_with_visitor(input, inner_type_id, types, <$t>::into_visitor());
+            let inner_res =
+                decode_with_visitor(input, inner_type_id, types, <$t>::into_visitor(), false);
             let res = inner_res.map(|val| (val,)).map_err(|e| e.into());
             DecodeAsTypeResult::Decoded(res)
         }
@@ -636,7 +642,7 @@ macro_rules! impl_decode_tuple {
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
             fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
-                let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types);
+                let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types, false);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
                 // Skip over bytes that we decoded:

@@ -122,19 +122,30 @@ fn main() {
         Foo::decode_as_type(&mut &*empty_bytes, type_id, &types).unwrap();
 
     // Or we can also manually use our `Visitor` impl:
-    let bar_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*bar_bytes, type_id, &types, FooVisitor)
-            .unwrap();
+    let bar_via_visitor = scale_decode::visitor::decode_with_visitor(
+        &mut &*bar_bytes,
+        type_id,
+        &types,
+        FooVisitor,
+        false,
+    )
+    .unwrap();
     let wibble_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*wibble_bytes,
         type_id,
         &types,
         FooVisitor,
+        false,
     )
     .unwrap();
-    let empty_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*empty_bytes, type_id, &types, FooVisitor)
-            .unwrap();
+    let empty_via_visitor = scale_decode::visitor::decode_with_visitor(
+        &mut &*empty_bytes,
+        type_id,
+        &types,
+        FooVisitor,
+        false,
+    )
+    .unwrap();
 
     assert_eq!(bar, bar_via_decode_as_type);
     assert_eq!(bar, bar_via_visitor);
