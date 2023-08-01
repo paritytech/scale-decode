@@ -65,7 +65,6 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         let field = self.fields.get(self.next_field_idx)?;
         let b = &mut &*self.item_bytes;
-
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
 

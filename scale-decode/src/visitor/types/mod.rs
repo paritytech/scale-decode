@@ -17,7 +17,6 @@
 
 mod array;
 mod bit_sequence;
-mod compact;
 mod composite;
 mod sequence;
 mod str;
@@ -27,7 +26,6 @@ mod variant;
 pub use self::str::Str;
 pub use array::Array;
 pub use bit_sequence::BitSequence;
-pub use compact::{Compact, CompactLocation};
 pub use composite::Composite;
 pub use sequence::Sequence;
 pub use tuple::Tuple;
