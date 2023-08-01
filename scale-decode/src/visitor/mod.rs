@@ -367,7 +367,7 @@ mod test {
     use alloc::string::{String, ToString};
     use alloc::vec;
     use alloc::vec::Vec;
-    use codec::{self, CompactAs, Decode, Encode};
+    use codec::{self, CompactAs, Encode};
     use scale_info::PortableRegistry;
 
     /// A silly Value type for testing with a basic Visitor impl
@@ -388,11 +388,6 @@ mod test {
         I64(i64),
         I128(i128),
         I256([u8; 32]),
-        CompactU8(Vec<Loc>, u8),
-        CompactU16(Vec<Loc>, u16),
-        CompactU32(Vec<Loc>, u32),
-        CompactU64(Vec<Loc>, u64),
-        CompactU128(Vec<Loc>, u128),
         Sequence(Vec<Value>),
         Composite(Vec<(String, Value)>),
         Tuple(Vec<Value>),
@@ -400,13 +395,6 @@ mod test {
         Array(Vec<Value>),
         Variant(String, Vec<(String, Value)>),
         BitSequence(scale_bits::Bits),
-    }
-
-    #[derive(Clone, Debug, PartialEq)]
-    enum Loc {
-        Unnamed,
-        Named(String),
-        Primitive,
     }
 
     struct ValueVisitor;

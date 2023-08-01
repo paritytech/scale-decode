@@ -67,7 +67,7 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
 
     match &ty.type_def {
         TypeDef::Composite(inner) => {
-            decode_composite_value(data, ty_id, path, inner, &ty, types, visitor, is_compact)
+            decode_composite_value(data, ty_id, path, inner, ty, types, visitor, is_compact)
         }
         TypeDef::Variant(inner) => decode_variant_value(data, ty_id, path, inner, types, visitor),
         TypeDef::Sequence(inner) => decode_sequence_value(data, ty_id, inner, types, visitor),
@@ -86,6 +86,7 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
 }
 
 /// Note: Only `U8`, `U16`, `U32`, `U64`, `U128` allow compact encoding and should be provided for the `compact_type` argument.
+#[allow(clippy::too_many_arguments)]
 fn decode_composite_value<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: TypeId,
@@ -173,7 +174,7 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
     let mut fields = ty.fields.iter().map(|f| Field::unnamed(f.id));
-    let mut items = Tuple::new(data, &mut fields, types);
+    let mut items = Tuple::new(data, &mut fields, types, false);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:

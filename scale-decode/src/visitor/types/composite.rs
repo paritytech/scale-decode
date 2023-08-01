@@ -79,7 +79,12 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
     pub fn as_tuple(&self) -> super::Tuple<'scale, 'info> {
-        super::Tuple::new(self.item_bytes, &mut self.fields.iter().copied(), self.types)
+        super::Tuple::new(
+            self.item_bytes,
+            &mut self.fields.iter().copied(),
+            self.types,
+            self.is_compact,
+        )
     }
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
@@ -135,7 +140,6 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
         // How many bytes did we skip over? What bytes represent the thing we decoded?
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
-
         Some(Ok(CompositeField {
             bytes: res_bytes,
             field,
@@ -167,6 +171,10 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     pub fn type_id(&self) -> u32 {
         self.field.id()
     }
+    /// If the field is compact encoded
+    pub fn is_compact(&self) -> bool {
+        self.is_compact
+    }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
         &self,
@@ -182,7 +190,12 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
-        T::decode_as_type(&mut &*self.bytes, self.field.id(), self.types)
+        T::decode_as_type_maybe_compact(
+            &mut &*self.bytes,
+            self.field.id(),
+            self.types,
+            self.is_compact,
+        )
     }
 }
 

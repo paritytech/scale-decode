@@ -174,6 +174,20 @@ pub trait DecodeAsType: Sized {
         input: &mut &[u8],
         type_id: u32,
         types: &PortableRegistry,
+    ) -> Result<Self, Error> {
+        Self::decode_as_type_maybe_compact(input, type_id, types, false)
+    }
+
+    /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
+    /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
+    /// not used in the course of decoding are still pointed to after decoding is complete.
+    ///
+    /// If is_compact=true, it is assumed the value is compact encoded (only works for some types).
+    fn decode_as_type_maybe_compact(
+        input: &mut &[u8],
+        type_id: u32,
+        types: &PortableRegistry,
+        is_compact: bool,
     ) -> Result<Self, Error>;
 }
 
@@ -182,12 +196,19 @@ where
     T: IntoVisitor,
     Error: From<<T::Visitor as Visitor>::Error>,
 {
-    fn decode_as_type(
+    fn decode_as_type_maybe_compact(
         input: &mut &[u8],
         type_id: u32,
         types: &scale_info::PortableRegistry,
+        is_compact: bool,
     ) -> Result<Self, Error> {
-        let res = visitor::decode_with_visitor(input, type_id, types, T::into_visitor())?;
+        let res = visitor::decode_with_visitor_maybe_compact(
+            input,
+            type_id,
+            types,
+            T::into_visitor(),
+            is_compact,
+        )?;
         Ok(res)
     }
 }
