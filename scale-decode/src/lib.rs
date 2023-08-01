@@ -183,6 +183,7 @@ pub trait DecodeAsType: Sized {
     /// not used in the course of decoding are still pointed to after decoding is complete.
     ///
     /// If is_compact=true, it is assumed the value is compact encoded (only works for some types).
+    #[doc(hidden)]
     fn decode_as_type_maybe_compact(
         input: &mut &[u8],
         type_id: u32,

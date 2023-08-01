@@ -38,6 +38,14 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     decode_with_visitor_maybe_compact(data, ty_id, types, visitor, false)
 }
 
+macro_rules! err_if_compact {
+    ($is_compact:expr, $ty:expr) => {
+        if $is_compact {
+            return Err(DecodeError::CannotDecodeCompactIntoType($ty.clone().into()).into());
+        }
+    };
+}
+
 pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: u32,
@@ -55,24 +63,23 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
     let ty_id = TypeId(ty_id);
     let path = &ty.path;
 
-    // guard against invalid compact types:
-    if is_compact
-        && !matches!(
-            ty.type_def,
-            TypeDef::Compact(_) | TypeDef::Primitive(_) | TypeDef::Composite(_)
-        )
-    {
-        return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone()).into());
-    }
-
     match &ty.type_def {
         TypeDef::Composite(inner) => {
             decode_composite_value(data, ty_id, path, inner, ty, types, visitor, is_compact)
         }
-        TypeDef::Variant(inner) => decode_variant_value(data, ty_id, path, inner, types, visitor),
-        TypeDef::Sequence(inner) => decode_sequence_value(data, ty_id, inner, types, visitor),
-        TypeDef::Array(inner) => decode_array_value(data, ty_id, inner, types, visitor),
-        TypeDef::Tuple(inner) => decode_tuple_value(data, ty_id, inner, types, visitor),
+        TypeDef::Variant(inner) => {
+            err_if_compact!(is_compact, ty);
+            decode_variant_value(data, ty_id, path, inner, types, visitor)
+        }
+        TypeDef::Sequence(inner) => {
+            err_if_compact!(is_compact, ty);
+            decode_sequence_value(data, ty_id, inner, types, visitor)
+        }
+        TypeDef::Array(inner) => {
+            err_if_compact!(is_compact, ty);
+            decode_array_value(data, ty_id, inner, types, visitor)
+        }
+        TypeDef::Tuple(inner) => decode_tuple_value(data, ty_id, inner, types, visitor, is_compact),
         TypeDef::Primitive(inner) => {
             decode_primitive_value(data, ty_id, inner, visitor, is_compact)
         }
@@ -80,6 +87,7 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
             decode_with_visitor_maybe_compact(data, inner.type_param.id, types, visitor, true)
         }
         TypeDef::BitSequence(inner) => {
+            err_if_compact!(is_compact, ty);
             decode_bit_sequence_value(data, ty_id, inner, types, visitor)
         }
     }
@@ -172,9 +180,15 @@ fn decode_tuple_value<'scale, 'info, V: Visitor>(
     ty: &'info TypeDefTuple<PortableForm>,
     types: &'info PortableRegistry,
     visitor: V,
+    is_compact: bool,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    // guard against invalid compact types: only composites with 1 field can be compact encoded
+    if is_compact && ty.fields.len() != 1 {
+        return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone().into()).into());
+    }
+
     let mut fields = ty.fields.iter().map(|f| Field::unnamed(f.id));
-    let mut items = Tuple::new(data, &mut fields, types, false);
+    let mut items = Tuple::new(data, &mut fields, types, is_compact);
     let res = visitor.visit_tuple(&mut items, ty_id);
 
     // Skip over any bytes that the visitor chose not to decode:
@@ -201,33 +215,21 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
         *data = &data[32..];
         Ok(arr)
     }
-
-    // guard against invalid composite types: only `U8`, `U16`, `U32`, `U64` and `U128` can be compact encoded
-    if is_compact
-        && !matches!(
-            ty,
-            TypeDefPrimitive::U8
-                | TypeDefPrimitive::U16
-                | TypeDefPrimitive::U32
-                | TypeDefPrimitive::U64
-                | TypeDefPrimitive::U128
-        )
-    {
-        return Err(DecodeError::CannotDecodeCompactIntoType(ty.clone().into()).into());
-    }
-
     match ty {
         TypeDefPrimitive::Bool => {
+            err_if_compact!(is_compact, ty);
             let b = bool::decode(data).map_err(|e| e.into())?;
             visitor.visit_bool(b, ty_id)
         }
         TypeDefPrimitive::Char => {
+            err_if_compact!(is_compact, ty);
             // Treat chars as u32's
             let val = u32::decode(data).map_err(|e| e.into())?;
             let c = char::from_u32(val).ok_or(DecodeError::InvalidChar(val))?;
             visitor.visit_char(c, ty_id)
         }
         TypeDefPrimitive::Str => {
+            err_if_compact!(is_compact, ty);
             // Avoid allocating; don't decode into a String. instead, pull the bytes
             // and let the visitor decide whether to use them or not.
             let mut s = Str::new(data)?;
@@ -281,30 +283,37 @@ fn decode_primitive_value<'scale, 'info, V: Visitor>(
             visitor.visit_u128(n, ty_id)
         }
         TypeDefPrimitive::U256 => {
+            err_if_compact!(is_compact, *ty);
             let arr = decode_32_bytes(data)?;
             visitor.visit_u256(arr, ty_id)
         }
         TypeDefPrimitive::I8 => {
+            err_if_compact!(is_compact, ty);
             let n = i8::decode(data).map_err(|e| e.into())?;
             visitor.visit_i8(n, ty_id)
         }
         TypeDefPrimitive::I16 => {
+            err_if_compact!(is_compact, ty);
             let n = i16::decode(data).map_err(|e| e.into())?;
             visitor.visit_i16(n, ty_id)
         }
         TypeDefPrimitive::I32 => {
+            err_if_compact!(is_compact, ty);
             let n = i32::decode(data).map_err(|e| e.into())?;
             visitor.visit_i32(n, ty_id)
         }
         TypeDefPrimitive::I64 => {
+            err_if_compact!(is_compact, ty);
             let n = i64::decode(data).map_err(|e| e.into())?;
             visitor.visit_i64(n, ty_id)
         }
         TypeDefPrimitive::I128 => {
+            err_if_compact!(is_compact, ty);
             let n = i128::decode(data).map_err(|e| e.into())?;
             visitor.visit_i128(n, ty_id)
         }
         TypeDefPrimitive::I256 => {
+            err_if_compact!(is_compact, ty);
             let arr = decode_32_bytes(data)?;
             visitor.visit_i256(arr, ty_id)
         }

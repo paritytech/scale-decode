@@ -691,6 +691,20 @@ mod test {
     }
 
     #[test]
+    fn decode_compact_single_item_tuple_field() {
+        // A struct that can be compact encoded:
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
+        struct Struct {
+            a: (u32,),
+        }
+
+        encode_decode_check(
+            Struct { a: (123,) },
+            Value::Composite(vec![("a".into(), Value::Tuple(vec![Value::U32(123)]))]),
+        );
+    }
+
+    #[test]
     fn decode_sequence_array_tuple_types() {
         encode_decode_check(
             vec![1i32, 2, 3],
