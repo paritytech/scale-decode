@@ -4,10 +4,14 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
-## 0.9.0 - 2023-07-28
+## 0.9.0 - 2023-08-02
 
+- Change how compact encoding is handled: `visit_compact_*` functions are removed from the `Visitor` trait, and
+  compact encoding is now handled recursively and should now work in more cases (such as nested structs with compact
+  encoded values inside) ([#32](https://github.com/paritytech/scale-decode/pull/32)).
 - Improve custom error handling: custom errors now require `Debug + Display` on `no_std` or `Error` on `std`.
-  `Error::custom()` now accepts anything implementing these traits rather than depending on `Into<Error>`.
+  `Error::custom()` now accepts anything implementing these traits rather than depending on `Into<Error>`
+  ([#31](https://github.com/paritytech/scale-decode/pull/31)).
 
 ## 0.8.0
 
