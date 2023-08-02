@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use codec::{CompactAs, Decode};
 use scale_decode::DecodeAsType;
 
 // Single field named struct
@@ -42,10 +43,20 @@ struct Foo4 {
     ty: u8,
     out: bool,
     context: String,
-    types: u64
+    types: u64,
 }
 
 fn can_decode_as_type<T: DecodeAsType>() {}
+
+#[derive(CompactAs, Decode, DecodeAsType)]
+pub struct Perbill(pub u32);
+
+#[derive(Decode, DecodeAsType)]
+pub struct ValidatorPrefs {
+    #[codec(compact)]
+    pub commission: Perbill,
+    pub blocked: ::core::primitive::bool,
+}
 
 fn main() {
     // assert that the trait is implemented:
@@ -53,4 +64,5 @@ fn main() {
     can_decode_as_type::<Foo2>();
     can_decode_as_type::<Foo3>();
     can_decode_as_type::<Foo4>();
+    can_decode_as_type::<ValidatorPrefs>();
 }

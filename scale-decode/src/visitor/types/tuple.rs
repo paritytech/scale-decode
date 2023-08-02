@@ -26,6 +26,7 @@ pub struct Tuple<'scale, 'info> {
     fields: smallvec::SmallVec<[Field<'info>; 16]>,
     next_field_idx: usize,
     types: &'info PortableRegistry,
+    is_compact: bool,
 }
 
 impl<'scale, 'info> Tuple<'scale, 'info> {
@@ -33,9 +34,10 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
         bytes: &'scale [u8],
         fields: &mut dyn FieldIter<'info>,
         types: &'info PortableRegistry,
+        is_compact: bool,
     ) -> Tuple<'scale, 'info> {
         let fields = smallvec::SmallVec::from_iter(fields);
-        Tuple { bytes, item_bytes: bytes, fields, types, next_field_idx: 0 }
+        Tuple { bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
     }
     /// Skip over all bytes associated with this tuple. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this tuple.
@@ -65,9 +67,14 @@ impl<'scale, 'info> Tuple<'scale, 'info> {
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
         let field = self.fields.get(self.next_field_idx)?;
         let b = &mut &*self.item_bytes;
-
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor_maybe_compact(
+            b,
+            field.id(),
+            self.types,
+            visitor,
+            self.is_compact,
+        );
 
         if res.is_ok() {
             // Move our cursors forwards only if decode was OK:
@@ -100,7 +107,12 @@ impl<'scale, 'info> Iterator for Tuple<'scale, 'info> {
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
 
-        Some(Ok(TupleField { bytes: res_bytes, type_id: field.id(), types: self.types }))
+        Some(Ok(TupleField {
+            bytes: res_bytes,
+            type_id: field.id(),
+            types: self.types,
+            is_compact: self.is_compact,
+        }))
     }
 }
 
@@ -110,6 +122,7 @@ pub struct TupleField<'scale, 'info> {
     bytes: &'scale [u8],
     type_id: u32,
     types: &'info PortableRegistry,
+    is_compact: bool,
 }
 
 impl<'scale, 'info> TupleField<'scale, 'info> {
@@ -121,6 +134,10 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
     pub fn type_id(&self) -> u32 {
         self.type_id
     }
+    /// If the field is compact encoded
+    pub fn is_compact(&self) -> bool {
+        self.is_compact
+    }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
         &self,
@@ -130,7 +147,12 @@ impl<'scale, 'info> TupleField<'scale, 'info> {
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
-        T::decode_as_type(&mut &*self.bytes, self.type_id, self.types)
+        T::decode_as_type_maybe_compact(
+            &mut &*self.bytes,
+            self.type_id,
+            self.types,
+            self.is_compact,
+        )
     }
 }
 

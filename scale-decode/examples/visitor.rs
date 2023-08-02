@@ -16,7 +16,7 @@
 use codec::Encode;
 use scale_decode::visitor::{
     self,
-    types::{Array, BitSequence, Compact, Composite, Sequence, Str, Tuple, Variant},
+    types::{Array, BitSequence, Composite, Sequence, Str, Tuple, Variant},
     TypeId,
 };
 
@@ -37,11 +37,6 @@ enum Value {
     I64(i64),
     I128(i128),
     I256([u8; 32]),
-    CompactU8(u8),
-    CompactU16(u16),
-    CompactU32(u32),
-    CompactU64(u64),
-    CompactU128(u128),
     Sequence(Vec<Value>),
     Composite(Vec<(String, Value)>),
     Tuple(Vec<Value>),
@@ -155,41 +150,6 @@ impl visitor::Visitor for ValueVisitor {
         _type_id: TypeId,
     ) -> Result<Self::Value<'_, 'info>, Self::Error> {
         Ok(Value::I256(*value))
-    }
-    fn visit_compact_u8<'scale, 'info>(
-        self,
-        value: Compact<u8>,
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        Ok(Value::CompactU8(value.value()))
-    }
-    fn visit_compact_u16<'scale, 'info>(
-        self,
-        value: Compact<u16>,
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        Ok(Value::CompactU16(value.value()))
-    }
-    fn visit_compact_u32<'scale, 'info>(
-        self,
-        value: Compact<u32>,
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        Ok(Value::CompactU32(value.value()))
-    }
-    fn visit_compact_u64<'scale, 'info>(
-        self,
-        value: Compact<u64>,
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        Ok(Value::CompactU64(value.value()))
-    }
-    fn visit_compact_u128<'scale, 'info>(
-        self,
-        value: Compact<u128>,
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        Ok(Value::CompactU128(value.value()))
     }
     fn visit_sequence<'scale, 'info>(
         self,

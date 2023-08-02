@@ -27,6 +27,7 @@ pub struct Composite<'scale, 'info> {
     fields: smallvec::SmallVec<[Field<'info>; 16]>,
     next_field_idx: usize,
     types: &'info PortableRegistry,
+    is_compact: bool,
 }
 
 impl<'scale, 'info> Composite<'scale, 'info> {
@@ -37,9 +38,10 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         path: &'info Path<PortableForm>,
         fields: &mut dyn FieldIter<'info>,
         types: &'info PortableRegistry,
+        is_compact: bool,
     ) -> Composite<'scale, 'info> {
         let fields = smallvec::SmallVec::from_iter(fields);
-        Composite { bytes, path, item_bytes: bytes, fields, types, next_field_idx: 0 }
+        Composite { bytes, path, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
@@ -77,7 +79,12 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
     pub fn as_tuple(&self) -> super::Tuple<'scale, 'info> {
-        super::Tuple::new(self.item_bytes, &mut self.fields.iter().copied(), self.types)
+        super::Tuple::new(
+            self.item_bytes,
+            &mut self.fields.iter().copied(),
+            self.types,
+            self.is_compact,
+        )
     }
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
@@ -95,7 +102,13 @@ impl<'scale, 'info> Composite<'scale, 'info> {
         let b = &mut &*self.item_bytes;
 
         // Decode the bytes:
-        let res = crate::visitor::decode_with_visitor(b, field.id(), self.types, visitor);
+        let res = crate::visitor::decode_with_visitor_maybe_compact(
+            b,
+            field.id(),
+            self.types,
+            visitor,
+            self.is_compact,
+        );
 
         if res.is_ok() {
             // Move our cursors forwards only if decode was OK:
@@ -127,8 +140,12 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
         // How many bytes did we skip over? What bytes represent the thing we decoded?
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
-
-        Some(Ok(CompositeField { bytes: res_bytes, field, types: self.types }))
+        Some(Ok(CompositeField {
+            bytes: res_bytes,
+            field,
+            types: self.types,
+            is_compact: self.is_compact,
+        }))
     }
 }
 
@@ -138,6 +155,7 @@ pub struct CompositeField<'scale, 'info> {
     bytes: &'scale [u8],
     field: Field<'info>,
     types: &'info PortableRegistry,
+    is_compact: bool,
 }
 
 impl<'scale, 'info> CompositeField<'scale, 'info> {
@@ -153,16 +171,31 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     pub fn type_id(&self) -> u32 {
         self.field.id()
     }
+    /// If the field is compact encoded
+    pub fn is_compact(&self) -> bool {
+        self.is_compact
+    }
     /// Decode this field using a visitor.
     pub fn decode_with_visitor<V: Visitor>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
-        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.field.id(), self.types, visitor)
+        crate::visitor::decode_with_visitor_maybe_compact(
+            &mut &*self.bytes,
+            self.field.id(),
+            self.types,
+            visitor,
+            self.is_compact,
+        )
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
-        T::decode_as_type(&mut &*self.bytes, self.field.id(), self.types)
+        T::decode_as_type_maybe_compact(
+            &mut &*self.bytes,
+            self.field.id(),
+            self.types,
+            self.is_compact,
+        )
     }
 }
 

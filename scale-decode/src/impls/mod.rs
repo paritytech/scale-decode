@@ -636,7 +636,7 @@ macro_rules! impl_decode_tuple {
         where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
         {
             fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
-                let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types);
+                let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types, false);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
                 // Skip over bytes that we decoded:

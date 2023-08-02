@@ -22,6 +22,7 @@ use scale_info::form::PortableForm;
 use types::*;
 
 pub use decode::decode_with_visitor;
+pub(crate) use decode::decode_with_visitor_maybe_compact;
 
 /// An implementation of the [`Visitor`] trait can be passed to the [`decode_with_visitor()`]
 /// function, and is handed back values as they are encountered. It's up to the implementation
@@ -230,51 +231,6 @@ pub trait Visitor: Sized {
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         self.visit_unexpected(Unexpected::Bitsequence)
     }
-
-    // Default implementations for visiting compact values just delegate and
-    // ignore the compactness, but they are here if decoders would like to know
-    // that the thing was compact encoded:
-
-    /// Called when a compact encoded u8 is seen in the input bytes.
-    fn visit_compact_u8<'scale, 'info>(
-        self,
-        value: Compact<u8>,
-        type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        self.visit_u8(value.value(), type_id)
-    }
-    /// Called when a compact encoded u16 is seen in the input bytes.
-    fn visit_compact_u16<'scale, 'info>(
-        self,
-        value: Compact<u16>,
-        type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        self.visit_u16(value.value(), type_id)
-    }
-    /// Called when a compact encoded u32 is seen in the input bytes.
-    fn visit_compact_u32<'scale, 'info>(
-        self,
-        value: Compact<u32>,
-        type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        self.visit_u32(value.value(), type_id)
-    }
-    /// Called when a compact encoded u64 is seen in the input bytes.
-    fn visit_compact_u64<'scale, 'info>(
-        self,
-        value: Compact<u64>,
-        type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        self.visit_u64(value.value(), type_id)
-    }
-    /// Called when a compact encoded u128 is seen in the input bytes.
-    fn visit_compact_u128<'scale, 'info>(
-        self,
-        value: Compact<u128>,
-        type_id: TypeId,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-        self.visit_u128(value.value(), type_id)
-    }
 }
 
 /// An error decoding SCALE bytes.
@@ -411,7 +367,7 @@ mod test {
     use alloc::string::{String, ToString};
     use alloc::vec;
     use alloc::vec::Vec;
-    use codec::{self, Encode};
+    use codec::{self, CompactAs, Encode};
     use scale_info::PortableRegistry;
 
     /// A silly Value type for testing with a basic Visitor impl
@@ -432,11 +388,6 @@ mod test {
         I64(i64),
         I128(i128),
         I256([u8; 32]),
-        CompactU8(Vec<Loc>, u8),
-        CompactU16(Vec<Loc>, u16),
-        CompactU32(Vec<Loc>, u32),
-        CompactU64(Vec<Loc>, u64),
-        CompactU128(Vec<Loc>, u128),
         Sequence(Vec<Value>),
         Composite(Vec<(String, Value)>),
         Tuple(Vec<Value>),
@@ -444,23 +395,6 @@ mod test {
         Array(Vec<Value>),
         Variant(String, Vec<(String, Value)>),
         BitSequence(scale_bits::Bits),
-    }
-
-    #[derive(Clone, Debug, PartialEq)]
-    enum Loc {
-        Unnamed,
-        Named(String),
-        Primitive,
-    }
-
-    impl<'a> From<CompactLocation<'a>> for Loc {
-        fn from(l: CompactLocation) -> Self {
-            match l {
-                CompactLocation::UnnamedComposite(_) => Loc::Unnamed,
-                CompactLocation::NamedComposite(_, s) => Loc::Named(s.to_owned()),
-                CompactLocation::Primitive(_) => Loc::Primitive,
-            }
-        }
     }
 
     struct ValueVisitor;
@@ -566,46 +500,6 @@ mod test {
         ) -> Result<Self::Value<'_, 'info>, Self::Error> {
             Ok(Value::I256(*value))
         }
-        fn visit_compact_u8<'scale, 'info>(
-            self,
-            value: Compact<u8>,
-            _type_id: TypeId,
-        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-            let locs = value.locations().iter().map(|&l| l.into()).collect();
-            Ok(Value::CompactU8(locs, value.value()))
-        }
-        fn visit_compact_u16<'scale, 'info>(
-            self,
-            value: Compact<u16>,
-            _type_id: TypeId,
-        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-            let locs = value.locations().iter().map(|&l| l.into()).collect();
-            Ok(Value::CompactU16(locs, value.value()))
-        }
-        fn visit_compact_u32<'scale, 'info>(
-            self,
-            value: Compact<u32>,
-            _type_id: TypeId,
-        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-            let locs = value.locations().iter().map(|&l| l.into()).collect();
-            Ok(Value::CompactU32(locs, value.value()))
-        }
-        fn visit_compact_u64<'scale, 'info>(
-            self,
-            value: Compact<u64>,
-            _type_id: TypeId,
-        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-            let locs = value.locations().iter().map(|&l| l.into()).collect();
-            Ok(Value::CompactU64(locs, value.value()))
-        }
-        fn visit_compact_u128<'scale, 'info>(
-            self,
-            value: Compact<u128>,
-            _type_id: TypeId,
-        ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
-            let locs = value.locations().iter().map(|&l| l.into()).collect();
-            Ok(Value::CompactU128(locs, value.value()))
-        }
         fn visit_sequence<'scale, 'info>(
             self,
             value: &mut Sequence<'scale, 'info>,
@@ -707,7 +601,6 @@ mod test {
     ) {
         let encoded = val.encode();
         let (id, types) = make_type::<Ty>();
-
         let bytes = &mut &*encoded;
         let val = decode_with_visitor(bytes, id, &types, ValueVisitor)
             .expect("decoding should not error");
@@ -727,11 +620,11 @@ mod test {
         encode_decode_check(123u32, Value::U32(123));
         encode_decode_check(123u64, Value::U64(123));
         encode_decode_check(123u128, Value::U128(123));
-        encode_decode_check(codec::Compact(123u8), Value::CompactU8(vec![Loc::Primitive], 123));
-        encode_decode_check(codec::Compact(123u16), Value::CompactU16(vec![Loc::Primitive], 123));
-        encode_decode_check(codec::Compact(123u32), Value::CompactU32(vec![Loc::Primitive], 123));
-        encode_decode_check(codec::Compact(123u64), Value::CompactU64(vec![Loc::Primitive], 123));
-        encode_decode_check(codec::Compact(123u128), Value::CompactU128(vec![Loc::Primitive], 123));
+        encode_decode_check(codec::Compact(123u8), Value::U8(123));
+        encode_decode_check(codec::Compact(123u16), Value::U16(123));
+        encode_decode_check(codec::Compact(123u32), Value::U32(123));
+        encode_decode_check(codec::Compact(123u64), Value::U64(123));
+        encode_decode_check(codec::Compact(123u128), Value::U128(123));
         encode_decode_check(true, Value::Bool(true));
         encode_decode_check(false, Value::Bool(false));
         encode_decode_check_explicit_info::<char, _>('c' as u32, Value::Char('c'));
@@ -742,65 +635,72 @@ mod test {
     #[test]
     fn decode_compact_named_wrapper_struct() {
         // A struct that can be compact encoded:
-        #[derive(Encode, scale_info::TypeInfo)]
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
         struct MyWrapper {
             inner: u32,
-        }
-        impl From<codec::Compact<MyWrapper>> for MyWrapper {
-            fn from(val: codec::Compact<MyWrapper>) -> MyWrapper {
-                val.0
-            }
-        }
-        impl codec::CompactAs for MyWrapper {
-            type As = u32;
-
-            fn encode_as(&self) -> &Self::As {
-                &self.inner
-            }
-            fn decode_from(inner: Self::As) -> Result<Self, codec::Error> {
-                Ok(MyWrapper { inner })
-            }
         }
 
         encode_decode_check(
             codec::Compact(MyWrapper { inner: 123 }),
-            // Currently we ignore any composite types and just give back
-            // the compact value directly:
-            Value::CompactU32(vec![Loc::Named("inner".to_owned()), Loc::Primitive], 123),
+            Value::Composite(vec![("inner".into(), Value::U32(123))]),
         );
     }
 
     #[test]
     fn decode_compact_unnamed_wrapper_struct() {
         // A struct that can be compact encoded:
-        #[derive(Encode, scale_info::TypeInfo)]
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
         struct MyWrapper(u32);
-        impl From<codec::Compact<MyWrapper>> for MyWrapper {
-            fn from(val: codec::Compact<MyWrapper>) -> MyWrapper {
-                val.0
-            }
-        }
-        impl codec::CompactAs for MyWrapper {
-            type As = u32;
-
-            // Node the requirement to return something with a lifetime tied
-            // to self here. This means that we can't implement this for things
-            // more complex than wrapper structs (eg `Foo(u32,u32,u32,u32)`) without
-            // shenanigans, meaning that (hopefully) supporting wrapper struct
-            // decoding and nothing fancier is sufficient.
-            fn encode_as(&self) -> &Self::As {
-                &self.0
-            }
-            fn decode_from(inner: Self::As) -> Result<Self, codec::Error> {
-                Ok(MyWrapper(inner))
-            }
-        }
 
         encode_decode_check(
             codec::Compact(MyWrapper(123)),
-            // Currently we ignore any composite types and just give back
-            // the compact value directly:
-            Value::CompactU32(vec![Loc::Unnamed, Loc::Primitive], 123),
+            Value::Composite(vec![("".into(), Value::U32(123))]),
+        );
+    }
+
+    #[test]
+    fn decode_nested_compact_structs() {
+        // A struct that has a nested field inner1, which can be compact encoded:
+        #[derive(Encode, scale_info::TypeInfo)]
+        struct Outer {
+            #[codec(compact)]
+            inner1: Inner1,
+            other: u16,
+        }
+
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
+        struct Inner1 {
+            inner2: Inner2,
+        }
+
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
+        struct Inner2(u64);
+
+        let struct_to_check = Outer { inner1: Inner1 { inner2: Inner2(123) }, other: 42 };
+        let expacted_value = Value::Composite(vec![
+            (
+                "inner1".into(),
+                Value::Composite(vec![(
+                    "inner2".into(),
+                    Value::Composite(vec![("".into(), Value::U64(123))]),
+                )]),
+            ),
+            ("other".into(), Value::U16(42)),
+        ]);
+        encode_decode_check(struct_to_check, expacted_value);
+    }
+
+    #[test]
+    fn decode_compact_single_item_tuple_field() {
+        // A struct that can be compact encoded:
+        #[derive(Encode, scale_info::TypeInfo, CompactAs)]
+        struct Struct {
+            a: (u32,),
+        }
+
+        encode_decode_check(
+            Struct { a: (123,) },
+            Value::Composite(vec![("a".into(), Value::Tuple(vec![Value::U32(123)]))]),
         );
     }
 
