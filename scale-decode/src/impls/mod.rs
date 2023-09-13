@@ -363,9 +363,7 @@ where
                 continue;
             };
             // Decode the value now that we have a valid name.
-            let Some(val) = value.decode_item(T::into_visitor()) else {
-                break
-            };
+            let Some(val) = value.decode_item(T::into_visitor()) else { break };
             // Save to the map.
             let val = val.map_err(|e| Error::from(e).at_field(key.to_owned()))?;
             map.insert(key.to_owned(), val);
