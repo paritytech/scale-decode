@@ -31,7 +31,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Check all features
         uses: actions-rs/cargo@v1.0.3
@@ -61,7 +61,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Check all features
         uses: actions-rs/cargo@v1.0.3
@@ -87,7 +87,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43
 
       - name: Check no_std build
         uses: actions-rs/cargo@v1.0.3
@@ -113,7 +113,7 @@ jobs:
             components: rustfmt
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Cargo fmt
         uses: actions-rs/cargo@v1.0.3
@@ -136,7 +136,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Check internal documentation links
         run: RUSTDOCFLAGS="--deny rustdoc::broken_intra_doc_links" cargo doc -vv --workspace --no-deps --document-private-items
@@ -156,7 +156,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Cargo test
         uses: actions-rs/cargo@v1.0.3
@@ -192,7 +192,7 @@ jobs:
             override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@dd05243424bd5c0e585e4b55eb2d7615cdd32f1f # v2.5.1
+        uses: Swatinem/rust-cache@a95ba195448af2da9b00fb742d14ffaaf3c21f43 # v2.7.0
 
       - name: Run clippy
         uses: actions-rs/cargo@v1
