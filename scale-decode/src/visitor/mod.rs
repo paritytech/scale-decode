@@ -326,13 +326,13 @@ pub enum DecodeAsTypeResult<V, R> {
     Decoded(R),
 }
 
-impl <V, R> DecodeAsTypeResult<V, R> {
+impl<V, R> DecodeAsTypeResult<V, R> {
     /// If we have a [`DecodeAsTypeResult::Decoded`], the function provided will
     /// map this decoded result to whatever it returns.
     pub fn map_decoded<T, F: FnOnce(R) -> T>(self, f: F) -> DecodeAsTypeResult<V, T> {
         match self {
             DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(s),
-            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(f(r))
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(f(r)),
         }
     }
 
@@ -341,7 +341,7 @@ impl <V, R> DecodeAsTypeResult<V, R> {
     pub fn map_skipped<T, F: FnOnce(V) -> T>(self, f: F) -> DecodeAsTypeResult<T, R> {
         match self {
             DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(f(s)),
-            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(r)
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(r),
         }
     }
 }
