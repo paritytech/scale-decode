@@ -166,7 +166,7 @@ use alloc::vec::Vec;
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
 /// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.
-pub trait DecodeAsType: Sized {
+pub trait DecodeAsType: Sized + IntoVisitor {
     /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
     /// not used in the course of decoding are still pointed to after decoding is complete.
@@ -192,11 +192,7 @@ pub trait DecodeAsType: Sized {
     ) -> Result<Self, Error>;
 }
 
-impl<T> DecodeAsType for T
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: Sized + IntoVisitor> DecodeAsType for T {
     fn decode_as_type_maybe_compact(
         input: &mut &[u8],
         type_id: u32,
@@ -267,11 +263,11 @@ pub trait FieldIter<'a>: Iterator<Item = Field<'a>> {}
 impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
-/// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has
-/// an error type that converts into [`Error`], then you'll also get a [`DecodeAsType`] implementation for free.
+/// SCALE encoded bytes to it. Anything that implements this trait gets a [`DecodeAsType`] implementation
+/// for free.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self>;
+    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error>;
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
 }

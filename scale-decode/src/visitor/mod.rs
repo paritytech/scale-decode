@@ -326,6 +326,26 @@ pub enum DecodeAsTypeResult<V, R> {
     Decoded(R),
 }
 
+impl <V, R> DecodeAsTypeResult<V, R> {
+    /// If we have a [`DecodeAsTypeResult::Decoded`], the function provided will
+    /// map this decoded result to whatever it returns.
+    pub fn map_decoded<T, F: FnOnce(R) -> T>(self, f: F) -> DecodeAsTypeResult<V, T> {
+        match self {
+            DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(s),
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(f(r))
+        }
+    }
+
+    /// If we have a [`DecodeAsTypeResult::Skipped`], the function provided will
+    /// map this skipped value to whatever it returns.
+    pub fn map_skipped<T, F: FnOnce(V) -> T>(self, f: F) -> DecodeAsTypeResult<T, R> {
+        match self {
+            DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(f(s)),
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(r)
+        }
+    }
+}
+
 /// This is implemented for visitor related types which have a `decode_item` method,
 /// and allows you to generically talk about decoding unnamed items.
 pub trait DecodeItemIterator<'scale, 'info> {
