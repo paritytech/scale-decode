@@ -262,7 +262,6 @@ macro_rules! impl_decode_seq_via_collect {
         impl <$generic> Visitor for BasicVisitor<$ty<$generic>>
         where
             $generic: IntoVisitor,
-            Error: From<<$generic::Visitor as Visitor>::Error>,
             $( $($where)* )?
         {
             type Value<'scale, 'info> = $ty<$generic>;
@@ -306,11 +305,7 @@ macro_rules! array_method_impl {
         Ok(arr)
     }};
 }
-impl<const N: usize, T> Visitor for BasicVisitor<[T; N]>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<const N: usize, T: IntoVisitor> Visitor for BasicVisitor<[T; N]> {
     type Value<'scale, 'info> = [T; N];
     type Error = Error;
 
@@ -331,22 +326,14 @@ where
 
     visit_single_field_composite_tuple_impls!();
 }
-impl<const N: usize, T> IntoVisitor for [T; N]
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<const N: usize, T: IntoVisitor> IntoVisitor for [T; N] {
     type Visitor = BasicVisitor<[T; N]>;
     fn into_visitor() -> Self::Visitor {
         BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
-impl<T> Visitor for BasicVisitor<BTreeMap<String, T>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor> Visitor for BasicVisitor<BTreeMap<String, T>> {
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
@@ -375,11 +362,7 @@ where
 }
 impl_into_visitor!(BTreeMap<String, T>);
 
-impl<T> Visitor for BasicVisitor<Option<T>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor> Visitor for BasicVisitor<Option<T>> {
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
@@ -409,13 +392,7 @@ where
 }
 impl_into_visitor!(Option<T>);
 
-impl<T, E> Visitor for BasicVisitor<Result<T, E>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-    E: IntoVisitor,
-    Error: From<<E::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor, E: IntoVisitor> Visitor for BasicVisitor<Result<T, E>> {
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
@@ -595,7 +572,6 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > Visitor for BasicVisitor<($($t,)*)>
         where $(
             $t: IntoVisitor,
-            Error: From<<$t::Visitor as Visitor>::Error>,
         )*
         {
             type Value<'scale, 'info> = ($($t,)*);
@@ -623,7 +599,7 @@ macro_rules! impl_decode_tuple {
 
         // We can turn this tuple into a visitor which knows how to decode it:
         impl < $($t),* > IntoVisitor for ($($t,)*)
-        where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
+        where $( $t: IntoVisitor, )*
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
@@ -633,7 +609,7 @@ macro_rules! impl_decode_tuple {
 
         // We can decode given a list of fields (just delegate to the visitor impl:
         impl < $($t),* > DecodeAsFields for ($($t,)*)
-        where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
+        where $( $t: IntoVisitor, )*
         {
             fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
                 let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types, false);
@@ -678,7 +654,6 @@ fn decode_items_using<'a, 'scale, 'info, D: DecodeItemIterator<'scale, 'info>, T
 ) -> impl Iterator<Item = Result<T, Error>> + 'a
 where
     T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
     D: DecodeItemIterator<'scale, 'info>,
 {
     let mut idx = 0;
@@ -712,7 +687,7 @@ mod test {
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
         A: Encode,
-        B: DecodeAsType + PartialEq + core::fmt::Debug,
+        B: IntoVisitor + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         let (type_id, types) = make_type::<T>();
@@ -726,7 +701,7 @@ mod test {
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
         A: Encode + scale_info::TypeInfo + 'static,
-        B: DecodeAsType + PartialEq + core::fmt::Debug,
+        B: IntoVisitor + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
     }

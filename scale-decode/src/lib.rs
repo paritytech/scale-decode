@@ -263,8 +263,13 @@ pub trait FieldIter<'a>: Iterator<Item = Field<'a>> {}
 impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
-/// SCALE encoded bytes to it. Anything that implements this trait gets a [`DecodeAsType`] implementation
-/// for free.
+/// SCALE encoded bytes to it whose error type is [`Error`]. Anything that implements this trait gets a
+/// [`DecodeAsType`] implementation for free.
+// Dev note: This used to allow for any Error type that could be converted into `scale_decode::Error`.
+// The problem with this is that the `DecodeAsType` trait became tricky to use in some contexts, because it
+// didn't automatically imply so much. Realistically, being stricter here shouldn't matter too much; derive
+// impls all use `scale_decode::Error` anyway, and manual impls can just manually convert into the error
+// rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
     type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error>;
