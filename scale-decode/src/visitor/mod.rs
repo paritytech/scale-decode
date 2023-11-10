@@ -378,6 +378,33 @@ impl Visitor for IgnoreVisitor {
     }
 }
 
+/// Some [`Visitor`] implementations may want to return an error type other than [`crate::Error`], which means
+/// that they would not be automatically compatible with [`crate::IntoVisitor`], which requires visitors that do return
+/// [`crate::Error`] errors.
+///
+/// As long as the error type of the visitor implementation can be converted into [`crate::Error`] via [`Into`],
+/// the visitor implementation can be wrapped in this [`VisitorWithCrateError`] struct to make it work with
+/// [`crate::IntoVisitor`].
+pub struct VisitorWithCrateError<V>(pub V);
+
+impl<V: Visitor> Visitor for VisitorWithCrateError<V>
+where
+    V::Error: Into<crate::Error>,
+{
+    type Value<'scale, 'info> = V::Value<'scale, 'info>;
+    type Error = crate::Error;
+
+    fn unchecked_decode_as_type<'scale, 'info>(
+        self,
+        input: &mut &'scale [u8],
+        type_id: TypeId,
+        types: &'info scale_info::PortableRegistry,
+    ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+        let res = decode_with_visitor(input, type_id.0, types, self.0).map_err(Into::into);
+        DecodeAsTypeResult::Decoded(res)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::visitor::TypeId;
