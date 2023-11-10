@@ -648,7 +648,7 @@ mod test {
         Ty: scale_info::TypeInfo + 'static,
         T: Encode,
         V: for<'s, 'i> Visitor<Value<'s, 'i> = Value, Error = E>,
-        E: std::fmt::Debug,
+        E: core::fmt::Debug,
     >(
         val: T,
         expected: Value,
@@ -667,7 +667,7 @@ mod test {
     fn encode_decode_check_with_visitor<
         T: Encode + scale_info::TypeInfo + 'static,
         V: for<'s, 'i> Visitor<Value<'s, 'i> = Value, Error = E>,
-        E: std::fmt::Debug,
+        E: core::fmt::Debug,
     >(
         val: T,
         expected: Value,
