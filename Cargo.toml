@@ -4,6 +4,7 @@ members = [
     "scale-decode-derive",
     "testing/no_std",
 ]
+resolver = "2"
 
 [workspace.package]
 version = "0.9.0"

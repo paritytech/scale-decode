@@ -30,9 +30,15 @@ pub(crate) use decode::decode_with_visitor_maybe_compact;
 pub trait Visitor: Sized {
     /// The type of the value to hand back from the [`decode_with_visitor()`] function.
     type Value<'scale, 'info>;
-    /// The error type (which we must be able to convert a combination of [`Self`] and [`DecodeError`]s
-    /// into, to handle any internal errors that crop up trying to decode things).
-    type Error: From<DecodeError>;
+
+    /// The error type that will be returned when things go wrong. This can be an arbitrary type, but:
+    /// - [`DecodeError`]s must be convertible into it (this allows the default implementations to work)
+    /// - It must be convertible into our root [`crate::Error`] (this makes it easy for visitors to
+    ///   implement [`crate::DecodeAsType`], and works around limitations in the rust trait system).
+    // Dev note: Ideally, this `Into<crate::Error>` restriction would only exist on the `DecodeAsType`
+    // trait, but there's no nice way to do this _and_ have `DecodeAsType` automatically imply these
+    // things (the user would have to duplicate an `Error: From<Visitor::Error>` type bound everywhere).
+    type Error: From<DecodeError> + Into<crate::Error>;
 
     /// This method is called immediately upon running [`decode_with_visitor()`]. By default we ignore
     /// this call and return our visitor back (ie [`DecodeAsTypeResult::Skipped(visitor)`]). If you choose to

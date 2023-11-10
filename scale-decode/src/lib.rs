@@ -166,7 +166,7 @@ use alloc::vec::Vec;
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
 /// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.
-pub trait DecodeAsType: Sized {
+pub trait DecodeAsType: Sized + IntoVisitor {
     /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
     /// not used in the course of decoding are still pointed to after decoding is complete.
@@ -192,25 +192,21 @@ pub trait DecodeAsType: Sized {
     ) -> Result<Self, Error>;
 }
 
-impl<T> DecodeAsType for T
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor> DecodeAsType for T {
     fn decode_as_type_maybe_compact(
         input: &mut &[u8],
         type_id: u32,
         types: &scale_info::PortableRegistry,
         is_compact: bool,
     ) -> Result<Self, Error> {
-        let res = visitor::decode_with_visitor_maybe_compact(
+        visitor::decode_with_visitor_maybe_compact(
             input,
             type_id,
             types,
             T::into_visitor(),
             is_compact,
-        )?;
-        Ok(res)
+        )
+        .map_err(Into::into)
     }
 }
 
