@@ -352,7 +352,7 @@ impl<T: IntoVisitor> Visitor for BasicVisitor<BTreeMap<String, T>> {
             // Decode the value now that we have a valid name.
             let Some(val) = value.decode_item(T::into_visitor()) else { break };
             // Save to the map.
-            let val = val.map_err(|e| Error::from(e).at_field(key.to_owned()))?;
+            let val = val.map_err(|e| e.at_field(key.to_owned()))?;
             map.insert(key.to_owned(), val);
         }
         Ok(map)
@@ -374,7 +374,7 @@ impl<T: IntoVisitor> Visitor for BasicVisitor<Option<T>> {
                 .fields()
                 .decode_item(T::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Some"))?
+                .map_err(|e| e.at_variant("Some"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Some(val))
         } else if value.name() == "None" && value.fields().remaining() == 0 {
@@ -404,7 +404,7 @@ impl<T: IntoVisitor, E: IntoVisitor> Visitor for BasicVisitor<Result<T, E>> {
                 .fields()
                 .decode_item(T::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Ok"))?
+                .map_err(|e| e.at_variant("Ok"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Ok(val))
         } else if value.name() == "Err" && value.fields().remaining() == 1 {
@@ -412,7 +412,7 @@ impl<T: IntoVisitor, E: IntoVisitor> Visitor for BasicVisitor<Result<T, E>> {
                 .fields()
                 .decode_item(E::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Err"))?
+                .map_err(|e| e.at_variant("Err"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Err(val))
         } else {
@@ -518,7 +518,7 @@ macro_rules! tuple_method_impl {
                     let v = $value
                         .decode_item($t::into_visitor())
                         .transpose()
-                        .map_err(|e| Error::from(e).at_idx(idx))?
+                        .map_err(|e| e.at_idx(idx))?
                         .expect("length already checked via .remaining()");
                     idx += 1;
                     v
@@ -656,9 +656,7 @@ where
 {
     let mut idx = 0;
     core::iter::from_fn(move || {
-        let item = decoder
-            .decode_item(T::into_visitor())
-            .map(|res| res.map_err(|e| Error::from(e).at_idx(idx)));
+        let item = decoder.decode_item(T::into_visitor()).map(|res| res.map_err(|e| e.at_idx(idx)));
         idx += 1;
         item
     })
