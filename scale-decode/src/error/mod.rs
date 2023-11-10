@@ -103,6 +103,13 @@ impl From<DecodeError> for Error {
     }
 }
 
+impl From<codec::Error> for Error {
+    fn from(err: codec::Error) -> Error {
+        let err: DecodeError = err.into();
+        Error::new(err.into())
+    }
+}
+
 /// The underlying nature of the error.
 #[derive(Debug, derive_more::From, derive_more::Display)]
 pub enum ErrorKind {

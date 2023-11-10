@@ -166,7 +166,7 @@ use alloc::vec::Vec;
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
 /// [`visitor::decode_with_visitor`] that mirrors `scale-encode`'s `EncodeAsType`.
-pub trait DecodeAsType: Sized {
+pub trait DecodeAsType: Sized + IntoVisitor {
     /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
     /// not used in the course of decoding are still pointed to after decoding is complete.
@@ -192,11 +192,7 @@ pub trait DecodeAsType: Sized {
     ) -> Result<Self, Error>;
 }
 
-impl<T> DecodeAsType for T
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: Sized + IntoVisitor> DecodeAsType for T {
     fn decode_as_type_maybe_compact(
         input: &mut &[u8],
         type_id: u32,
@@ -267,11 +263,16 @@ pub trait FieldIter<'a>: Iterator<Item = Field<'a>> {}
 impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
-/// SCALE encoded bytes to it. If you implement this on some type and the [`Visitor`] that you return has
-/// an error type that converts into [`Error`], then you'll also get a [`DecodeAsType`] implementation for free.
+/// SCALE encoded bytes to it whose error type is [`Error`]. Anything that implements this trait gets a
+/// [`DecodeAsType`] implementation for free.
+// Dev note: This used to allow for any Error type that could be converted into `scale_decode::Error`.
+// The problem with this is that the `DecodeAsType` trait became tricky to use in some contexts, because it
+// didn't automatically imply so much. Realistically, being stricter here shouldn't matter too much; derive
+// impls all use `scale_decode::Error` anyway, and manual impls can just manually convert into the error
+// rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self>;
+    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error>;
     /// A means of obtaining this visitor.
     fn into_visitor() -> Self::Visitor;
 }

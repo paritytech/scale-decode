@@ -262,7 +262,6 @@ macro_rules! impl_decode_seq_via_collect {
         impl <$generic> Visitor for BasicVisitor<$ty<$generic>>
         where
             $generic: IntoVisitor,
-            Error: From<<$generic::Visitor as Visitor>::Error>,
             $( $($where)* )?
         {
             type Value<'scale, 'info> = $ty<$generic>;
@@ -306,11 +305,7 @@ macro_rules! array_method_impl {
         Ok(arr)
     }};
 }
-impl<const N: usize, T> Visitor for BasicVisitor<[T; N]>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<const N: usize, T: IntoVisitor> Visitor for BasicVisitor<[T; N]> {
     type Value<'scale, 'info> = [T; N];
     type Error = Error;
 
@@ -331,22 +326,14 @@ where
 
     visit_single_field_composite_tuple_impls!();
 }
-impl<const N: usize, T> IntoVisitor for [T; N]
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<const N: usize, T: IntoVisitor> IntoVisitor for [T; N] {
     type Visitor = BasicVisitor<[T; N]>;
     fn into_visitor() -> Self::Visitor {
         BasicVisitor { _marker: core::marker::PhantomData }
     }
 }
 
-impl<T> Visitor for BasicVisitor<BTreeMap<String, T>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor> Visitor for BasicVisitor<BTreeMap<String, T>> {
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
@@ -365,7 +352,7 @@ where
             // Decode the value now that we have a valid name.
             let Some(val) = value.decode_item(T::into_visitor()) else { break };
             // Save to the map.
-            let val = val.map_err(|e| Error::from(e).at_field(key.to_owned()))?;
+            let val = val.map_err(|e| e.at_field(key.to_owned()))?;
             map.insert(key.to_owned(), val);
         }
         Ok(map)
@@ -373,11 +360,7 @@ where
 }
 impl_into_visitor!(BTreeMap<String, T>);
 
-impl<T> Visitor for BasicVisitor<Option<T>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor> Visitor for BasicVisitor<Option<T>> {
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
@@ -391,7 +374,7 @@ where
                 .fields()
                 .decode_item(T::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Some"))?
+                .map_err(|e| e.at_variant("Some"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Some(val))
         } else if value.name() == "None" && value.fields().remaining() == 0 {
@@ -407,13 +390,7 @@ where
 }
 impl_into_visitor!(Option<T>);
 
-impl<T, E> Visitor for BasicVisitor<Result<T, E>>
-where
-    T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
-    E: IntoVisitor,
-    Error: From<<E::Visitor as Visitor>::Error>,
-{
+impl<T: IntoVisitor, E: IntoVisitor> Visitor for BasicVisitor<Result<T, E>> {
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
@@ -427,7 +404,7 @@ where
                 .fields()
                 .decode_item(T::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Ok"))?
+                .map_err(|e| e.at_variant("Ok"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Ok(val))
         } else if value.name() == "Err" && value.fields().remaining() == 1 {
@@ -435,7 +412,7 @@ where
                 .fields()
                 .decode_item(E::into_visitor())
                 .transpose()
-                .map_err(|e| Error::from(e).at_variant("Err"))?
+                .map_err(|e| e.at_variant("Err"))?
                 .expect("checked for 1 field already so should be ok");
             Ok(Err(val))
         } else {
@@ -541,7 +518,7 @@ macro_rules! tuple_method_impl {
                     let v = $value
                         .decode_item($t::into_visitor())
                         .transpose()
-                        .map_err(|e| Error::from(e).at_idx(idx))?
+                        .map_err(|e| e.at_idx(idx))?
                         .expect("length already checked via .remaining()");
                     idx += 1;
                     v
@@ -593,7 +570,6 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > Visitor for BasicVisitor<($($t,)*)>
         where $(
             $t: IntoVisitor,
-            Error: From<<$t::Visitor as Visitor>::Error>,
         )*
         {
             type Value<'scale, 'info> = ($($t,)*);
@@ -621,7 +597,7 @@ macro_rules! impl_decode_tuple {
 
         // We can turn this tuple into a visitor which knows how to decode it:
         impl < $($t),* > IntoVisitor for ($($t,)*)
-        where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
+        where $( $t: IntoVisitor, )*
         {
             type Visitor = BasicVisitor<($($t,)*)>;
             fn into_visitor() -> Self::Visitor {
@@ -631,7 +607,7 @@ macro_rules! impl_decode_tuple {
 
         // We can decode given a list of fields (just delegate to the visitor impl:
         impl < $($t),* > DecodeAsFields for ($($t,)*)
-        where $( $t: IntoVisitor, Error: From<<$t::Visitor as Visitor>::Error>, )*
+        where $( $t: IntoVisitor, )*
         {
             fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
                 let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types, false);
@@ -676,14 +652,11 @@ fn decode_items_using<'a, 'scale, 'info, D: DecodeItemIterator<'scale, 'info>, T
 ) -> impl Iterator<Item = Result<T, Error>> + 'a
 where
     T: IntoVisitor,
-    Error: From<<T::Visitor as Visitor>::Error>,
     D: DecodeItemIterator<'scale, 'info>,
 {
     let mut idx = 0;
     core::iter::from_fn(move || {
-        let item = decoder
-            .decode_item(T::into_visitor())
-            .map(|res| res.map_err(|e| Error::from(e).at_idx(idx)));
+        let item = decoder.decode_item(T::into_visitor()).map(|res| res.map_err(|e| e.at_idx(idx)));
         idx += 1;
         item
     })

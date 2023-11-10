@@ -326,6 +326,26 @@ pub enum DecodeAsTypeResult<V, R> {
     Decoded(R),
 }
 
+impl<V, R> DecodeAsTypeResult<V, R> {
+    /// If we have a [`DecodeAsTypeResult::Decoded`], the function provided will
+    /// map this decoded result to whatever it returns.
+    pub fn map_decoded<T, F: FnOnce(R) -> T>(self, f: F) -> DecodeAsTypeResult<V, T> {
+        match self {
+            DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(s),
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(f(r)),
+        }
+    }
+
+    /// If we have a [`DecodeAsTypeResult::Skipped`], the function provided will
+    /// map this skipped value to whatever it returns.
+    pub fn map_skipped<T, F: FnOnce(V) -> T>(self, f: F) -> DecodeAsTypeResult<T, R> {
+        match self {
+            DecodeAsTypeResult::Skipped(s) => DecodeAsTypeResult::Skipped(f(s)),
+            DecodeAsTypeResult::Decoded(r) => DecodeAsTypeResult::Decoded(r),
+        }
+    }
+}
+
 /// This is implemented for visitor related types which have a `decode_item` method,
 /// and allows you to generically talk about decoding unnamed items.
 pub trait DecodeItemIterator<'scale, 'info> {
@@ -355,6 +375,34 @@ impl Visitor for IgnoreVisitor {
         _unexpected: Unexpected,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(())
+    }
+}
+
+/// Some [`Visitor`] implementations may want to return an error type other than [`crate::Error`], which means
+/// that they would not be automatically compatible with [`crate::IntoVisitor`], which requires visitors that do return
+/// [`crate::Error`] errors.
+///
+/// As long as the error type of the visitor implementation can be converted into [`crate::Error`] via [`Into`],
+/// the visitor implementation can be wrapped in this [`VisitorWithCrateError`] struct to make it work with
+/// [`crate::IntoVisitor`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct VisitorWithCrateError<V>(pub V);
+
+impl<V: Visitor> Visitor for VisitorWithCrateError<V>
+where
+    V::Error: Into<crate::Error>,
+{
+    type Value<'scale, 'info> = V::Value<'scale, 'info>;
+    type Error = crate::Error;
+
+    fn unchecked_decode_as_type<'scale, 'info>(
+        self,
+        input: &mut &'scale [u8],
+        type_id: TypeId,
+        types: &'info scale_info::PortableRegistry,
+    ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
+        let res = decode_with_visitor(input, type_id.0, types, self.0).map_err(Into::into);
+        DecodeAsTypeResult::Decoded(res)
     }
 }
 
@@ -397,6 +445,7 @@ mod test {
         BitSequence(scale_bits::Bits),
     }
 
+    #[derive(Clone, Copy)]
     struct ValueVisitor;
     impl Visitor for ValueVisitor {
         type Value<'scale, 'info> = Value;
@@ -595,22 +644,69 @@ mod test {
 
     /// This just tests that if we try to decode some values we've encoded using a visitor
     /// which just ignores everything by default, that we'll consume all of the bytes.
-    fn encode_decode_check_explicit_info<Ty: scale_info::TypeInfo + 'static, T: Encode>(
+    fn encode_decode_check_explicit_info<
+        Ty: scale_info::TypeInfo + 'static,
+        T: Encode,
+        V: for<'s, 'i> Visitor<Value<'s, 'i> = Value, Error = E>,
+        E: core::fmt::Debug,
+    >(
         val: T,
         expected: Value,
+        visitor: V,
     ) {
         let encoded = val.encode();
         let (id, types) = make_type::<Ty>();
         let bytes = &mut &*encoded;
-        let val = decode_with_visitor(bytes, id, &types, ValueVisitor)
-            .expect("decoding should not error");
+        let val =
+            decode_with_visitor(bytes, id, &types, visitor).expect("decoding should not error");
 
         assert_eq!(bytes.len(), 0, "Decoding should consume all bytes");
         assert_eq!(val, expected);
     }
 
+    fn encode_decode_check_with_visitor<
+        T: Encode + scale_info::TypeInfo + 'static,
+        V: for<'s, 'i> Visitor<Value<'s, 'i> = Value, Error = E>,
+        E: core::fmt::Debug,
+    >(
+        val: T,
+        expected: Value,
+        visitor: V,
+    ) {
+        encode_decode_check_explicit_info::<T, T, _, _>(val, expected, visitor);
+    }
+
     fn encode_decode_check<T: Encode + scale_info::TypeInfo + 'static>(val: T, expected: Value) {
-        encode_decode_check_explicit_info::<T, T>(val, expected);
+        encode_decode_check_explicit_info::<T, T, _, _>(val, expected, ValueVisitor);
+    }
+
+    #[test]
+    fn decode_with_root_error_wrapper_works() {
+        use crate::visitor::VisitorWithCrateError;
+        let visitor = VisitorWithCrateError(ValueVisitor);
+
+        encode_decode_check_with_visitor(123u8, Value::U8(123), visitor);
+        encode_decode_check_with_visitor(123u16, Value::U16(123), visitor);
+        encode_decode_check_with_visitor(123u32, Value::U32(123), visitor);
+        encode_decode_check_with_visitor(123u64, Value::U64(123), visitor);
+        encode_decode_check_with_visitor(123u128, Value::U128(123), visitor);
+        encode_decode_check_with_visitor(
+            "Hello there",
+            Value::Str("Hello there".to_owned()),
+            visitor,
+        );
+
+        #[derive(Encode, scale_info::TypeInfo)]
+        struct Unnamed(bool, String, Vec<u8>);
+        encode_decode_check_with_visitor(
+            Unnamed(true, "James".into(), vec![1, 2, 3]),
+            Value::Composite(vec![
+                (String::new(), Value::Bool(true)),
+                (String::new(), Value::Str("James".to_string())),
+                (String::new(), Value::Sequence(vec![Value::U8(1), Value::U8(2), Value::U8(3)])),
+            ]),
+            visitor,
+        );
     }
 
     #[test]
@@ -627,7 +723,11 @@ mod test {
         encode_decode_check(codec::Compact(123u128), Value::U128(123));
         encode_decode_check(true, Value::Bool(true));
         encode_decode_check(false, Value::Bool(false));
-        encode_decode_check_explicit_info::<char, _>('c' as u32, Value::Char('c'));
+        encode_decode_check_explicit_info::<char, _, _, _>(
+            'c' as u32,
+            Value::Char('c'),
+            ValueVisitor,
+        );
         encode_decode_check("Hello there", Value::Str("Hello there".to_owned()));
         encode_decode_check("Hello there".to_string(), Value::Str("Hello there".to_owned()));
     }
