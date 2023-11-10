@@ -683,7 +683,7 @@ mod test {
     fn assert_encode_decode_to_with<T, A, B>(a: &A, b: &B)
     where
         A: Encode,
-        B: IntoVisitor + PartialEq + core::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
         T: scale_info::TypeInfo + 'static,
     {
         let (type_id, types) = make_type::<T>();
@@ -697,7 +697,7 @@ mod test {
     fn assert_encode_decode_to<A, B>(a: &A, b: &B)
     where
         A: Encode + scale_info::TypeInfo + 'static,
-        B: IntoVisitor + PartialEq + core::fmt::Debug,
+        B: DecodeAsType + PartialEq + core::fmt::Debug,
     {
         assert_encode_decode_to_with::<A, A, B>(a, b);
     }
