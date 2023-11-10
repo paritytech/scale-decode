@@ -4,6 +4,16 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.10.0 - 2023-11-10
+
+This release changes `IntoVisitor` to require that the corresponding `Visitor` implements `scale_decode::Error`, rather than allowing the error to be anything that can be converted into a `scale_decode::Error`. This has the following advantages:
+
+- It makes `DecodeAsType` a proper super-trait of `IntoVisitor`, meaning it can be used anywhere `IntoVisitor` is. Previously, using `DecodeAsType` in some places also required that you add a bound like `B: IntoVisitor, <B::Visitor as Visitor>::Error: Into<scale_decode::Error`, ie the `Error` type needed to explicitly be declared as convertible in the way that `DecodeAsType` requires.
+- It simplifies the code.
+- It makes it a bit easier to understand how to correctly make a type implement `DecodeAsType`.
+
+The main drawback is that if your `Visitor` implementation doesn't have `Error = scale_decode::Error`, then it can no longer be used with `IntoVisitor`. To work around this, a new adapter type, `scale_decode::visitor::VisitorWithCrateError(your_visitor)` has been added; any visitor wrapped in this type whose error implements `Into<scale_decode::Error>` will now implement `Visitor` with `Error = scale_decode::Error`.
+
 ## 0.9.0 - 2023-08-02
 
 - Change how compact encoding is handled: `visit_compact_*` functions are removed from the `Visitor` trait, and
