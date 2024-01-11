@@ -87,7 +87,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc
+        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
 
       - name: Check no_std build
         uses: actions-rs/cargo@v1.0.3
