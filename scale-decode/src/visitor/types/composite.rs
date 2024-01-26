@@ -15,38 +15,38 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType, Field, FieldIter,
+    DecodeAsType, FieldIter
 };
-use scale_info::{form::PortableForm, Path, PortableRegistry};
+use scale_type_resolver::{Field, TypeResolver};
 
 /// This represents a composite type.
-pub struct Composite<'scale, 'info> {
+pub struct Composite<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    path: &'info Path<PortableForm>,
-    fields: smallvec::SmallVec<[Field<'info>; 16]>,
+    // path: &'info Path<PortableForm>,
+    fields: smallvec::SmallVec<[Field<'info, R::TypeId>; 16]>,
     next_field_idx: usize,
-    types: &'info PortableRegistry,
+    types: &'info R,
     is_compact: bool,
 }
 
-impl<'scale, 'info> Composite<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
     // Used in macros, but not really expected to be used elsewhere.
     #[doc(hidden)]
     pub fn new(
         bytes: &'scale [u8],
-        path: &'info Path<PortableForm>,
-        fields: &mut dyn FieldIter<'info>,
-        types: &'info PortableRegistry,
+        // path: &'info Path<PortableForm>,
+        fields: &mut dyn FieldIter<'info, R::TypeId>,
+        types: &'info R,
         is_compact: bool,
-    ) -> Composite<'scale, 'info> {
+    ) -> Composite<'scale, 'info, R> {
         let fields = smallvec::SmallVec::from_iter(fields);
-        Composite { bytes, path, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
+        Composite { bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
-        while let Some(res) = self.decode_item(IgnoreVisitor) {
+        while let Some(res) = self.decode_item(IgnoreVisitor::<R>::new()) {
             res?;
         }
         Ok(())
@@ -64,12 +64,8 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     pub fn remaining(&self) -> usize {
         self.fields.len() - self.next_field_idx
     }
-    /// Path to this type.
-    pub fn path(&self) -> &'info Path<PortableForm> {
-        self.path
-    }
     /// All of the fields present in this composite type.
-    pub fn fields(&self) -> &[Field<'info>] {
+    pub fn fields(&self) -> &[Field<'info, R::TypeId>] {
         &self.fields
     }
     /// Return whether any of the fields are unnamed.
@@ -78,7 +74,7 @@ impl<'scale, 'info> Composite<'scale, 'info> {
     }
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
-    pub fn as_tuple(&self) -> super::Tuple<'scale, 'info> {
+    pub fn as_tuple(&self) -> super::Tuple<'scale, 'info, R> {
         super::Tuple::new(
             self.item_bytes,
             &mut self.fields.iter().copied(),
@@ -124,8 +120,8 @@ impl<'scale, 'info> Composite<'scale, 'info> {
 }
 
 // Iterating returns a representation of each field in the composite type.
-impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
-    type Item = Result<CompositeField<'scale, 'info>, DecodeError>;
+impl<'scale, 'info, R: TypeResolver> Iterator for Composite<'scale, 'info, R> {
+    type Item = Result<CompositeField<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
         let field = *self.fields.get(self.next_field_idx)?;
@@ -150,15 +146,15 @@ impl<'scale, 'info> Iterator for Composite<'scale, 'info> {
 }
 
 /// A single field in the composite type.
-#[derive(Copy, Clone)]
-pub struct CompositeField<'scale, 'info> {
+#[derive(Clone)]
+pub struct CompositeField<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
-    field: Field<'info>,
-    types: &'info PortableRegistry,
+    field: Field<'info, R::TypeId>,
+    types: &'info R,
     is_compact: bool,
 }
 
-impl<'scale, 'info> CompositeField<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     /// The field name.
     pub fn name(&self) -> Option<&'info str> {
         self.field.name()
@@ -168,7 +164,7 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
         self.bytes
     }
     /// The type ID associated with this field.
-    pub fn type_id(&self) -> u32 {
+    pub fn type_id(&self) -> &R::TypeId {
         self.field.id()
     }
     /// If the field is compact encoded
@@ -199,8 +195,8 @@ impl<'scale, 'info> CompositeField<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Composite<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Composite<'scale, 'info, R> {
+    fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {

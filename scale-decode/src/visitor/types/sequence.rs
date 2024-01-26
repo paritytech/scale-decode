@@ -19,23 +19,23 @@ use crate::{
     DecodeAsType,
 };
 use codec::{Compact, Decode};
-use scale_info::PortableRegistry;
+use scale_type_resolver::TypeResolver;
 
 /// This enables a visitor to decode items from a sequence type.
-pub struct Sequence<'scale, 'info> {
+pub struct Sequence<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     // Mostly we just delegate to our Array logic for working with sequences.
     // The only thing we need to do otherwise is decode the compact encoded
     // length from the beginning and keep track of the bytes including that.
-    values: Array<'scale, 'info>,
+    values: Array<'scale, 'info, R>,
 }
 
-impl<'scale, 'info> Sequence<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> Sequence<'scale, 'info, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: u32,
-        types: &'info PortableRegistry,
-    ) -> Result<Sequence<'scale, 'info>, DecodeError> {
+        type_id: R::TypeId,
+        types: &'info R,
+    ) -> Result<Sequence<'scale, 'info, R>, DecodeError> {
         // Sequences are prefixed with their length in bytes. Make a note of this,
         // as well as the number of bytes
         let item_bytes = &mut &*bytes;
@@ -71,21 +71,21 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info> Iterator for Sequence<'scale, 'info> {
-    type Item = Result<SequenceItem<'scale, 'info>, DecodeError>;
+impl<'scale, 'info, R: TypeResolver> Iterator for Sequence<'scale, 'info, R> {
+    type Item = Result<SequenceItem<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         Some(self.values.next()?.map(|item| SequenceItem { item }))
     }
 }
 
 /// A single item in the Sequence.
-#[derive(Copy, Clone)]
-pub struct SequenceItem<'scale, 'info> {
+#[derive(Clone)]
+pub struct SequenceItem<'scale, 'info, R: TypeResolver> {
     // Same implementation under the hood as ArrayItem:
-    item: ArrayItem<'scale, 'info>,
+    item: ArrayItem<'scale, 'info, R>,
 }
 
-impl<'scale, 'info> SequenceItem<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
     /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.item.bytes()
@@ -107,8 +107,8 @@ impl<'scale, 'info> SequenceItem<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Sequence<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Sequence<'scale, 'info, R> {
+    fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {

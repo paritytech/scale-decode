@@ -14,43 +14,39 @@
 // limitations under the License.
 
 use crate::visitor::{Composite, DecodeError};
-use crate::Field;
-use scale_info::form::PortableForm;
-use scale_info::{Path, PortableRegistry, TypeDefVariant};
+use scale_type_resolver::{ FieldIter, VariantIter, TypeResolver };
 
 /// A representation of the a variant type.
-pub struct Variant<'scale, 'info> {
+pub struct Variant<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
-    variant: &'info scale_info::Variant<PortableForm>,
-    fields: Composite<'scale, 'info>,
+    variant_name: &'info str,
+    variant_index: u8,
+    fields: Composite<'scale, 'info, R>,
 }
 
-impl<'scale, 'info> Variant<'scale, 'info> {
-    pub(crate) fn new(
+impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
+    pub(crate) fn new<Fields: FieldIter<'info, R::TypeId>, Variants: VariantIter<'info, Fields>>(
         bytes: &'scale [u8],
-        path: &'info Path<PortableForm>,
-        ty: &'info TypeDefVariant<PortableForm>,
-        types: &'info PortableRegistry,
-    ) -> Result<Variant<'scale, 'info>, DecodeError> {
+        mut variants: Variants,
+        types: &'info R,
+    ) -> Result<Variant<'scale, 'info, R>, DecodeError> {
         let index = *bytes.first().ok_or(DecodeError::NotEnoughInput)?;
         let item_bytes = &bytes[1..];
 
         // Does a variant exist with the index we're looking for?
-        let variant = ty
-            .variants
-            .iter()
+        let mut variant = variants
             .find(|v| v.index == index)
-            .ok_or_else(|| DecodeError::VariantNotFound(index, ty.clone()))?;
+            .ok_or_else(|| DecodeError::VariantNotFound(index))?;
 
         // Allow decoding of the fields:
-        let mut fields_iter = variant.fields.iter().map(|f| Field::new(f.ty.id, f.name.as_deref()));
-        let fields = Composite::new(item_bytes, path, &mut fields_iter, types, false);
+        // let mut fields_iter = variant.fields.map(|f| Field::new(f.id, f.name.as_deref()));
+        let fields = Composite::new(item_bytes, &mut variant.fields, types, false);
 
-        Ok(Variant { bytes, variant, fields })
+        Ok(Variant { bytes, variant_index: index, variant_name: &variant.name, fields })
     }
 }
 
-impl<'scale, 'info> Variant<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
@@ -65,20 +61,16 @@ impl<'scale, 'info> Variant<'scale, 'info> {
     pub fn bytes_from_undecoded(&self) -> &'scale [u8] {
         self.fields.bytes_from_undecoded()
     }
-    /// Path to this type.
-    pub fn path(&self) -> &'info Path<PortableForm> {
-        self.fields.path()
-    }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {
-        &self.variant.name
+        &self.variant_name
     }
     /// The index of the variant.
     pub fn index(&self) -> u8 {
-        self.variant.index
+        self.variant_index
     }
     /// Access the variant fields.
-    pub fn fields(&mut self) -> &mut Composite<'scale, 'info> {
+    pub fn fields(&mut self) -> &mut Composite<'scale, 'info, R> {
         &mut self.fields
     }
 }

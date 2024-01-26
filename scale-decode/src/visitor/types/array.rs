@@ -13,35 +13,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use scale_type_resolver::TypeResolver;
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType,
 };
-use scale_info::PortableRegistry;
 
 /// This enables a visitor to decode items from an array type.
-pub struct Array<'scale, 'info> {
+pub struct Array<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    type_id: u32,
-    types: &'info PortableRegistry,
+    type_id: R::TypeId,
+    types: &'info R,
     remaining: usize,
 }
 
-impl<'scale, 'info> Array<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> Array<'scale, 'info, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: u32,
+        type_id: R::TypeId,
         len: usize,
-        types: &'info PortableRegistry,
-    ) -> Array<'scale, 'info> {
+        types: &'info R,
+    ) -> Array<'scale, 'info, R> {
         Array { bytes, item_bytes: bytes, type_id, types, remaining: len }
     }
     /// Skip over all bytes associated with this array. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this array.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while self.remaining > 0 {
-            self.decode_item(IgnoreVisitor).transpose()?;
+            self.decode_item(IgnoreVisitor::<R>::new()).transpose()?;
         }
         Ok(())
     }
@@ -63,7 +63,7 @@ impl<'scale, 'info> Array<'scale, 'info> {
         self.remaining == 0
     }
     /// Decode an item from the array by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(
+    pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
@@ -82,14 +82,14 @@ impl<'scale, 'info> Array<'scale, 'info> {
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info> Iterator for Array<'scale, 'info> {
-    type Item = Result<ArrayItem<'scale, 'info>, DecodeError>;
+impl<'scale, 'info, R: TypeResolver> Iterator for Array<'scale, 'info, R> {
+    type Item = Result<ArrayItem<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
-        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+        if let Err(e) = self.decode_item(IgnoreVisitor::<R>::new())? {
             return Some(Err(e));
         };
 
@@ -102,24 +102,24 @@ impl<'scale, 'info> Iterator for Array<'scale, 'info> {
 }
 
 /// A single item in the array.
-#[derive(Copy, Clone)]
-pub struct ArrayItem<'scale, 'info> {
+#[derive(Clone)]
+pub struct ArrayItem<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: u32,
-    types: &'info PortableRegistry,
+    type_id: R::TypeId,
+    types: &'info R,
 }
 
-impl<'scale, 'info> ArrayItem<'scale, 'info> {
+impl<'scale, 'info, R: TypeResolver> ArrayItem<'scale, 'info, R> {
     /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.bytes
     }
     /// The type ID associated with this item.
-    pub fn type_id(&self) -> u32 {
-        self.type_id
+    pub fn type_id(&self) -> &R::TypeId {
+        &self.type_id
     }
     /// Decode this item using a visitor.
-    pub fn decode_with_visitor<V: Visitor>(
+    pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
@@ -131,8 +131,8 @@ impl<'scale, 'info> ArrayItem<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Array<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Array<'scale, 'info, R> {
+    fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {

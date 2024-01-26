@@ -45,9 +45,10 @@ use core::{
     time::Duration,
 };
 use scale_bits::Bits;
+use scale_type_resolver::TypeResolver;
 
-pub struct BasicVisitor<T> {
-    _marker: core::marker::PhantomData<T>,
+pub struct BasicVisitor<T, R> {
+    _marker: core::marker::PhantomData<(T, R)>,
 }
 
 /// Generate an [`IntoVisitor`] impl for basic types `T` where `BasicVisitor<T>` impls `Visitor`.
@@ -69,9 +70,9 @@ macro_rules! impl_into_visitor {
 /// Ignore single-field tuples/composites and visit the single field inside instead.
 macro_rules! visit_single_field_composite_tuple_impls {
     () => {
-        fn visit_composite<'scale, 'info>(
+        fn visit_composite<'scale, 'info, R: TypeResolver>(
             self,
-            value: &mut $crate::visitor::types::Composite<'scale, 'info>,
+            value: &mut $crate::visitor::types::Composite<'scale, 'info, R>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -79,9 +80,9 @@ macro_rules! visit_single_field_composite_tuple_impls {
             }
             value.decode_item(self).unwrap()
         }
-        fn visit_tuple<'scale, 'info>(
+        fn visit_tuple<'scale, 'info, R: TypeResolver>(
             self,
-            value: &mut $crate::visitor::types::Tuple<'scale, 'info>,
+            value: &mut $crate::visitor::types::Tuple<'scale, 'info, R>,
             _type_id: $crate::visitor::TypeId,
         ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
             if value.remaining() != 1 {
@@ -160,9 +161,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
     type Error = Error;
     type Value<'scale, 'info> = PhantomData<T>;
 
-    fn visit_tuple<'scale, 'info>(
+    fn visit_tuple<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Tuple<'scale, 'info>,
+        value: &mut Tuple<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -171,9 +172,9 @@ impl<T> Visitor for BasicVisitor<PhantomData<T>> {
             self.visit_unexpected(visitor::Unexpected::Tuple)
         }
     }
-    fn visit_composite<'scale, 'info>(
+    fn visit_composite<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Composite<'scale, 'info>,
+        value: &mut Composite<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() == 0 {
@@ -267,16 +268,16 @@ macro_rules! impl_decode_seq_via_collect {
             type Value<'scale, 'info> = $ty<$generic>;
             type Error = Error;
 
-            fn visit_sequence<'scale, 'info>(
+            fn visit_sequence<'scale, 'info, R: TypeResolver>(
                 self,
-                value: &mut Sequence<'scale, 'info>,
+                value: &mut Sequence<'scale, 'info, R>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 decode_items_using::<_, $generic>(value).collect()
             }
-            fn visit_array<'scale, 'info>(
+            fn visit_array<'scale, 'info, R: TypeResolver>(
                 self,
-                value: &mut Array<'scale, 'info>,
+                value: &mut Array<'scale, 'info, R>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 decode_items_using::<_, $generic>(value).collect()
@@ -309,16 +310,16 @@ impl<const N: usize, T: IntoVisitor> Visitor for BasicVisitor<[T; N]> {
     type Value<'scale, 'info> = [T; N];
     type Error = Error;
 
-    fn visit_sequence<'scale, 'info>(
+    fn visit_sequence<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Sequence<'scale, 'info>,
+        value: &mut Sequence<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         array_method_impl!(value, [T; N])
     }
-    fn visit_array<'scale, 'info>(
+    fn visit_array<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Array<'scale, 'info>,
+        value: &mut Array<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         array_method_impl!(value, [T; N])
@@ -337,9 +338,9 @@ impl<T: IntoVisitor> Visitor for BasicVisitor<BTreeMap<String, T>> {
     type Error = Error;
     type Value<'scale, 'info> = BTreeMap<String, T>;
 
-    fn visit_composite<'scale, 'info>(
+    fn visit_composite<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Composite<'scale, 'info>,
+        value: &mut Composite<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut map = BTreeMap::new();
@@ -364,9 +365,9 @@ impl<T: IntoVisitor> Visitor for BasicVisitor<Option<T>> {
     type Error = Error;
     type Value<'scale, 'info> = Option<T>;
 
-    fn visit_variant<'scale, 'info>(
+    fn visit_variant<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Variant<'scale, 'info>,
+        value: &mut Variant<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Some" && value.fields().remaining() == 1 {
@@ -394,9 +395,9 @@ impl<T: IntoVisitor, E: IntoVisitor> Visitor for BasicVisitor<Result<T, E>> {
     type Error = Error;
     type Value<'scale, 'info> = Result<T, E>;
 
-    fn visit_variant<'scale, 'info>(
+    fn visit_variant<'scale, 'info, R: TypeResolver>(
         self,
-        value: &mut Variant<'scale, 'info>,
+        value: &mut Variant<'scale, 'info, R>,
         _type_id: visitor::TypeId,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Ok" && value.fields().remaining() == 1 {
@@ -579,16 +580,16 @@ macro_rules! impl_decode_tuple {
             // isn't a tuple or composite, then decode thye inner type and add the tuple.
             decode_inner_type_when_one_tuple_entry!($($t)*);
 
-            fn visit_composite<'scale, 'info>(
+            fn visit_composite<'scale, 'info, Resolver: TypeResolver>(
                 self,
-                value: &mut Composite<'scale, 'info>,
+                value: &mut Composite<'scale, 'info, Resolver>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
             }
-            fn visit_tuple<'scale, 'info>(
+            fn visit_tuple<'scale, 'info, Resolver: TypeResolver>(
                 self,
-                value: &mut Tuple<'scale, 'info>,
+                value: &mut Tuple<'scale, 'info, Resolver>,
                 _type_id: visitor::TypeId,
             ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                 tuple_method_impl!(($($t,)*), value)
@@ -609,7 +610,7 @@ macro_rules! impl_decode_tuple {
         impl < $($t),* > DecodeAsFields for ($($t,)*)
         where $( $t: IntoVisitor, )*
         {
-            fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn FieldIter<'info>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
+            fn decode_as_fields<'info, Resolver: TypeResolver>(input: &mut &[u8], fields: &mut dyn FieldIter<'info, Resolver::TypeId>, types: &'info scale_info::PortableRegistry) -> Result<Self, Error> {
                 let mut composite = crate::visitor::types::Composite::new(input, crate::EMPTY_SCALE_INFO_PATH, fields, types, false);
                 let val = <($($t,)*)>::into_visitor().visit_composite(&mut composite, crate::visitor::TypeId(0));
 
