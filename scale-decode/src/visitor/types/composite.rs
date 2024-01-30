@@ -70,14 +70,14 @@ impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
     }
     /// Return whether any of the fields are unnamed.
     pub fn has_unnamed_fields(&self) -> bool {
-        self.fields.iter().any(|f| f.name().is_none())
+        self.fields.iter().any(|f| f.name.is_none())
     }
     /// Convert the remaining fields in this Composite type into a [`super::Tuple`]. This allows them to
     /// be parsed in the same way as a tuple type, discarding name information.
     pub fn as_tuple(&self) -> super::Tuple<'scale, 'info, R> {
         super::Tuple::new(
             self.item_bytes,
-            &mut self.fields.iter().copied(),
+            &mut self.fields.iter().cloned(),
             self.types,
             self.is_compact,
         )
@@ -85,12 +85,12 @@ impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
     /// Return the name of the next field to be decoded; `None` if either the field has no name,
     /// or there are no fields remaining.
     pub fn peek_name(&self) -> Option<&'info str> {
-        self.fields.get(self.next_field_idx).and_then(|f| f.name())
+        self.fields.get(self.next_field_idx).and_then(|f| f.name)
     }
     /// Decode the next field in the composite type by providing a visitor to handle it. This is more
     /// efficient than iterating over the key/value pairs if you already know how you want to decode the
     /// values.
-    pub fn decode_item<V: Visitor>(
+    pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
@@ -100,7 +100,7 @@ impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor_maybe_compact(
             b,
-            field.id(),
+            field.id.clone(),
             self.types,
             visitor,
             self.is_compact,
@@ -124,12 +124,12 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Composite<'scale, 'info, R> {
     type Item = Result<CompositeField<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
-        let field = *self.fields.get(self.next_field_idx)?;
+        let field = self.fields.get(self.next_field_idx)?.clone();
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
         // Now, decode and skip over the item we're going to hand back:
-        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+        if let Err(e) = self.decode_item(IgnoreVisitor::<R>::new())? {
             return Some(Err(e));
         };
 
@@ -157,7 +157,7 @@ pub struct CompositeField<'scale, 'info, R: TypeResolver> {
 impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     /// The field name.
     pub fn name(&self) -> Option<&'info str> {
-        self.field.name()
+        self.field.name
     }
     /// The bytes associated with this field.
     pub fn bytes(&self) -> &'scale [u8] {
@@ -165,20 +165,20 @@ impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     }
     /// The type ID associated with this field.
     pub fn type_id(&self) -> &R::TypeId {
-        self.field.id()
+        &self.field.id
     }
     /// If the field is compact encoded
     pub fn is_compact(&self) -> bool {
         self.is_compact
     }
     /// Decode this field using a visitor.
-    pub fn decode_with_visitor<V: Visitor>(
+    pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {
         crate::visitor::decode_with_visitor_maybe_compact(
             &mut &*self.bytes,
-            self.field.id(),
+            self.field.id,
             self.types,
             visitor,
             self.is_compact,
@@ -188,7 +188,7 @@ impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
         T::decode_as_type_maybe_compact(
             &mut &*self.bytes,
-            self.field.id(),
+            self.field.id,
             self.types,
             self.is_compact,
         )

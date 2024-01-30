@@ -62,7 +62,7 @@ impl<'scale, 'info, R: TypeResolver> Sequence<'scale, 'info, R> {
         self.values.remaining()
     }
     /// Decode an item from the sequence by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(
+    pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
@@ -91,11 +91,11 @@ impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
         self.item.bytes()
     }
     /// The type ID associated with this item.
-    pub fn type_id(&self) -> u32 {
+    pub fn type_id(&self) -> &R::TypeId {
         self.item.type_id()
     }
     /// Decode this item using a visitor.
-    pub fn decode_with_visitor<V: Visitor>(
+    pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'info>, V::Error> {

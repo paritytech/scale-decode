@@ -20,6 +20,7 @@ use crate::visitor::{
 use crate::Field;
 use codec::{self, Decode};
 use scale_type_resolver::{
+    UnhandledKind,
     BitsOrderFormat,
     BitsStoreFormat,
     Primitive,
@@ -93,8 +94,12 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
     type TypeId = TypeIdFor<V>;
     type Value<'info2> = Result<V::Value<'scale, 'info2>, V::Error>;
 
+    fn visit_unhandled<'info2>(self, type_id: Self::TypeId, kind: UnhandledKind) -> Self::Value<'info2> {
+        Err(DecodeError::TypeIdNotFound(format!("Kind {kind:?} (type ID {type_id:?}) has not been properly handled")).into())
+    }
+
     fn visit_not_found<'info2>(self, type_id: Self::TypeId) -> Self::Value<'info2> {
-        Err(DecodeError::TypeIdNotFound(type_id))
+        Err(DecodeError::TypeIdNotFound(format!("{type_id:?}")).into())
     }
 
     fn visit_composite<'info2, Fields>(self, type_id: Self::TypeId, mut fields: Fields) -> Self::Value<'info2>
@@ -172,10 +177,10 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && type_ids.len() != 1 {
-            return Err(DecodeError::CannotDecodeCompactIntoType);
+            return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut fields = type_ids.iter().map(|id| Field::unnamed(id));
+        let mut fields = type_ids.map(|id| Field::unnamed(id));
         let mut items = Tuple::new(self.data, &mut fields, self.types, self.is_compact);
         let res = self.visitor.visit_tuple(&mut items, type_id);
 

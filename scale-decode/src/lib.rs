@@ -200,7 +200,7 @@ impl<T: Sized + IntoVisitor> DecodeAsType for T {
             input,
             type_id,
             types,
-            T::into_visitor(),
+            T::into_visitor::<R>(),
             is_compact,
         )?;
         Ok(res)
@@ -229,9 +229,9 @@ pub trait DecodeAsFields: Sized {
 // rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error>;
+    type AnyVisitor<R: TypeResolver>: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error, TypeResolver = R>;
     /// A means of obtaining this visitor.
-    fn into_visitor() -> Self::Visitor;
+    fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R>;
 }
 
 /// The `DecodeAsType` derive macro can be used to implement `DecodeAsType` on structs and enums whose

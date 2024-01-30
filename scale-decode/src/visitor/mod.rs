@@ -238,6 +238,9 @@ pub trait Visitor: Sized {
 /// An error decoding SCALE bytes.
 #[derive(Debug, Clone, PartialEq, Eq, derive_more::From, derive_more::Display)]
 pub enum DecodeError {
+    /// Type ID was not found
+    #[display(fmt = "Could not find type with ID '{_0:?}'")]
+    TypeIdNotFound(String),
     /// A low level error trying to resolve a type.
     #[display(fmt = "Failed to resolve type: {_0}")]
     TypeResolvingError(String),
@@ -354,10 +357,6 @@ pub trait DecodeItemIterator<'scale, 'info, R: TypeResolver> {
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>>;
 }
 
-/// The ID of the type being decoded.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct TypeId(pub u32);
-
 /// A [`Visitor`] implementation that just ignores all of the bytes.
 pub struct IgnoreVisitor<R>(std::marker::PhantomData<R>);
 
@@ -413,8 +412,6 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::visitor::TypeId;
-
     use super::*;
     use alloc::borrow::ToOwned;
     use alloc::string::{String, ToString};
@@ -1065,7 +1062,7 @@ mod test {
             fn unchecked_decode_as_type<'scale, 'info>(
                 self,
                 input: &mut &'scale [u8],
-                type_id: TypeId,
+                type_id: u32,
                 _types: &'info scale_info::PortableRegistry,
             ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>>
             {
