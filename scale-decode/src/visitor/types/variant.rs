@@ -25,7 +25,7 @@ pub struct Variant<'scale, 'info, R: TypeResolver> {
 }
 
 impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
-    pub(crate) fn new<Fields: FieldIter<'info, R::TypeId>, Variants: VariantIter<'info, Fields>>(
+    pub(crate) fn new<Fields: FieldIter<'info, R::TypeId> + 'info, Variants: VariantIter<'info, Fields>>(
         bytes: &'scale [u8],
         mut variants: Variants,
         types: &'info R,

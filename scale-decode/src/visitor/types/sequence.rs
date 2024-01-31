@@ -33,7 +33,7 @@ pub struct Sequence<'scale, 'info, R: TypeResolver> {
 impl<'scale, 'info, R: TypeResolver> Sequence<'scale, 'info, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: R::TypeId,
+        type_id: &'info R::TypeId,
         types: &'info R,
     ) -> Result<Sequence<'scale, 'info, R>, DecodeError> {
         // Sequences are prefixed with their length in bytes. Make a note of this,
@@ -108,7 +108,7 @@ impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
 }
 
 impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Sequence<'scale, 'info, R> {
-    fn decode_item<'a, V: Visitor<TypeResolver = R>>(
+    fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
     ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {

@@ -100,7 +100,7 @@ impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor_maybe_compact(
             b,
-            field.id.clone(),
+            field.id,
             self.types,
             visitor,
             self.is_compact,

@@ -31,7 +31,7 @@ use scale_type_resolver::{
 };
 
 /// Return the type ID type of some [`Visitor`].
-type TypeIdFor<V: Visitor> = <V::TypeResolver as TypeResolver>::TypeId;
+type TypeIdFor<V> = <<V as Visitor>::TypeResolver as TypeResolver>::TypeId;
 
 /// Decode data according to the type ID and [`PortableRegistry`] provided.
 /// The provided pointer to the data slice will be moved forwards as needed
@@ -39,7 +39,7 @@ type TypeIdFor<V: Visitor> = <V::TypeResolver as TypeResolver>::TypeId;
 /// will be called depending on the type that needs to be decoded.
 pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
-    ty_id: TypeIdFor<V>,
+    ty_id: &TypeIdFor<V>,
     types: &'info V::TypeResolver,
     visitor: V,
 ) -> Result<V::Value<'scale, 'info>, V::Error> {
@@ -48,7 +48,7 @@ pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
 
 pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
     data: &mut &'scale [u8],
-    ty_id: TypeIdFor<V>,
+    ty_id: &TypeIdFor<V>,
     types: &'info V::TypeResolver,
     visitor: V,
     is_compact: bool,
@@ -59,7 +59,7 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
         DecodeAsTypeResult::Skipped(v) => v,
     };
 
-    let decoder = Decoder::new(data, types, visitor, is_compact);
+    let decoder = Decoder::new(data, types, ty_id, visitor, is_compact);
     let res = types.resolve_type(ty_id, decoder);
 
     match res {
@@ -74,15 +74,17 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
 
 struct Decoder<'a, 'scale, 'info, V: Visitor> {
     data: &'a mut &'scale [u8],
+    type_id: &'a TypeIdFor<V>,
     types: &'info V::TypeResolver,
     visitor: V,
     is_compact: bool,
 }
 
 impl <'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
-    fn new(data: &'a mut &'scale [u8], types: &'info V::TypeResolver, visitor: V, is_compact: bool) -> Self {
+    fn new(data: &'a mut &'scale [u8], types: &'info V::TypeResolver, type_id: &'a TypeIdFor<V>, visitor: V, is_compact: bool) -> Self {
         Decoder {
             data,
+            type_id,
             types,
             is_compact,
             visitor,
@@ -90,30 +92,31 @@ impl <'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
     }
 }
 
-impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale, 'info, V> {
+impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 'scale, 'info, V> {
     type TypeId = TypeIdFor<V>;
-    type Value<'info2> = Result<V::Value<'scale, 'info2>, V::Error>;
+    type Value = Result<V::Value<'scale, 'info>, V::Error>;
 
-    fn visit_unhandled<'info2>(self, type_id: Self::TypeId, kind: UnhandledKind) -> Self::Value<'info2> {
+    fn visit_unhandled(self, kind: UnhandledKind) -> Self::Value {
+        let type_id = self.type_id;
         Err(DecodeError::TypeIdNotFound(format!("Kind {kind:?} (type ID {type_id:?}) has not been properly handled")).into())
     }
 
-    fn visit_not_found<'info2>(self, type_id: Self::TypeId) -> Self::Value<'info2> {
+    fn visit_not_found(self) -> Self::Value {
+        let type_id = self.type_id;
         Err(DecodeError::TypeIdNotFound(format!("{type_id:?}")).into())
     }
 
-    fn visit_composite<'info2, Fields>(self, type_id: Self::TypeId, mut fields: Fields) -> Self::Value<'info2>
+    fn visit_composite<Fields>(self, mut fields: Fields) -> Self::Value
     where
-        Fields: FieldIter<'info2, Self::TypeId>
+        Fields: FieldIter<'info, Self::TypeId>,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && fields.len() != 1 {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        // let mut fields = fields.map(|f| Field::new(f.ty.id, f.name.as_deref()));
         let mut items = Composite::new(self.data, &mut fields, self.types, self.is_compact);
-        let res = self.visitor.visit_composite(&mut items, type_id);
+        let res = self.visitor.visit_composite(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
         items.skip_decoding()?;
@@ -122,17 +125,17 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         res
     }
 
-    fn visit_variant<'info2, Fields, Var>(self, type_id: Self::TypeId, variants: Var) -> Self::Value<'info2>
+    fn visit_variant<Fields, Var>(self, variants: Var) -> Self::Value
     where
-        Fields: FieldIter<'info2, Self::TypeId>,
-        Var: VariantIter<'info2, Fields>
+        Fields: FieldIter<'info, Self::TypeId> + 'info,
+        Var: VariantIter<'info, Fields>
     {
         if self.is_compact{
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
         let mut variant = Variant::new(self.data, variants, self.types)?;
-        let res = self.visitor.visit_variant(&mut variant, type_id);
+        let res = self.visitor.visit_variant(&mut variant, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
         variant.skip_decoding()?;
@@ -141,13 +144,13 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         res
     }
 
-    fn visit_sequence<'info2>(self, type_id: Self::TypeId) -> Self::Value<'info2> {
+    fn visit_sequence(self, inner_type_id: &'info Self::TypeId) -> Self::Value {
         if self.is_compact{
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut items = Sequence::new(self.data, type_id.clone(), self.types)?;
-        let res = self.visitor.visit_sequence(&mut items, type_id);
+        let mut items = Sequence::new(self.data, inner_type_id, self.types)?;
+        let res = self.visitor.visit_sequence(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
         items.skip_decoding()?;
@@ -156,13 +159,13 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         res
     }
 
-    fn visit_array<'info2>(self, type_id: Self::TypeId, len: usize) -> Self::Value<'info2> {
+    fn visit_array(self, inner_type_id: &'info Self::TypeId, len: usize) -> Self::Value {
         if self.is_compact{
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut arr = Array::new(self.data, type_id.clone(), len, self.types);
-        let res = self.visitor.visit_array(&mut arr, type_id);
+        let mut arr = Array::new(self.data, inner_type_id, len, self.types);
+        let res = self.visitor.visit_array(&mut arr, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
         arr.skip_decoding()?;
@@ -171,9 +174,9 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         res
     }
 
-    fn visit_tuple<'info2, TypeIds>(self, type_id: Self::TypeId, type_ids: TypeIds) -> Self::Value<'info2>
+    fn visit_tuple<'resolver, TypeIds>(self, type_ids: TypeIds) -> Self::Value
     where
-        TypeIds: ExactSizeIterator<Item=Self::TypeId>
+        TypeIds: ExactSizeIterator<Item=&'info Self::TypeId>
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && type_ids.len() != 1 {
@@ -182,7 +185,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
 
         let mut fields = type_ids.map(|id| Field::unnamed(id));
         let mut items = Tuple::new(self.data, &mut fields, self.types, self.is_compact);
-        let res = self.visitor.visit_tuple(&mut items, type_id);
+        let res = self.visitor.visit_tuple(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
         items.skip_decoding()?;
@@ -191,7 +194,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         res
     }
 
-    fn visit_primitive<'info2>(self, type_id: Self::TypeId, primitive: Primitive) -> Self::Value<'info2> {
+    fn visit_primitive(self, primitive: Primitive) -> Self::Value {
         macro_rules! err_if_compact {
             ($is_compact:expr) => {
                 if $is_compact {
@@ -214,22 +217,23 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
         let data = self.data;
         let is_compact = self.is_compact;
         let visitor = self.visitor;
+        let type_id = self.type_id;
 
         match primitive {
             Primitive::Bool => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let b = bool::decode(data).map_err(|e| e.into())?;
                 visitor.visit_bool(b, type_id)
             }
             Primitive::Char => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 // Treat chars as u32's
                 let val = u32::decode(data).map_err(|e| e.into())?;
                 let c = char::from_u32(val).ok_or(DecodeError::InvalidChar(val))?;
                 visitor.visit_char(c, type_id)
             }
             Primitive::Str => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 // Avoid allocating; don't decode into a String. instead, pull the bytes
                 // and let the visitor decide whether to use them or not.
                 let mut s = Str::new(data)?;
@@ -238,7 +242,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_str(&mut s, type_id)
             }
             Primitive::U8 => {
-                let n = if self.is_compact {
+                let n = if is_compact {
                     codec::Compact::<u8>::decode(data).map(|c| c.0)
                 } else {
                     u8::decode(data)
@@ -247,7 +251,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_u8(n, type_id)
             }
             Primitive::U16 => {
-                let n = if self.is_compact {
+                let n = if is_compact {
                     codec::Compact::<u16>::decode(data).map(|c| c.0)
                 } else {
                     u16::decode(data)
@@ -256,7 +260,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_u16(n, type_id)
             }
             Primitive::U32 => {
-                let n = if self.is_compact {
+                let n = if is_compact {
                     codec::Compact::<u32>::decode(data).map(|c| c.0)
                 } else {
                     u32::decode(data)
@@ -265,7 +269,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_u32(n, type_id)
             }
             Primitive::U64 => {
-                let n = if self.is_compact {
+                let n = if is_compact {
                     codec::Compact::<u64>::decode(data).map(|c| c.0)
                 } else {
                     u64::decode(data)
@@ -274,7 +278,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_u64(n, type_id)
             }
             Primitive::U128 => {
-                let n = if self.is_compact {
+                let n = if is_compact {
                     codec::Compact::<u128>::decode(data).map(|c| c.0)
                 } else {
                     u128::decode(data)
@@ -283,55 +287,55 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor for Decoder<'a, 'scale,
                 visitor.visit_u128(n, type_id)
             }
             Primitive::U256 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let arr = decode_32_bytes(data)?;
                 visitor.visit_u256(arr, type_id)
             }
             Primitive::I8 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let n = i8::decode(data).map_err(|e| e.into())?;
                 visitor.visit_i8(n, type_id)
             }
             Primitive::I16 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let n = i16::decode(data).map_err(|e| e.into())?;
                 visitor.visit_i16(n, type_id)
             }
             Primitive::I32 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let n = i32::decode(data).map_err(|e| e.into())?;
                 visitor.visit_i32(n, type_id)
             }
             Primitive::I64 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let n = i64::decode(data).map_err(|e| e.into())?;
                 visitor.visit_i64(n, type_id)
             }
             Primitive::I128 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let n = i128::decode(data).map_err(|e| e.into())?;
                 visitor.visit_i128(n, type_id)
             }
             Primitive::I256 => {
-                err_if_compact!(self.is_compact);
+                err_if_compact!(is_compact);
                 let arr = decode_32_bytes(data)?;
                 visitor.visit_i256(arr, type_id)
             }
         }
     }
 
-    fn visit_compact<'info2>(self, type_id: Self::TypeId) -> Self::Value<'info2> {
-        decode_with_visitor_maybe_compact(self.data, type_id, self.types, self.visitor, true)
+    fn visit_compact(self, inner_type_id: &'info Self::TypeId) -> Self::Value {
+        decode_with_visitor_maybe_compact(self.data, inner_type_id, self.types, self.visitor, true)
     }
 
-    fn visit_bit_sequence<'info2>(self, type_id: Self::TypeId, store_format: BitsStoreFormat, order_format: BitsOrderFormat) -> Self::Value<'info2> {
+    fn visit_bit_sequence(self, store_format: BitsStoreFormat, order_format: BitsOrderFormat) -> Self::Value {
         if self.is_compact{
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
         let format = scale_bits::Format::new(store_format, order_format);
         let mut bitseq = BitSequence::new(format, self.data);
-        let res = self.visitor.visit_bitsequence(&mut bitseq, type_id);
+        let res = self.visitor.visit_bitsequence(&mut bitseq, self.type_id);
 
         // Move to the bytes after the bit sequence.
         *self.data = bitseq.bytes_after()?;

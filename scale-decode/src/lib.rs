@@ -169,7 +169,7 @@ pub trait DecodeAsType: Sized + IntoVisitor {
     /// not used in the course of decoding are still pointed to after decoding is complete.
     fn decode_as_type<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: R::TypeId,
+        type_id: &R::TypeId,
         types: &R,
     ) -> Result<Self, Error> {
         Self::decode_as_type_maybe_compact(input, type_id, types, false)
@@ -183,7 +183,7 @@ pub trait DecodeAsType: Sized + IntoVisitor {
     #[doc(hidden)]
     fn decode_as_type_maybe_compact<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: R::TypeId,
+        type_id: &R::TypeId,
         types: &R,
         is_compact: bool,
     ) -> Result<Self, Error>;
@@ -192,7 +192,7 @@ pub trait DecodeAsType: Sized + IntoVisitor {
 impl<T: Sized + IntoVisitor> DecodeAsType for T {
     fn decode_as_type_maybe_compact<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: R::TypeId,
+        type_id: &R::TypeId,
         types: &R,
         is_compact: bool,
     ) -> Result<Self, Error> {

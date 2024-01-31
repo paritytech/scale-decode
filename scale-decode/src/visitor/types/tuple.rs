@@ -94,7 +94,7 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Tuple<'scale, 'info, R> {
     type Item = Result<TupleField<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
-        let field = *self.fields.get(self.next_field_idx)?;
+        let field = self.fields.get(self.next_field_idx)?.clone();
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
@@ -120,7 +120,7 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Tuple<'scale, 'info, R> {
 #[derive(Copy, Clone)]
 pub struct TupleField<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: R::TypeId,
+    type_id: &'info R::TypeId,
     types: &'info R,
     is_compact: bool,
 }
