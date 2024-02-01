@@ -17,7 +17,7 @@ extern crate alloc;
 
 use alloc::string::ToString;
 use darling::FromAttributes;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{TokenStream as TokenStream2, Span};
 use quote::quote;
 use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
@@ -59,9 +59,16 @@ fn generate_enum_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause, phantomdata_type) =
-        handle_generics(&attrs, &input.generics);
     let variant_names = details.variants.iter().map(|v| v.ident.to_string());
+
+    let generic_types = handle_generics(&attrs, input.generics.clone());
+    let ty_generics = generic_types.ty_generics();
+    let impl_generics = generic_types.impl_generics();
+    let visitor_where_clause = generic_types.visitor_where_clause();
+    let visitor_ty_generics = generic_types.visitor_ty_generics();
+    let visitor_impl_generics = generic_types.visitor_impl_generics();
+    let visitor_phantomdata_type = generic_types.visitor_phantomdata_type();
+    let type_resolver_ident = generic_types.type_resolver_ident();
 
     // determine what the body of our visitor functions will be based on the type of enum fields
     // that we're trying to generate output for.
@@ -130,28 +137,29 @@ fn generate_enum_impl(
 
     quote!(
         const _: () = {
-            #visibility struct Visitor #impl_generics (
-                ::core::marker::PhantomData<#phantomdata_type>
+            #visibility struct Visitor #visitor_impl_generics (
+                ::core::marker::PhantomData<#visitor_phantomdata_type>
             );
 
             use #path_to_scale_decode::vec;
             use #path_to_scale_decode::ToString;
 
-            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
-                type Visitor = Visitor #ty_generics;
-                fn into_visitor() -> Self::Visitor {
+            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #visitor_where_clause {
+                type AnyVisitor<#type_resolver_ident: #path_to_scale_decode::TypeResolver> = Visitor #visitor_ty_generics;
+                fn into_visitor<#type_resolver_ident: #path_to_scale_decode::TypeResolver>() -> Self::AnyVisitor<#type_resolver_ident> {
                     Visitor(::core::marker::PhantomData)
                 }
             }
 
-            impl #impl_generics #path_to_scale_decode::Visitor for Visitor #ty_generics #where_clause {
+            impl #visitor_impl_generics #path_to_scale_decode::Visitor for Visitor #visitor_ty_generics #visitor_where_clause {
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
+                type TypeResolver = #type_resolver_ident;
 
                 fn visit_variant<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info>,
-                    type_id: #path_to_scale_decode::visitor::TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info, Self::TypeResolver>,
+                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #(
                         #variant_ifs
@@ -164,8 +172,8 @@ fn generate_enum_impl(
                 // Allow an enum to be decoded through nested 1-field composites and tuples:
                 fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
-                    _type_id: #path_to_scale_decode::visitor::TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
+                    _type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
                         return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
@@ -174,8 +182,8 @@ fn generate_enum_impl(
                 }
                 fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
-                    _type_id: #path_to_scale_decode::visitor::TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
+                    _type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
                         return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
@@ -195,8 +203,15 @@ fn generate_struct_impl(
 ) -> TokenStream2 {
     let path_to_scale_decode = &attrs.crate_path;
     let path_to_type: syn::Path = input.ident.clone().into();
-    let (impl_generics, ty_generics, where_clause, phantomdata_type) =
-        handle_generics(&attrs, &input.generics);
+
+    let generic_types = handle_generics(&attrs, input.generics.clone());
+    let ty_generics = generic_types.ty_generics();
+    let impl_generics = generic_types.impl_generics();
+    let visitor_where_clause = generic_types.visitor_where_clause();
+    let visitor_ty_generics = generic_types.visitor_ty_generics();
+    let visitor_impl_generics = generic_types.visitor_impl_generics();
+    let visitor_phantomdata_type = generic_types.visitor_phantomdata_type();
+    let type_resolver_ident = generic_types.type_resolver_ident();
 
     // determine what the body of our visitor functions will be based on the type of struct
     // that we're trying to generate output for.
@@ -260,48 +275,51 @@ fn generate_struct_impl(
 
     quote!(
         const _: () = {
-            #visibility struct Visitor #impl_generics (
-                ::core::marker::PhantomData<#phantomdata_type>
+            #visibility struct Visitor #visitor_impl_generics (
+                ::core::marker::PhantomData<#visitor_phantomdata_type>
             );
 
             use #path_to_scale_decode::vec;
             use #path_to_scale_decode::ToString;
 
-            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #where_clause {
-                type Visitor = Visitor #ty_generics;
-                fn into_visitor() -> Self::Visitor {
+            impl #impl_generics #path_to_scale_decode::IntoVisitor for #path_to_type #ty_generics #visitor_where_clause {
+                type AnyVisitor<#type_resolver_ident: #path_to_scale_decode::TypeResolver> = Visitor #visitor_ty_generics;
+                fn into_visitor<#type_resolver_ident: #path_to_scale_decode::TypeResolver>() -> Self::AnyVisitor<#type_resolver_ident> {
                     Visitor(::core::marker::PhantomData)
                 }
             }
 
-            impl #impl_generics #path_to_scale_decode::Visitor for Visitor #ty_generics #where_clause {
+            impl #visitor_impl_generics #path_to_scale_decode::Visitor for Visitor #visitor_ty_generics #visitor_where_clause {
                 type Error = #path_to_scale_decode::Error;
                 type Value<'scale, 'info> = #path_to_type #ty_generics;
+                type TypeResolver = #type_resolver_ident;
 
                 fn visit_composite<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info>,
-                    type_id: #path_to_scale_decode::visitor::TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
+                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
                 fn visit_tuple<'scale, 'info>(
                     self,
-                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info>,
-                    type_id: #path_to_scale_decode::visitor::TypeId,
+                    value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
+                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_tuple_body
                 }
             }
 
-            impl #impl_generics #path_to_scale_decode::DecodeAsFields for #path_to_type #ty_generics #where_clause  {
-                fn decode_as_fields<'info>(input: &mut &[u8], fields: &mut dyn #path_to_scale_decode::FieldIter<'info>, types: &'info #path_to_scale_decode::PortableRegistry)
-                    -> Result<Self, #path_to_scale_decode::Error>
+            impl #impl_generics #path_to_scale_decode::DecodeAsFields for #path_to_type #ty_generics #visitor_where_clause  {
+                fn decode_as_fields<'info, R: #path_to_scale_decode::TypeResolver>(
+                    input: &mut &[u8],
+                    fields: &mut dyn #path_to_scale_decode::FieldIter<'info, R::TypeId>,
+                    types: &'info R
+                ) -> Result<Self, #path_to_scale_decode::Error>
                 {
-                    let path = #path_to_scale_decode::EMPTY_SCALE_INFO_PATH;
-                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, path, fields, types, false);
+                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, fields, types, false);
                     use #path_to_scale_decode::{ Visitor, IntoVisitor };
-                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, #path_to_scale_decode::visitor::TypeId(0));
+                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, &Default::default());
 
                     // Consume any remaining bytes and update input:
                     composite.skip_decoding()?;
@@ -394,27 +412,31 @@ fn unnamed_field_vals<'f>(
 
 fn handle_generics<'a>(
     attrs: &TopLevelAttrs,
-    generics: &'a syn::Generics,
-) -> (syn::ImplGenerics<'a>, syn::TypeGenerics<'a>, syn::WhereClause, syn::Type) {
+    generics: syn::Generics,
+) -> GenericTypes {
     let path_to_crate = &attrs.crate_path;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let mut where_clause = where_clause.cloned().unwrap_or(syn::parse_quote!(where));
+    let type_resolver_ident = syn::Ident::new(GenericTypes::TYPE_RESOLVER_IDENT_STR, Span::call_site());
 
-    if let Some(where_predicates) = &attrs.trait_bounds {
-        // if custom trait bounds are given, append those to the where clause.
-        where_clause.predicates.extend(where_predicates.clone());
-    } else {
-        // else, append our default bounds to each parameter to ensure that it all lines up with our generated impls and such:
-        for param in generics.type_params() {
-            let ty = &param.ident;
-            where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
-            where_clause.predicates.push(syn::parse_quote!(#path_to_crate::Error: From<<<#ty as #path_to_crate::IntoVisitor>::Visitor as #path_to_crate::Visitor>::Error>));
+    // Where clause to use on Visitor/IntoVisitor
+    let visitor_where_clause = {
+        let (_, _, where_clause) = generics.split_for_impl();
+        let mut where_clause = where_clause.cloned().unwrap_or(syn::parse_quote!(where));
+        if let Some(where_predicates) = &attrs.trait_bounds {
+            // if custom trait bounds are given, append those to the where clause.
+            where_clause.predicates.extend(where_predicates.clone());
+        } else {
+            // else, append our default bounds to each parameter to ensure that it all lines up with our generated impls and such:
+            for param in generics.type_params() {
+                let ty = &param.ident;
+                where_clause.predicates.push(syn::parse_quote!(#ty: #path_to_crate::IntoVisitor));
+            }
         }
-    }
+        where_clause
+    };
 
-    // Construct a type to put into PhantomData<$ty>. This takes lifetimes into account too.
-    let phantomdata_type: syn::Type = {
+    // (A, B, C, ScaleDecodeTypeResolver) style PhantomData type to use in Visitor struct.
+    let visitor_phantomdata_type = {
         let tys = generics.params.iter().filter_map::<syn::Type, _>(|p| match p {
             syn::GenericParam::Type(ty) => {
                 let ty = &ty.ident;
@@ -427,10 +449,70 @@ fn handle_generics<'a>(
             // We don't need to mention const's in the PhantomData type.
             syn::GenericParam::Const(_) => None,
         });
+
+        // Add a param for the type resolver generic.
+        let tys = tys.chain(core::iter::once(syn::parse_quote!(#type_resolver_ident)));
+
         syn::parse_quote!( (#( #tys, )*) )
     };
 
-    (impl_generics, ty_generics, where_clause, phantomdata_type)
+    // generics for our Visitor/IntoVisitor; we just add the type resolver param to the list.
+    let visitor_generics = {
+        let mut type_generics = generics.clone();
+        let type_resolver_generic_param: syn::GenericParam = syn::parse_quote!(#type_resolver_ident: #path_to_crate::TypeResolver);
+
+        type_generics.params.push(type_resolver_generic_param);
+        type_generics
+    };
+
+    // generics for the type itself
+    let type_generics = generics;
+
+    GenericTypes {
+        type_generics,
+        type_resolver_ident,
+        visitor_generics,
+        visitor_phantomdata_type,
+        visitor_where_clause
+    }
+}
+
+struct GenericTypes {
+    type_resolver_ident: syn::Ident,
+    type_generics: syn::Generics,
+    visitor_generics: syn::Generics,
+    visitor_where_clause: syn::WhereClause,
+    visitor_phantomdata_type: syn::Type,
+}
+
+impl GenericTypes {
+    const TYPE_RESOLVER_IDENT_STR: &'static str = "ScaleDecodeTypeResolver";
+
+    pub fn ty_generics(&self) -> syn::TypeGenerics<'_> {
+        let (_, ty_generics, _) = self.type_generics.split_for_impl();
+        ty_generics
+    }
+    pub fn impl_generics(&self) -> syn::ImplGenerics<'_> {
+        let (impl_generics, _, _) = self.type_generics.split_for_impl();
+        impl_generics
+    }
+    pub fn visitor_where_clause(&self) -> &syn::WhereClause {
+        &self.visitor_where_clause
+    }
+    pub fn visitor_ty_generics(&self) -> syn::TypeGenerics<'_> {
+        let (_, ty_generics, _) = self.visitor_generics.split_for_impl();
+        ty_generics
+    }
+    pub fn visitor_impl_generics(&self) -> syn::ImplGenerics<'_> {
+        let (impl_generics, _, _) = self.visitor_generics.split_for_impl();
+        impl_generics
+    }
+    pub fn visitor_phantomdata_type(&self) -> &syn::Type {
+        &self.visitor_phantomdata_type
+    }
+    pub fn type_resolver_ident(&self) -> &syn::Ident {
+        &self.type_resolver_ident
+    }
 }
 
 struct TopLevelAttrs {

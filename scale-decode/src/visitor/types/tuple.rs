@@ -117,7 +117,7 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Tuple<'scale, 'info, R> {
 }
 
 /// A single field in the tuple type.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TupleField<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     type_id: &'info R::TypeId,

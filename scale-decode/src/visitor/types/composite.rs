@@ -146,12 +146,19 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Composite<'scale, 'info, R> {
 }
 
 /// A single field in the composite type.
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct CompositeField<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     field: Field<'info, R::TypeId>,
     types: &'info R,
     is_compact: bool,
+}
+
+impl <'scale, 'info, R: TypeResolver> Copy for CompositeField<'scale, 'info, R> {}
+impl <'scale, 'info, R: TypeResolver> Clone for CompositeField<'scale, 'info, R> {
+    fn clone(&self) -> Self {
+        Self { bytes: self.bytes, field: self.field, types: self.types, is_compact: self.is_compact }
+    }
 }
 
 impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {

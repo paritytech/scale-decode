@@ -14,8 +14,9 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor};
+use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor, TypeResolver, visitor::TypeIdFor};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 // We have some struct Foo that we'll encode to bytes. The aim of this example is
 // to manually write a decoder for it.
@@ -28,13 +29,19 @@ struct Foo {
 }
 
 // Define a struct that will be our `Visitor` capable of decoding to a `Foo`.
-struct FooVisitor;
+struct FooVisitor<R>(PhantomData<R>);
+
+impl <R> FooVisitor<R> {
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
 // Describe how to turn `Foo` into this visitor struct.
 impl IntoVisitor for Foo {
-    type Visitor = FooVisitor;
-    fn into_visitor() -> Self::Visitor {
-        FooVisitor
+    type AnyVisitor<R: TypeResolver> = FooVisitor<R>;
+    fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R> {
+        FooVisitor(PhantomData)
     }
 }
 
@@ -42,9 +49,10 @@ impl IntoVisitor for Foo {
 // any error type that can be converted into a `scale_decode::Error`), we'll also get a `DecodeAsType`
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
-impl Visitor for FooVisitor {
+impl <R: TypeResolver> Visitor for FooVisitor<R> {
     type Value<'scale, 'info> = Foo;
     type Error = Error;
+    type TypeResolver = R;
 
     // Support decoding from composite types. We support decoding from either named or
     // unnamed fields (matching by field index if unnamed) and add context to errors via
@@ -52,8 +60,8 @@ impl Visitor for FooVisitor {
     // decoding failed, if it does.
     fn visit_composite<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Composite<'scale, 'info>,
-        type_id: scale_decode::visitor::TypeId,
+        value: &mut scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
+        type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
@@ -79,8 +87,8 @@ impl Visitor for FooVisitor {
     // If we like, we can also support decoding from tuples of matching lengths:
     fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info>,
-        _type_id: scale_decode::visitor::TypeId,
+        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.remaining() != 2 {
             return Err(Error::new(ErrorKind::WrongLength {
@@ -109,13 +117,13 @@ fn main() {
     let (type_id, types) = make_type::<Foo>();
 
     // We can decode via `DecodeAsType`, which is automatically implemented:
-    let foo_via_decode_as_type = Foo::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
+    let foo_via_decode_as_type = Foo::decode_as_type(&mut &*foo_bytes, &type_id, &types).unwrap();
     // We can also attempt to decode it into any other type; we'll get an error if this fails:
     let foo_via_decode_as_type_arc =
-        <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
+        <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, &type_id, &types).unwrap();
     // Or we can also manually use our `Visitor` impl:
     let foo_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, type_id, &types, FooVisitor)
+        scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, &type_id, &types, FooVisitor::new())
             .unwrap();
 
     assert_eq!(foo_original, foo_via_decode_as_type);

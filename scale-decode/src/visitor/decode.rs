@@ -15,7 +15,7 @@
 
 use crate::visitor::{
     Array, BitSequence, Composite, DecodeAsTypeResult, DecodeError, Sequence, Str, Tuple,
-    Variant, Visitor,
+    Variant, Visitor, TypeIdFor
 };
 use crate::Field;
 use codec::{self, Decode};
@@ -29,9 +29,6 @@ use scale_type_resolver::{
     FieldIter,
     VariantIter
 };
-
-/// Return the type ID type of some [`Visitor`].
-type TypeIdFor<V> = <<V as Visitor>::TypeResolver as TypeResolver>::TypeId;
 
 /// Decode data according to the type ID and [`PortableRegistry`] provided.
 /// The provided pointer to the data slice will be moved forwards as needed

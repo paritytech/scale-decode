@@ -13,11 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::marker::PhantomData;
+
 use codec::Encode;
+use scale_decode::TypeResolver;
 use scale_decode::visitor::{
     self,
     types::{Array, BitSequence, Composite, Sequence, Str, Tuple, Variant},
-    TypeId,
+    TypeIdFor
 };
 
 // A custom type we'd like to decode into:
@@ -48,116 +51,124 @@ enum Value {
 
 // Implement the `Visitor` trait to define how to go from SCALE
 // values into this type:
-struct ValueVisitor;
-impl visitor::Visitor for ValueVisitor {
+struct ValueVisitor<R>(PhantomData<R>);
+
+impl <R> ValueVisitor<R> {
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl <R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     type Value<'scale, 'info> = Value;
     type Error = visitor::DecodeError;
+    type TypeResolver = R;
 
     fn visit_bool<'scale, 'info>(
         self,
         value: bool,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Bool(value))
     }
     fn visit_char<'scale, 'info>(
         self,
         value: char,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Char(value))
     }
     fn visit_u8<'scale, 'info>(
         self,
         value: u8,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U8(value))
     }
     fn visit_u16<'scale, 'info>(
         self,
         value: u16,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U16(value))
     }
     fn visit_u32<'scale, 'info>(
         self,
         value: u32,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U32(value))
     }
     fn visit_u64<'scale, 'info>(
         self,
         value: u64,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U64(value))
     }
     fn visit_u128<'scale, 'info>(
         self,
         value: u128,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U128(value))
     }
-    fn visit_u256<'info>(
+    fn visit_u256<'scale, 'info>(
         self,
-        value: &'_ [u8; 32],
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
+        value: &'scale [u8; 32],
+        _type_id: &TypeIdFor<Self>,
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::U256(*value))
     }
     fn visit_i8<'scale, 'info>(
         self,
         value: i8,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I8(value))
     }
     fn visit_i16<'scale, 'info>(
         self,
         value: i16,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I16(value))
     }
     fn visit_i32<'scale, 'info>(
         self,
         value: i32,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I32(value))
     }
     fn visit_i64<'scale, 'info>(
         self,
         value: i64,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I64(value))
     }
     fn visit_i128<'scale, 'info>(
         self,
         value: i128,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I128(value))
     }
-    fn visit_i256<'info>(
+    fn visit_i256<'scale, 'info>(
         self,
-        value: &'_ [u8; 32],
-        _type_id: TypeId,
-    ) -> Result<Self::Value<'_, 'info>, Self::Error> {
+        value: &'scale [u8; 32],
+        _type_id: &TypeIdFor<Self>,
+    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::I256(*value))
     }
     fn visit_sequence<'scale, 'info>(
         self,
-        value: &mut Sequence<'scale, 'info>,
-        _type_id: TypeId,
+        value: &mut Sequence<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor) {
+        while let Some(val) = value.decode_item(ValueVisitor::new()) {
             let val = val?;
             vals.push(val);
         }
@@ -165,13 +176,13 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_composite<'scale, 'info>(
         self,
-        value: &mut Composite<'scale, 'info>,
-        _type_id: TypeId,
+        value: &mut Composite<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         for item in value.by_ref() {
             let item = item?;
-            let val = item.decode_with_visitor(ValueVisitor)?;
+            let val = item.decode_with_visitor(ValueVisitor::new())?;
             let name = item.name().unwrap_or("").to_owned();
             vals.push((name, val));
         }
@@ -179,11 +190,11 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_tuple<'scale, 'info>(
         self,
-        value: &mut Tuple<'scale, 'info>,
-        _type_id: TypeId,
+        value: &mut Tuple<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor) {
+        while let Some(val) = value.decode_item(ValueVisitor::new()) {
             let val = val?;
             vals.push(val);
         }
@@ -192,20 +203,20 @@ impl visitor::Visitor for ValueVisitor {
     fn visit_str<'scale, 'info>(
         self,
         value: &mut Str<'scale>,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         Ok(Value::Str(value.as_str()?.to_owned()))
     }
     fn visit_variant<'scale, 'info>(
         self,
-        value: &mut Variant<'scale, 'info>,
-        _type_id: TypeId,
+        value: &mut Variant<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
         for item in fields.by_ref() {
             let item = item?;
-            let val = item.decode_with_visitor(ValueVisitor)?;
+            let val = item.decode_with_visitor(ValueVisitor::new())?;
             let name = item.name().unwrap_or("").to_owned();
             vals.push((name, val));
         }
@@ -213,11 +224,11 @@ impl visitor::Visitor for ValueVisitor {
     }
     fn visit_array<'scale, 'info>(
         self,
-        value: &mut Array<'scale, 'info>,
-        _type_id: TypeId,
+        value: &mut Array<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let mut vals = vec![];
-        while let Some(val) = value.decode_item(ValueVisitor) {
+        while let Some(val) = value.decode_item(ValueVisitor::new()) {
             let val = val?;
             vals.push(val);
         }
@@ -226,7 +237,7 @@ impl visitor::Visitor for ValueVisitor {
     fn visit_bitsequence<'scale, 'info>(
         self,
         value: &mut BitSequence<'scale>,
-        _type_id: TypeId,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
         Ok(Value::BitSequence(bools?))
@@ -252,7 +263,7 @@ fn main() {
 
     // Use scale_decode + type information to decode these bytes into our Value type:
     assert_eq!(
-        scale_decode::visitor::decode_with_visitor(&mut &*bytes, type_id, &types, ValueVisitor)
+        scale_decode::visitor::decode_with_visitor(&mut &*bytes, &type_id, &types, ValueVisitor::new())
             .unwrap(),
         Value::Variant(
             "Bar".to_owned(),

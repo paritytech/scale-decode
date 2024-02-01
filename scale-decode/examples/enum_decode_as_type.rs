@@ -14,8 +14,9 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor};
+use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor, TypeResolver, visitor::TypeIdFor};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 // We have some enum Foo that we'll encode to bytes. The aim of this example is
 // to manually write a decoder for it.
@@ -29,13 +30,19 @@ enum Foo {
 }
 
 // Define a struct that will be our `Visitor` capable of decoding to a `Foo`.
-struct FooVisitor;
+struct FooVisitor<R>(PhantomData<R>);
+
+impl <R> FooVisitor<R> {
+    fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
 // Describe how to turn `Foo` into this visitor struct.
 impl IntoVisitor for Foo {
-    type Visitor = FooVisitor;
-    fn into_visitor() -> Self::Visitor {
-        FooVisitor
+    type AnyVisitor<R: TypeResolver> = FooVisitor<R>;
+    fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R> {
+        FooVisitor(PhantomData)
     }
 }
 
@@ -43,17 +50,18 @@ impl IntoVisitor for Foo {
 // any error type that can be converted into a `scale_decode::Error`), we'll also get a `DecodeAsType`
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
-impl Visitor for FooVisitor {
+impl <R: TypeResolver> Visitor for FooVisitor<R> {
     type Value<'scale, 'info> = Foo;
     type Error = Error;
+    type TypeResolver = R;
 
     // We have opted here to be quite flexible in what we support; we'll happily ignore fields in the input that we
     // don't care about and support unnamed to named fields. You could choose to be more strict if you prefer. We also
     // add context to any errors coming from decoding sub-types via `.map_err(|e| e.at_x(..))` calls.
     fn visit_variant<'scale, 'info>(
         self,
-        value: &mut scale_decode::visitor::types::Variant<'scale, 'info>,
-        _type_id: scale_decode::visitor::TypeId,
+        value: &mut scale_decode::visitor::types::Variant<'scale, 'info, Self::TypeResolver>,
+        _type_id: &TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
         if value.name() == "Bar" {
             // Here we choose to support decoding named or unnamed fields into our Bar variant.
@@ -115,25 +123,25 @@ fn main() {
     let (type_id, types) = make_type::<Foo>();
 
     // We can decode via `DecodeAsType`, which is automatically implemented:
-    let bar_via_decode_as_type = Foo::decode_as_type(&mut &*bar_bytes, type_id, &types).unwrap();
+    let bar_via_decode_as_type = Foo::decode_as_type(&mut &*bar_bytes, &type_id, &types).unwrap();
     let wibble_via_decode_as_type =
-        Foo::decode_as_type(&mut &*wibble_bytes, type_id, &types).unwrap();
+        Foo::decode_as_type(&mut &*wibble_bytes, &type_id, &types).unwrap();
     let empty_via_decode_as_type =
-        Foo::decode_as_type(&mut &*empty_bytes, type_id, &types).unwrap();
+        Foo::decode_as_type(&mut &*empty_bytes, &type_id, &types).unwrap();
 
     // Or we can also manually use our `Visitor` impl:
     let bar_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*bar_bytes, type_id, &types, FooVisitor)
+        scale_decode::visitor::decode_with_visitor(&mut &*bar_bytes, &type_id, &types, FooVisitor::new())
             .unwrap();
     let wibble_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*wibble_bytes,
-        type_id,
+        &type_id,
         &types,
-        FooVisitor,
+        FooVisitor::new(),
     )
     .unwrap();
     let empty_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*empty_bytes, type_id, &types, FooVisitor)
+        scale_decode::visitor::decode_with_visitor(&mut &*empty_bytes, &type_id, &types, FooVisitor::new())
             .unwrap();
 
     assert_eq!(bar, bar_via_decode_as_type);

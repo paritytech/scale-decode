@@ -144,8 +144,8 @@ mod impls;
 pub mod error;
 pub mod visitor;
 
-use scale_type_resolver::{FieldIter, TypeResolver};
-
+pub use scale_type_resolver::FieldIter;
+pub use scale_type_resolver::TypeResolver;
 pub use crate::error::Error;
 pub use visitor::Visitor;
 pub use scale_type_resolver::Field;
@@ -158,6 +158,7 @@ pub use alloc::{collections::BTreeMap, string::ToString, vec};
 pub mod ext {
     #[cfg(feature = "primitive-types")]
     pub use primitive_types;
+    pub use scale_type_resolver;
 }
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
