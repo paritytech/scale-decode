@@ -19,8 +19,7 @@ mod primitive_types;
 use crate::{
     error::{Error, ErrorKind},
     visitor::{
-        self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator,
-        Visitor,
+        self, decode_with_visitor, types::*, DecodeAsTypeResult, DecodeItemIterator, Visitor,
     },
     DecodeAsFields, FieldIter, IntoVisitor,
 };
@@ -91,7 +90,7 @@ macro_rules! visit_single_field_composite_tuple_impls {
     };
 }
 
-impl <R: TypeResolver> Visitor for BasicVisitor<char, R> {
+impl<R: TypeResolver> Visitor for BasicVisitor<char, R> {
     type Error = Error;
     type Value<'scale, 'info> = char;
     type TypeResolver = R;
@@ -107,7 +106,7 @@ impl <R: TypeResolver> Visitor for BasicVisitor<char, R> {
 }
 impl_into_visitor!(char);
 
-impl <R: TypeResolver> Visitor for BasicVisitor<bool, R> {
+impl<R: TypeResolver> Visitor for BasicVisitor<bool, R> {
     type Error = Error;
     type Value<'scale, 'info> = bool;
     type TypeResolver = R;
@@ -123,7 +122,7 @@ impl <R: TypeResolver> Visitor for BasicVisitor<bool, R> {
 }
 impl_into_visitor!(bool);
 
-impl <R: TypeResolver> Visitor for BasicVisitor<String, R> {
+impl<R: TypeResolver> Visitor for BasicVisitor<String, R> {
     type Error = Error;
     type Value<'scale, 'info> = String;
     type TypeResolver = R;
@@ -140,7 +139,7 @@ impl <R: TypeResolver> Visitor for BasicVisitor<String, R> {
 }
 impl_into_visitor!(String);
 
-impl <R: TypeResolver> Visitor for BasicVisitor<Bits, R> {
+impl<R: TypeResolver> Visitor for BasicVisitor<Bits, R> {
     type Error = Error;
     type Value<'scale, 'info> = Bits;
     type TypeResolver = R;
@@ -159,7 +158,7 @@ impl <R: TypeResolver> Visitor for BasicVisitor<Bits, R> {
 }
 impl_into_visitor!(Bits);
 
-impl <T, R: TypeResolver> Visitor for BasicVisitor<PhantomData<T>, R> {
+impl<T, R: TypeResolver> Visitor for BasicVisitor<PhantomData<T>, R> {
     type Error = Error;
     type Value<'scale, 'info> = PhantomData<T>;
     type TypeResolver = R;
@@ -370,7 +369,7 @@ impl<T: IntoVisitor, R: TypeResolver> Visitor for BasicVisitor<BTreeMap<String, 
         Ok(map)
     }
 }
-impl <T: IntoVisitor> IntoVisitor for BTreeMap<String, T> {
+impl<T: IntoVisitor> IntoVisitor for BTreeMap<String, T> {
     type AnyVisitor<R: TypeResolver> = BasicVisitor<BTreeMap<String, T>, R>;
     fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R> {
         BasicVisitor { _marker: core::marker::PhantomData }
@@ -558,29 +557,30 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
             type_id: &<Self::TypeResolver as TypeResolver>::TypeId,
             types: &'info Self::TypeResolver,
         ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'info>, Self::Error>> {
-            use scale_type_resolver::{
-                ResolvedTypeVisitor,
-                UnhandledKind
-            };
+            use scale_type_resolver::{ResolvedTypeVisitor, UnhandledKind};
 
             // Match on the resolved kind; try to decode as inner type if it's not a
             // composite, tuple, or a type ID we can't find. Else fall back to default.
             struct TryDecodeAsInner<TypeId>(std::marker::PhantomData<TypeId>);
-            impl <'info, TypeId: scale_type_resolver::TypeId + 'info> ResolvedTypeVisitor<'info> for TryDecodeAsInner<TypeId> {
+            impl<'info, TypeId: scale_type_resolver::TypeId + 'info> ResolvedTypeVisitor<'info>
+                for TryDecodeAsInner<TypeId>
+            {
                 type TypeId = TypeId;
                 type Value = bool;
                 fn visit_unhandled(self, kind: UnhandledKind) -> Self::Value {
                     match kind {
-                        UnhandledKind::Composite |
-                        UnhandledKind::Tuple |
-                        UnhandledKind::NotFound => false,
-                        _ => true
+                        UnhandledKind::Composite
+                        | UnhandledKind::Tuple
+                        | UnhandledKind::NotFound => false,
+                        _ => true,
                     }
                 }
             }
 
             // If error decoding, or false, just fall back to default behavious and don't try to decode as inner.
-            if let Err(_) | Ok(false) = types.resolve_type(type_id, TryDecodeAsInner(std::marker::PhantomData)) {
+            if let Err(_) | Ok(false) =
+                types.resolve_type(type_id, TryDecodeAsInner(std::marker::PhantomData))
+            {
                 return DecodeAsTypeResult::Skipped(self);
             }
 

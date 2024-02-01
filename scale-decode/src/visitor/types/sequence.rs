@@ -107,7 +107,9 @@ impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Sequence<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
+    for Sequence<'scale, 'info, R>
+{
     fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,

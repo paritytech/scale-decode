@@ -13,11 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use scale_type_resolver::TypeResolver;
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType,
 };
+use scale_type_resolver::TypeResolver;
 
 /// This enables a visitor to decode items from an array type.
 pub struct Array<'scale, 'info, R: TypeResolver> {
@@ -131,7 +131,9 @@ impl<'scale, 'info, R: TypeResolver> ArrayItem<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Array<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
+    for Array<'scale, 'info, R>
+{
     fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,

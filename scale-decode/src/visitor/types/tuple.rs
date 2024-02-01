@@ -17,7 +17,7 @@ use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType, FieldIter,
 };
-use scale_type_resolver::{ Field, TypeResolver };
+use scale_type_resolver::{Field, TypeResolver};
 
 /// This represents a tuple of values.
 pub struct Tuple<'scale, 'info, R: TypeResolver> {
@@ -156,7 +156,9 @@ impl<'scale, 'info, R: TypeResolver> TupleField<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Tuple<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
+    for Tuple<'scale, 'info, R>
+{
     fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,

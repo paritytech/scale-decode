@@ -55,7 +55,7 @@ fn get_type_info<T: TypeInfo + 'static>() -> (u32, PortableRegistry) {
     let mut types = scale_info::Registry::new();
     let ty = types.register_type(&m);
     let portable_registry: PortableRegistry = types.into();
-    (ty.id(), portable_registry)
+    (ty.id, portable_registry)
 }
 
 // Encode the left value statically.
@@ -68,7 +68,7 @@ where
 {
     let (type_id, types) = get_type_info::<A>();
     let a_bytes = a.encode();
-    let new_b = B::decode_as_type(&mut &*a_bytes, type_id, &types).unwrap();
+    let new_b = B::decode_as_type(&mut &*a_bytes, &type_id, &types).unwrap();
     assert_eq!(b, new_b);
 }
 
@@ -144,11 +144,11 @@ mod impls;
 pub mod error;
 pub mod visitor;
 
+pub use crate::error::Error;
+pub use scale_type_resolver::Field;
 pub use scale_type_resolver::FieldIter;
 pub use scale_type_resolver::TypeResolver;
-pub use crate::error::Error;
 pub use visitor::Visitor;
-pub use scale_type_resolver::Field;
 
 // This is exported for generated derive code to use, to be compatible with std or no-std as needed.
 #[doc(hidden)]
@@ -230,7 +230,11 @@ pub trait DecodeAsFields: Sized {
 // rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type AnyVisitor<R: TypeResolver>: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error, TypeResolver = R>;
+    type AnyVisitor<R: TypeResolver>: for<'scale, 'info> visitor::Visitor<
+        Value<'scale, 'info> = Self,
+        Error = Error,
+        TypeResolver = R,
+    >;
     /// A means of obtaining this visitor.
     fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R>;
 }

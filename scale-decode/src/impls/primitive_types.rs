@@ -19,12 +19,12 @@ use crate::{
     visitor::{decode_with_visitor, DecodeAsTypeResult, Visitor},
     IntoVisitor,
 };
-use scale_type_resolver::TypeResolver;
 use primitive_types::{H128, H160, H256, H384, H512, H768};
+use scale_type_resolver::TypeResolver;
 
 macro_rules! impl_visitor {
     ($ty:ty: $len:literal) => {
-        impl <R: TypeResolver> Visitor for BasicVisitor<$ty, R> {
+        impl<R: TypeResolver> Visitor for BasicVisitor<$ty, R> {
             type Error = Error;
             type Value<'scale, 'info> = $ty;
             type TypeResolver = R;

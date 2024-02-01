@@ -15,19 +15,13 @@
 
 use crate::visitor::{
     Array, BitSequence, Composite, DecodeAsTypeResult, DecodeError, Sequence, Str, Tuple,
-    Variant, Visitor, TypeIdFor
+    TypeIdFor, Variant, Visitor,
 };
 use crate::Field;
 use codec::{self, Decode};
 use scale_type_resolver::{
-    UnhandledKind,
-    BitsOrderFormat,
-    BitsStoreFormat,
-    Primitive,
-    TypeResolver,
-    ResolvedTypeVisitor,
-    FieldIter,
-    VariantIter
+    BitsOrderFormat, BitsStoreFormat, FieldIter, Primitive, ResolvedTypeVisitor, TypeResolver,
+    UnhandledKind, VariantIter,
 };
 
 /// Decode data according to the type ID and [`PortableRegistry`] provided.
@@ -65,7 +59,9 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
         // We got a visitor error back; return it
         Ok(Err(e)) => Err(e),
         // We got a TypeResolver error back; turn it into a DecodeError and then visitor error to return.
-        Err(resolve_type_error) => Err(DecodeError::TypeResolvingError(resolve_type_error.to_string()).into()),
+        Err(resolve_type_error) => {
+            Err(DecodeError::TypeResolvingError(resolve_type_error.to_string()).into())
+        }
     }
 }
 
@@ -77,25 +73,28 @@ struct Decoder<'a, 'scale, 'info, V: Visitor> {
     is_compact: bool,
 }
 
-impl <'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
-    fn new(data: &'a mut &'scale [u8], types: &'info V::TypeResolver, type_id: &'a TypeIdFor<V>, visitor: V, is_compact: bool) -> Self {
-        Decoder {
-            data,
-            type_id,
-            types,
-            is_compact,
-            visitor,
-        }
+impl<'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
+    fn new(
+        data: &'a mut &'scale [u8],
+        types: &'info V::TypeResolver,
+        type_id: &'a TypeIdFor<V>,
+        visitor: V,
+        is_compact: bool,
+    ) -> Self {
+        Decoder { data, type_id, types, is_compact, visitor }
     }
 }
 
-impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 'scale, 'info, V> {
+impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 'scale, 'info, V> {
     type TypeId = TypeIdFor<V>;
     type Value = Result<V::Value<'scale, 'info>, V::Error>;
 
     fn visit_unhandled(self, kind: UnhandledKind) -> Self::Value {
         let type_id = self.type_id;
-        Err(DecodeError::TypeIdNotFound(format!("Kind {kind:?} (type ID {type_id:?}) has not been properly handled")).into())
+        Err(DecodeError::TypeIdNotFound(format!(
+            "Kind {kind:?} (type ID {type_id:?}) has not been properly handled"
+        ))
+        .into())
     }
 
     fn visit_not_found(self) -> Self::Value {
@@ -125,9 +124,9 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
     fn visit_variant<Fields, Var>(self, variants: Var) -> Self::Value
     where
         Fields: FieldIter<'info, Self::TypeId> + 'info,
-        Var: VariantIter<'info, Fields>
+        Var: VariantIter<'info, Fields>,
     {
-        if self.is_compact{
+        if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
@@ -142,7 +141,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
     }
 
     fn visit_sequence(self, inner_type_id: &'info Self::TypeId) -> Self::Value {
-        if self.is_compact{
+        if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
@@ -157,7 +156,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
     }
 
     fn visit_array(self, inner_type_id: &'info Self::TypeId, len: usize) -> Self::Value {
-        if self.is_compact{
+        if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
@@ -173,7 +172,7 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
 
     fn visit_tuple<'resolver, TypeIds>(self, type_ids: TypeIds) -> Self::Value
     where
-        TypeIds: ExactSizeIterator<Item=&'info Self::TypeId>
+        TypeIds: ExactSizeIterator<Item = &'info Self::TypeId>,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && type_ids.len() != 1 {
@@ -200,7 +199,9 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
             };
         }
 
-        fn decode_32_bytes<'scale>(data: &mut &'scale [u8]) -> Result<&'scale [u8; 32], DecodeError> {
+        fn decode_32_bytes<'scale>(
+            data: &mut &'scale [u8],
+        ) -> Result<&'scale [u8; 32], DecodeError> {
             // Pull an array from the data if we can, preserving the lifetime.
             let arr: &'scale [u8; 32] = match (*data).try_into() {
                 Ok(arr) => arr,
@@ -325,8 +326,12 @@ impl <'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 
         decode_with_visitor_maybe_compact(self.data, inner_type_id, self.types, self.visitor, true)
     }
 
-    fn visit_bit_sequence(self, store_format: BitsStoreFormat, order_format: BitsOrderFormat) -> Self::Value {
-        if self.is_compact{
+    fn visit_bit_sequence(
+        self,
+        store_format: BitsStoreFormat,
+        order_format: BitsOrderFormat,
+    ) -> Self::Value {
+        if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 

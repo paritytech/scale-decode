@@ -15,7 +15,7 @@
 
 use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
-    DecodeAsType, FieldIter
+    DecodeAsType, FieldIter,
 };
 use scale_type_resolver::{Field, TypeResolver};
 
@@ -154,10 +154,15 @@ pub struct CompositeField<'scale, 'info, R: TypeResolver> {
     is_compact: bool,
 }
 
-impl <'scale, 'info, R: TypeResolver> Copy for CompositeField<'scale, 'info, R> {}
-impl <'scale, 'info, R: TypeResolver> Clone for CompositeField<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> Copy for CompositeField<'scale, 'info, R> {}
+impl<'scale, 'info, R: TypeResolver> Clone for CompositeField<'scale, 'info, R> {
     fn clone(&self) -> Self {
-        Self { bytes: self.bytes, field: self.field, types: self.types, is_compact: self.is_compact }
+        Self {
+            bytes: self.bytes,
+            field: self.field,
+            types: self.types,
+            is_compact: self.is_compact,
+        }
     }
 }
 
@@ -202,7 +207,9 @@ impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R> for Composite<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
+    for Composite<'scale, 'info, R>
+{
     fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,

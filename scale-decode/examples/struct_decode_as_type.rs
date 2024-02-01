@@ -14,7 +14,9 @@
 // limitations under the License.
 
 use codec::Encode;
-use scale_decode::{error::ErrorKind, DecodeAsType, Error, IntoVisitor, Visitor, TypeResolver, visitor::TypeIdFor};
+use scale_decode::{
+    error::ErrorKind, visitor::TypeIdFor, DecodeAsType, Error, IntoVisitor, TypeResolver, Visitor,
+};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -31,7 +33,7 @@ struct Foo {
 // Define a struct that will be our `Visitor` capable of decoding to a `Foo`.
 struct FooVisitor<R>(PhantomData<R>);
 
-impl <R> FooVisitor<R> {
+impl<R> FooVisitor<R> {
     fn new() -> Self {
         Self(PhantomData)
     }
@@ -49,7 +51,7 @@ impl IntoVisitor for Foo {
 // any error type that can be converted into a `scale_decode::Error`), we'll also get a `DecodeAsType`
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
-impl <R: TypeResolver> Visitor for FooVisitor<R> {
+impl<R: TypeResolver> Visitor for FooVisitor<R> {
     type Value<'scale, 'info> = Foo;
     type Error = Error;
     type TypeResolver = R;
@@ -122,9 +124,13 @@ fn main() {
     let foo_via_decode_as_type_arc =
         <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, &type_id, &types).unwrap();
     // Or we can also manually use our `Visitor` impl:
-    let foo_via_visitor =
-        scale_decode::visitor::decode_with_visitor(&mut &*foo_bytes, &type_id, &types, FooVisitor::new())
-            .unwrap();
+    let foo_via_visitor = scale_decode::visitor::decode_with_visitor(
+        &mut &*foo_bytes,
+        &type_id,
+        &types,
+        FooVisitor::new(),
+    )
+    .unwrap();
 
     assert_eq!(foo_original, foo_via_decode_as_type);
     assert_eq!(&foo_original, &*foo_via_decode_as_type_arc);

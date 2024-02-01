@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use crate::visitor::{Composite, DecodeError};
-use scale_type_resolver::{ FieldIter, VariantIter, TypeResolver };
+use scale_type_resolver::{FieldIter, TypeResolver, VariantIter};
 
 /// A representation of the a variant type.
 pub struct Variant<'scale, 'info, R: TypeResolver> {
@@ -25,7 +25,10 @@ pub struct Variant<'scale, 'info, R: TypeResolver> {
 }
 
 impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
-    pub(crate) fn new<Fields: FieldIter<'info, R::TypeId> + 'info, Variants: VariantIter<'info, Fields>>(
+    pub(crate) fn new<
+        Fields: FieldIter<'info, R::TypeId> + 'info,
+        Variants: VariantIter<'info, Fields>,
+    >(
         bytes: &'scale [u8],
         mut variants: Variants,
         types: &'info R,

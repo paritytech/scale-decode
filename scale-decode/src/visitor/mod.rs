@@ -363,14 +363,14 @@ pub trait DecodeItemIterator<'scale, 'info, R: TypeResolver> {
 /// A [`Visitor`] implementation that just ignores all of the bytes.
 pub struct IgnoreVisitor<R>(std::marker::PhantomData<R>);
 
-impl <R> IgnoreVisitor<R> {
+impl<R> IgnoreVisitor<R> {
     /// Construct a new [`IgnoreVisitor`].
     pub fn new() -> Self {
         IgnoreVisitor(std::marker::PhantomData)
     }
 }
 
-impl <R: TypeResolver> Visitor for IgnoreVisitor<R> {
+impl<R: TypeResolver> Visitor for IgnoreVisitor<R> {
     type Value<'scale, 'info> = ();
     type Error = DecodeError;
     type TypeResolver = R;
@@ -451,20 +451,20 @@ mod test {
     }
 
     struct ValueVisitor<R>(std::marker::PhantomData<R>);
-    impl <R> Clone for ValueVisitor<R> {
+    impl<R> Clone for ValueVisitor<R> {
         fn clone(&self) -> Self {
             Self(self.0)
         }
     }
-    impl <R> Copy for ValueVisitor<R> {}
+    impl<R> Copy for ValueVisitor<R> {}
 
-    impl <R> ValueVisitor<R> {
+    impl<R> ValueVisitor<R> {
         pub fn new() -> Self {
             Self(std::marker::PhantomData)
         }
     }
 
-    impl <R: TypeResolver> Visitor for ValueVisitor<R> {
+    impl<R: TypeResolver> Visitor for ValueVisitor<R> {
         type Value<'scale, 'info> = Value;
         type Error = DecodeError;
         type TypeResolver = R;

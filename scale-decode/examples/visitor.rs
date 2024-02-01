@@ -16,12 +16,12 @@
 use std::marker::PhantomData;
 
 use codec::Encode;
-use scale_decode::TypeResolver;
 use scale_decode::visitor::{
     self,
     types::{Array, BitSequence, Composite, Sequence, Str, Tuple, Variant},
-    TypeIdFor
+    TypeIdFor,
 };
+use scale_decode::TypeResolver;
 
 // A custom type we'd like to decode into:
 #[derive(Debug, PartialEq)]
@@ -53,13 +53,13 @@ enum Value {
 // values into this type:
 struct ValueVisitor<R>(PhantomData<R>);
 
-impl <R> ValueVisitor<R> {
+impl<R> ValueVisitor<R> {
     fn new() -> Self {
         Self(PhantomData)
     }
 }
 
-impl <R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
+impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     type Value<'scale, 'info> = Value;
     type Error = visitor::DecodeError;
     type TypeResolver = R;
@@ -263,8 +263,13 @@ fn main() {
 
     // Use scale_decode + type information to decode these bytes into our Value type:
     assert_eq!(
-        scale_decode::visitor::decode_with_visitor(&mut &*bytes, &type_id, &types, ValueVisitor::new())
-            .unwrap(),
+        scale_decode::visitor::decode_with_visitor(
+            &mut &*bytes,
+            &type_id,
+            &types,
+            ValueVisitor::new()
+        )
+        .unwrap(),
         Value::Variant(
             "Bar".to_owned(),
             vec![
