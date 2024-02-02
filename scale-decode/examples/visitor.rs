@@ -12,16 +12,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-use std::marker::PhantomData;
-
 use codec::Encode;
+use std::marker::PhantomData;
+use scale_decode::TypeResolver;
 use scale_decode::visitor::{
     self,
     types::{Array, BitSequence, Composite, Sequence, Str, Tuple, Variant},
     TypeIdFor,
 };
-use scale_decode::TypeResolver;
 
 // A custom type we'd like to decode into:
 #[derive(Debug, PartialEq)]
@@ -50,7 +48,9 @@ enum Value {
 }
 
 // Implement the `Visitor` trait to define how to go from SCALE
-// values into this type:
+// values into this type. Here, we are choosing to be generic over
+// how types are resolved, which is a good default choice when creating
+// a visitor unless you rely on a specific type resolver/ID type.
 struct ValueVisitor<R>(PhantomData<R>);
 
 impl<R> ValueVisitor<R> {

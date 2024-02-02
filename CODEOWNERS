@@ -1,5 +1,5 @@
-# main codeowner @paritytech/tools-team
-* @paritytech/tools-team
+# main codeowner @paritytech/subxt-team
+* @paritytech/subxt-team
 
 # CI
-/.github/ @paritytech/ci @paritytech/tools-team
+/.github/ @paritytech/ci @paritytech/subxt-team

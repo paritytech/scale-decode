@@ -102,11 +102,17 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Array<'scale, 'info, R> {
 }
 
 /// A single item in the array.
-#[derive(Clone)]
 pub struct ArrayItem<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     type_id: &'info R::TypeId,
     types: &'info R,
+}
+
+impl <'scale, 'info, R: TypeResolver> Copy for ArrayItem<'scale, 'info, R> {}
+impl <'scale, 'info, R: TypeResolver> Clone for ArrayItem<'scale, 'info, R> {
+    fn clone(&self) -> Self {
+        Self { bytes: self.bytes, type_id: self.type_id, types: self.types }
+    }
 }
 
 impl<'scale, 'info, R: TypeResolver> ArrayItem<'scale, 'info, R> {
