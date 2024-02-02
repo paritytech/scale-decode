@@ -84,10 +84,10 @@ pub struct SequenceItem<'scale, 'info, R: TypeResolver> {
     item: ArrayItem<'scale, 'info, R>,
 }
 
-impl <'scale, 'info, R: TypeResolver> Copy for SequenceItem<'scale, 'info, R> {}
-impl <'scale, 'info, R: TypeResolver> Clone for SequenceItem<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> Copy for SequenceItem<'scale, 'info, R> {}
+impl<'scale, 'info, R: TypeResolver> Clone for SequenceItem<'scale, 'info, R> {
     fn clone(&self) -> Self {
-        Self { item: self.item }
+        *self
     }
 }
 

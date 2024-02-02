@@ -17,7 +17,7 @@ extern crate alloc;
 
 use alloc::string::ToString;
 use darling::FromAttributes;
-use proc_macro2::{TokenStream as TokenStream2, Span};
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{parse_macro_input, punctuated::Punctuated, DeriveInput};
 
@@ -410,13 +410,11 @@ fn unnamed_field_vals<'f>(
     (field_count, field_vals)
 }
 
-fn handle_generics<'a>(
-    attrs: &TopLevelAttrs,
-    generics: syn::Generics,
-) -> GenericTypes {
+fn handle_generics(attrs: &TopLevelAttrs, generics: syn::Generics) -> GenericTypes {
     let path_to_crate = &attrs.crate_path;
 
-    let type_resolver_ident = syn::Ident::new(GenericTypes::TYPE_RESOLVER_IDENT_STR, Span::call_site());
+    let type_resolver_ident =
+        syn::Ident::new(GenericTypes::TYPE_RESOLVER_IDENT_STR, Span::call_site());
 
     // Where clause to use on Visitor/IntoVisitor
     let visitor_where_clause = {
@@ -459,7 +457,8 @@ fn handle_generics<'a>(
     // generics for our Visitor/IntoVisitor; we just add the type resolver param to the list.
     let visitor_generics = {
         let mut type_generics = generics.clone();
-        let type_resolver_generic_param: syn::GenericParam = syn::parse_quote!(#type_resolver_ident: #path_to_crate::TypeResolver);
+        let type_resolver_generic_param: syn::GenericParam =
+            syn::parse_quote!(#type_resolver_ident: #path_to_crate::TypeResolver);
 
         type_generics.params.push(type_resolver_generic_param);
         type_generics
@@ -473,7 +472,7 @@ fn handle_generics<'a>(
         type_resolver_ident,
         visitor_generics,
         visitor_phantomdata_type,
-        visitor_where_clause
+        visitor_where_clause,
     }
 }
 

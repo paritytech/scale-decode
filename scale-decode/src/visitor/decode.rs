@@ -179,7 +179,7 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut fields = type_ids.map(|id| Field::unnamed(id));
+        let mut fields = type_ids.map(Field::unnamed);
         let mut items = Tuple::new(self.data, &mut fields, self.types, self.is_compact);
         let res = self.visitor.visit_tuple(&mut items, self.type_id);
 

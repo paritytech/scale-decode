@@ -108,10 +108,10 @@ pub struct ArrayItem<'scale, 'info, R: TypeResolver> {
     types: &'info R,
 }
 
-impl <'scale, 'info, R: TypeResolver> Copy for ArrayItem<'scale, 'info, R> {}
-impl <'scale, 'info, R: TypeResolver> Clone for ArrayItem<'scale, 'info, R> {
+impl<'scale, 'info, R: TypeResolver> Copy for ArrayItem<'scale, 'info, R> {}
+impl<'scale, 'info, R: TypeResolver> Clone for ArrayItem<'scale, 'info, R> {
     fn clone(&self) -> Self {
-        Self { bytes: self.bytes, type_id: self.type_id, types: self.types }
+        *self
     }
 }
 
@@ -122,7 +122,7 @@ impl<'scale, 'info, R: TypeResolver> ArrayItem<'scale, 'info, R> {
     }
     /// The type ID associated with this item.
     pub fn type_id(&self) -> &R::TypeId {
-        &self.type_id
+        self.type_id
     }
     /// Decode this item using a visitor.
     pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(

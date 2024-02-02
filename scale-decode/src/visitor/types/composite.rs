@@ -124,7 +124,7 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Composite<'scale, 'info, R> {
     type Item = Result<CompositeField<'scale, 'info, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
-        let field = self.fields.get(self.next_field_idx)?.clone();
+        let field = *self.fields.get(self.next_field_idx)?;
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
@@ -157,12 +157,7 @@ pub struct CompositeField<'scale, 'info, R: TypeResolver> {
 impl<'scale, 'info, R: TypeResolver> Copy for CompositeField<'scale, 'info, R> {}
 impl<'scale, 'info, R: TypeResolver> Clone for CompositeField<'scale, 'info, R> {
     fn clone(&self) -> Self {
-        Self {
-            bytes: self.bytes,
-            field: self.field,
-            types: self.types,
-            is_compact: self.is_compact,
-        }
+        *self
     }
 }
 
@@ -177,7 +172,7 @@ impl<'scale, 'info, R: TypeResolver> CompositeField<'scale, 'info, R> {
     }
     /// The type ID associated with this field.
     pub fn type_id(&self) -> &R::TypeId {
-        &self.field.id
+        self.field.id
     }
     /// If the field is compact encoded
     pub fn is_compact(&self) -> bool {

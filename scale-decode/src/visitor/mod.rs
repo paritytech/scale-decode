@@ -363,6 +363,12 @@ pub trait DecodeItemIterator<'scale, 'info, R: TypeResolver> {
 /// A [`Visitor`] implementation that just ignores all of the bytes.
 pub struct IgnoreVisitor<R>(std::marker::PhantomData<R>);
 
+impl<R> Default for IgnoreVisitor<R> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<R> IgnoreVisitor<R> {
     /// Construct a new [`IgnoreVisitor`].
     pub fn new() -> Self {
@@ -453,7 +459,7 @@ mod test {
     struct ValueVisitor<R>(std::marker::PhantomData<R>);
     impl<R> Clone for ValueVisitor<R> {
         fn clone(&self) -> Self {
-            Self(self.0)
+            *self
         }
     }
     impl<R> Copy for ValueVisitor<R> {}

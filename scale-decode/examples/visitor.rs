@@ -13,13 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 use codec::Encode;
-use std::marker::PhantomData;
-use scale_decode::TypeResolver;
 use scale_decode::visitor::{
     self,
     types::{Array, BitSequence, Composite, Sequence, Str, Tuple, Variant},
     TypeIdFor,
 };
+use scale_decode::TypeResolver;
+use std::marker::PhantomData;
 
 // A custom type we'd like to decode into:
 #[derive(Debug, PartialEq)]

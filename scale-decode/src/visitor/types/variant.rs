@@ -45,7 +45,7 @@ impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
         // let mut fields_iter = variant.fields.map(|f| Field::new(f.id, f.name.as_deref()));
         let fields = Composite::new(item_bytes, &mut variant.fields, types, false);
 
-        Ok(Variant { bytes, variant_index: index, variant_name: &variant.name, fields })
+        Ok(Variant { bytes, variant_index: index, variant_name: variant.name, fields })
     }
 }
 
@@ -66,7 +66,7 @@ impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
     }
     /// The name of the variant.
     pub fn name(&self) -> &'info str {
-        &self.variant_name
+        self.variant_name
     }
     /// The index of the variant.
     pub fn index(&self) -> u8 {
