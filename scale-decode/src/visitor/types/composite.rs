@@ -23,7 +23,6 @@ use scale_type_resolver::{Field, TypeResolver};
 pub struct Composite<'scale, 'info, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    // path: &'info Path<PortableForm>,
     fields: smallvec::SmallVec<[Field<'info, R::TypeId>; 16]>,
     next_field_idx: usize,
     types: &'info R,
@@ -35,7 +34,6 @@ impl<'scale, 'info, R: TypeResolver> Composite<'scale, 'info, R> {
     #[doc(hidden)]
     pub fn new(
         bytes: &'scale [u8],
-        // path: &'info Path<PortableForm>,
         fields: &mut dyn FieldIter<'info, R::TypeId>,
         types: &'info R,
         is_compact: bool,
