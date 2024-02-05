@@ -52,7 +52,7 @@ impl IntoVisitor for Foo {
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
 impl<R: TypeResolver> Visitor for FooVisitor<R> {
-    type Value<'scale, 'info> = Foo;
+    type Value<'scale, 'resolver> = Foo;
     type Error = Error;
     type TypeResolver = R;
 
@@ -60,11 +60,11 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
     // unnamed fields (matching by field index if unnamed) and add context to errors via
     // `.map_err(|e| e.at_x(..))` calls to give back more precise information about where
     // decoding failed, if it does.
-    fn visit_composite<'scale, 'info>(
+    fn visit_composite<'scale, 'resolver>(
         self,
-        value: &mut scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
+        value: &mut scale_decode::visitor::types::Composite<'scale, 'resolver, Self::TypeResolver>,
         type_id: &TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
             return self.visit_tuple(&mut value.as_tuple(), type_id);
@@ -87,11 +87,11 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
     }
 
     // If we like, we can also support decoding from tuples of matching lengths:
-    fn visit_tuple<'scale, 'info>(
+    fn visit_tuple<'scale, 'resolver>(
         self,
-        value: &mut scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
+        value: &mut scale_decode::visitor::types::Tuple<'scale, 'resolver, Self::TypeResolver>,
         _type_id: &TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.remaining() != 2 {
             return Err(Error::new(ErrorKind::WrongLength {
                 actual_len: value.remaining(),

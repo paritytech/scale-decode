@@ -53,18 +53,18 @@ impl IntoVisitor for Foo {
 // implementation for free (and it will compose nicely with other types that implement `DecodeAsType`).
 // We can opt not to do this if we prefer.
 impl<R: TypeResolver> Visitor for FooVisitor<R> {
-    type Value<'scale, 'info> = Foo;
+    type Value<'scale, 'resolver> = Foo;
     type Error = Error;
     type TypeResolver = R;
 
     // We have opted here to be quite flexible in what we support; we'll happily ignore fields in the input that we
     // don't care about and support unnamed to named fields. You could choose to be more strict if you prefer. We also
     // add context to any errors coming from decoding sub-types via `.map_err(|e| e.at_x(..))` calls.
-    fn visit_variant<'scale, 'info>(
+    fn visit_variant<'scale, 'resolver>(
         self,
-        value: &mut scale_decode::visitor::types::Variant<'scale, 'info, Self::TypeResolver>,
+        value: &mut scale_decode::visitor::types::Variant<'scale, 'resolver, Self::TypeResolver>,
         _type_id: &TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
+    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.name() == "Bar" {
             // Here we choose to support decoding named or unnamed fields into our Bar variant.
             let fields = value.fields();

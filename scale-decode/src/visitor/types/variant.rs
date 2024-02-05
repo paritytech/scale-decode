@@ -17,22 +17,22 @@ use crate::visitor::{Composite, DecodeError};
 use scale_type_resolver::{FieldIter, TypeResolver, VariantIter};
 
 /// A representation of the a variant type.
-pub struct Variant<'scale, 'info, R: TypeResolver> {
+pub struct Variant<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
-    variant_name: &'info str,
+    variant_name: &'resolver str,
     variant_index: u8,
-    fields: Composite<'scale, 'info, R>,
+    fields: Composite<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
     pub(crate) fn new<
-        Fields: FieldIter<'info, R::TypeId> + 'info,
-        Variants: VariantIter<'info, Fields>,
+        Fields: FieldIter<'resolver, R::TypeId> + 'resolver,
+        Variants: VariantIter<'resolver, Fields>,
     >(
         bytes: &'scale [u8],
         mut variants: Variants,
-        types: &'info R,
-    ) -> Result<Variant<'scale, 'info, R>, DecodeError> {
+        types: &'resolver R,
+    ) -> Result<Variant<'scale, 'resolver, R>, DecodeError> {
         let index = *bytes.first().ok_or(DecodeError::NotEnoughInput)?;
         let item_bytes = &bytes[1..];
 
@@ -49,7 +49,7 @@ impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
@@ -65,7 +65,7 @@ impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
         self.fields.bytes_from_undecoded()
     }
     /// The name of the variant.
-    pub fn name(&self) -> &'info str {
+    pub fn name(&self) -> &'resolver str {
         self.variant_name
     }
     /// The index of the variant.
@@ -73,7 +73,7 @@ impl<'scale, 'info, R: TypeResolver> Variant<'scale, 'info, R> {
         self.variant_index
     }
     /// Access the variant fields.
-    pub fn fields(&mut self) -> &mut Composite<'scale, 'info, R> {
+    pub fn fields(&mut self) -> &mut Composite<'scale, 'resolver, R> {
         &mut self.fields
     }
 }

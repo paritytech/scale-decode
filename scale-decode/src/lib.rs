@@ -213,10 +213,10 @@ impl<T: Sized + IntoVisitor> DecodeAsType for T {
 /// for tuple and struct types, and is automatically implemented via the [`macro@DecodeAsType`] macro.
 pub trait DecodeAsFields: Sized {
     /// Given some bytes and some fields denoting their structure, attempt to decode.
-    fn decode_as_fields<'info, R: TypeResolver>(
+    fn decode_as_fields<'resolver, R: TypeResolver>(
         input: &mut &[u8],
-        fields: &mut dyn FieldIter<'info, R::TypeId>,
-        types: &'info R,
+        fields: &mut dyn FieldIter<'resolver, R::TypeId>,
+        types: &'resolver R,
     ) -> Result<Self, Error>;
 }
 
@@ -230,8 +230,8 @@ pub trait DecodeAsFields: Sized {
 // rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type AnyVisitor<R: TypeResolver>: for<'scale, 'info> visitor::Visitor<
-        Value<'scale, 'info> = Self,
+    type AnyVisitor<R: TypeResolver>: for<'scale, 'resolver> visitor::Visitor<
+        Value<'scale, 'resolver> = Self,
         Error = Error,
         TypeResolver = R,
     >;

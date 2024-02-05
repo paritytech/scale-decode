@@ -28,22 +28,22 @@ use scale_type_resolver::{
 /// The provided pointer to the data slice will be moved forwards as needed
 /// depending on what was decoded, and a method on the provided [`Visitor`]
 /// will be called depending on the type that needs to be decoded.
-pub fn decode_with_visitor<'scale, 'info, V: Visitor>(
+pub fn decode_with_visitor<'scale, 'resolver, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: &TypeIdFor<V>,
-    types: &'info V::TypeResolver,
+    types: &'resolver V::TypeResolver,
     visitor: V,
-) -> Result<V::Value<'scale, 'info>, V::Error> {
+) -> Result<V::Value<'scale, 'resolver>, V::Error> {
     decode_with_visitor_maybe_compact(data, ty_id, types, visitor, false)
 }
 
-pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
+pub fn decode_with_visitor_maybe_compact<'scale, 'resolver, V: Visitor>(
     data: &mut &'scale [u8],
     ty_id: &TypeIdFor<V>,
-    types: &'info V::TypeResolver,
+    types: &'resolver V::TypeResolver,
     visitor: V,
     is_compact: bool,
-) -> Result<V::Value<'scale, 'info>, V::Error> {
+) -> Result<V::Value<'scale, 'resolver>, V::Error> {
     // Provide option to "bail out" and do something custom first.
     let visitor = match visitor.unchecked_decode_as_type(data, ty_id, types) {
         DecodeAsTypeResult::Decoded(r) => return r,
@@ -65,18 +65,22 @@ pub fn decode_with_visitor_maybe_compact<'scale, 'info, V: Visitor>(
     }
 }
 
-struct Decoder<'a, 'scale, 'info, V: Visitor> {
+/// This struct implements `ResolvedTypeVisitor`. One of those methods fired depending on the type that
+/// we resolve from the given TypeId, and then based on the information handed to that method we decode
+/// the SCALE encoded bytes as needed and then call the relevant method on the `scale_decode::Visitor` to
+/// hand back the decoded value (or some nice interface to allow the user to decode the value).
+struct Decoder<'a, 'scale, 'resolver, V: Visitor> {
     data: &'a mut &'scale [u8],
     type_id: &'a TypeIdFor<V>,
-    types: &'info V::TypeResolver,
+    types: &'resolver V::TypeResolver,
     visitor: V,
     is_compact: bool,
 }
 
-impl<'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
+impl<'a, 'scale, 'resolver, V: Visitor> Decoder<'a, 'scale, 'resolver, V> {
     fn new(
         data: &'a mut &'scale [u8],
-        types: &'info V::TypeResolver,
+        types: &'resolver V::TypeResolver,
         type_id: &'a TypeIdFor<V>,
         visitor: V,
         is_compact: bool,
@@ -85,9 +89,11 @@ impl<'a, 'scale, 'info, V: Visitor> Decoder<'a, 'scale, 'info, V> {
     }
 }
 
-impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, 'scale, 'info, V> {
+impl<'a, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
+    for Decoder<'a, 'scale, 'resolver, V>
+{
     type TypeId = TypeIdFor<V>;
-    type Value = Result<V::Value<'scale, 'info>, V::Error>;
+    type Value = Result<V::Value<'scale, 'resolver>, V::Error>;
 
     fn visit_unhandled(self, kind: UnhandledKind) -> Self::Value {
         let type_id = self.type_id;
@@ -104,7 +110,7 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
 
     fn visit_composite<Fields>(self, mut fields: Fields) -> Self::Value
     where
-        Fields: FieldIter<'info, Self::TypeId>,
+        Fields: FieldIter<'resolver, Self::TypeId>,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && fields.len() != 1 {
@@ -123,8 +129,8 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
 
     fn visit_variant<Fields, Var>(self, variants: Var) -> Self::Value
     where
-        Fields: FieldIter<'info, Self::TypeId> + 'info,
-        Var: VariantIter<'info, Fields>,
+        Fields: FieldIter<'resolver, Self::TypeId> + 'resolver,
+        Var: VariantIter<'resolver, Fields>,
     {
         if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
@@ -140,7 +146,7 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
         res
     }
 
-    fn visit_sequence(self, inner_type_id: &'info Self::TypeId) -> Self::Value {
+    fn visit_sequence(self, inner_type_id: &'resolver Self::TypeId) -> Self::Value {
         if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
@@ -155,7 +161,7 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
         res
     }
 
-    fn visit_array(self, inner_type_id: &'info Self::TypeId, len: usize) -> Self::Value {
+    fn visit_array(self, inner_type_id: &'resolver Self::TypeId, len: usize) -> Self::Value {
         if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
@@ -170,9 +176,9 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
         res
     }
 
-    fn visit_tuple<'resolver, TypeIds>(self, type_ids: TypeIds) -> Self::Value
+    fn visit_tuple<TypeIds>(self, type_ids: TypeIds) -> Self::Value
     where
-        TypeIds: ExactSizeIterator<Item = &'info Self::TypeId>,
+        TypeIds: ExactSizeIterator<Item = &'resolver Self::TypeId>,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
         if self.is_compact && type_ids.len() != 1 {
@@ -322,7 +328,7 @@ impl<'a, 'scale, 'info, V: Visitor> ResolvedTypeVisitor<'info> for Decoder<'a, '
         }
     }
 
-    fn visit_compact(self, inner_type_id: &'info Self::TypeId) -> Self::Value {
+    fn visit_compact(self, inner_type_id: &'resolver Self::TypeId) -> Self::Value {
         decode_with_visitor_maybe_compact(self.data, inner_type_id, self.types, self.visitor, true)
     }
 

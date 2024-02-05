@@ -22,20 +22,20 @@ use codec::{Compact, Decode};
 use scale_type_resolver::TypeResolver;
 
 /// This enables a visitor to decode items from a sequence type.
-pub struct Sequence<'scale, 'info, R: TypeResolver> {
+pub struct Sequence<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     // Mostly we just delegate to our Array logic for working with sequences.
     // The only thing we need to do otherwise is decode the compact encoded
     // length from the beginning and keep track of the bytes including that.
-    values: Array<'scale, 'info, R>,
+    values: Array<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'info, R: TypeResolver> Sequence<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> Sequence<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: &'info R::TypeId,
-        types: &'info R,
-    ) -> Result<Sequence<'scale, 'info, R>, DecodeError> {
+        type_id: &'resolver R::TypeId,
+        types: &'resolver R,
+    ) -> Result<Sequence<'scale, 'resolver, R>, DecodeError> {
         // Sequences are prefixed with their length in bytes. Make a note of this,
         // as well as the number of bytes
         let item_bytes = &mut &*bytes;
@@ -65,33 +65,33 @@ impl<'scale, 'info, R: TypeResolver> Sequence<'scale, 'info, R> {
     pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.values.decode_item(visitor)
     }
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info, R: TypeResolver> Iterator for Sequence<'scale, 'info, R> {
-    type Item = Result<SequenceItem<'scale, 'info, R>, DecodeError>;
+impl<'scale, 'resolver, R: TypeResolver> Iterator for Sequence<'scale, 'resolver, R> {
+    type Item = Result<SequenceItem<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         Some(self.values.next()?.map(|item| SequenceItem { item }))
     }
 }
 
 /// A single item in the Sequence.
-pub struct SequenceItem<'scale, 'info, R: TypeResolver> {
+pub struct SequenceItem<'scale, 'resolver, R: TypeResolver> {
     // Same implementation under the hood as ArrayItem:
-    item: ArrayItem<'scale, 'info, R>,
+    item: ArrayItem<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'info, R: TypeResolver> Copy for SequenceItem<'scale, 'info, R> {}
-impl<'scale, 'info, R: TypeResolver> Clone for SequenceItem<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> Copy for SequenceItem<'scale, 'resolver, R> {}
+impl<'scale, 'resolver, R: TypeResolver> Clone for SequenceItem<'scale, 'resolver, R> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> SequenceItem<'scale, 'resolver, R> {
     /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.item.bytes()
@@ -104,7 +104,7 @@ impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
     pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
         self.item.decode_with_visitor(visitor)
     }
     /// Decode this item into a specific type via [`DecodeAsType`].
@@ -113,13 +113,13 @@ impl<'scale, 'info, R: TypeResolver> SequenceItem<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
-    for Sequence<'scale, 'info, R>
+impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'resolver, R>
+    for Sequence<'scale, 'resolver, R>
 {
     fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.decode_item(visitor)
     }
 }

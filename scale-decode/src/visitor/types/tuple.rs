@@ -20,22 +20,22 @@ use crate::{
 use scale_type_resolver::{Field, TypeResolver};
 
 /// This represents a tuple of values.
-pub struct Tuple<'scale, 'info, R: TypeResolver> {
+pub struct Tuple<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    fields: smallvec::SmallVec<[Field<'info, R::TypeId>; 16]>,
+    fields: smallvec::SmallVec<[Field<'resolver, R::TypeId>; 16]>,
     next_field_idx: usize,
-    types: &'info R,
+    types: &'resolver R,
     is_compact: bool,
 }
 
-impl<'scale, 'info, R: TypeResolver> Tuple<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> Tuple<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        fields: &mut dyn FieldIter<'info, R::TypeId>,
-        types: &'info R,
+        fields: &mut dyn FieldIter<'resolver, R::TypeId>,
+        types: &'resolver R,
         is_compact: bool,
-    ) -> Tuple<'scale, 'info, R> {
+    ) -> Tuple<'scale, 'resolver, R> {
         let fields = smallvec::SmallVec::from_iter(fields);
         Tuple { bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
     }
@@ -64,7 +64,7 @@ impl<'scale, 'info, R: TypeResolver> Tuple<'scale, 'info, R> {
     pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         let field = self.fields.get(self.next_field_idx)?;
         let b = &mut &*self.item_bytes;
         // Decode the bytes:
@@ -90,8 +90,8 @@ impl<'scale, 'info, R: TypeResolver> Tuple<'scale, 'info, R> {
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info, R: TypeResolver> Iterator for Tuple<'scale, 'info, R> {
-    type Item = Result<TupleField<'scale, 'info, R>, DecodeError>;
+impl<'scale, 'resolver, R: TypeResolver> Iterator for Tuple<'scale, 'resolver, R> {
+    type Item = Result<TupleField<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
         let field = *self.fields.get(self.next_field_idx)?;
@@ -118,14 +118,14 @@ impl<'scale, 'info, R: TypeResolver> Iterator for Tuple<'scale, 'info, R> {
 
 /// A single field in the tuple type.
 #[derive(Copy, Clone, Debug)]
-pub struct TupleField<'scale, 'info, R: TypeResolver> {
+pub struct TupleField<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: &'info R::TypeId,
-    types: &'info R,
+    type_id: &'resolver R::TypeId,
+    types: &'resolver R,
     is_compact: bool,
 }
 
-impl<'scale, 'info, R: TypeResolver> TupleField<'scale, 'info, R> {
+impl<'scale, 'resolver, R: TypeResolver> TupleField<'scale, 'resolver, R> {
     /// The bytes associated with this field.
     pub fn bytes(&self) -> &'scale [u8] {
         self.bytes
@@ -142,7 +142,7 @@ impl<'scale, 'info, R: TypeResolver> TupleField<'scale, 'info, R> {
     pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
         crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
@@ -156,13 +156,13 @@ impl<'scale, 'info, R: TypeResolver> TupleField<'scale, 'info, R> {
     }
 }
 
-impl<'scale, 'info, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'info, R>
-    for Tuple<'scale, 'info, R>
+impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'resolver, R>
+    for Tuple<'scale, 'resolver, R>
 {
     fn decode_item<'a, V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.decode_item(visitor)
     }
 }
