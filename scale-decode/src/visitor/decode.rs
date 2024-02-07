@@ -12,12 +12,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 use crate::visitor::{
     Array, BitSequence, Composite, DecodeAsTypeResult, DecodeError, Sequence, Str, Tuple,
     TypeIdFor, Variant, Visitor,
 };
 use crate::Field;
+use alloc::format;
+use alloc::string::ToString;
 use codec::{self, Decode};
 use scale_type_resolver::{
     BitsOrderFormat, BitsStoreFormat, FieldIter, Primitive, ResolvedTypeVisitor, TypeResolver,

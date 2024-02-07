@@ -561,7 +561,7 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
 
             // Match on the resolved kind; try to decode as inner type if it's not a
             // composite, tuple, or a type ID we can't find. Else fall back to default.
-            struct TryDecodeAsInner<TypeId>(std::marker::PhantomData<TypeId>);
+            struct TryDecodeAsInner<TypeId>(PhantomData<TypeId>);
             impl<'resolver, TypeId: scale_type_resolver::TypeId + 'resolver>
                 ResolvedTypeVisitor<'resolver> for TryDecodeAsInner<TypeId>
             {
@@ -578,9 +578,7 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
             }
 
             // If error decoding, or false, just fall back to default behavious and don't try to decode as inner.
-            if let Err(_) | Ok(false) =
-                types.resolve_type(type_id, TryDecodeAsInner(std::marker::PhantomData))
-            {
+            if let Err(_) | Ok(false) = types.resolve_type(type_id, TryDecodeAsInner(PhantomData)) {
                 return DecodeAsTypeResult::Skipped(self);
             }
 

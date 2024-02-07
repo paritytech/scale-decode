@@ -18,6 +18,8 @@
 mod decode;
 pub mod types;
 
+use alloc::string::String;
+use core::marker::PhantomData;
 use scale_type_resolver::TypeResolver;
 use types::*;
 
@@ -361,7 +363,7 @@ pub trait DecodeItemIterator<'scale, 'resolver, R: TypeResolver> {
 }
 
 /// A [`Visitor`] implementation that just ignores all of the bytes.
-pub struct IgnoreVisitor<R>(std::marker::PhantomData<R>);
+pub struct IgnoreVisitor<R>(PhantomData<R>);
 
 impl<R> Default for IgnoreVisitor<R> {
     fn default() -> Self {
@@ -372,7 +374,7 @@ impl<R> Default for IgnoreVisitor<R> {
 impl<R> IgnoreVisitor<R> {
     /// Construct a new [`IgnoreVisitor`].
     pub fn new() -> Self {
-        IgnoreVisitor(std::marker::PhantomData)
+        IgnoreVisitor(PhantomData)
     }
 }
 
@@ -456,7 +458,7 @@ mod test {
         BitSequence(scale_bits::Bits),
     }
 
-    struct ValueVisitor<R>(std::marker::PhantomData<R>);
+    struct ValueVisitor<R>(PhantomData<R>);
     impl<R> Clone for ValueVisitor<R> {
         fn clone(&self) -> Self {
             *self
@@ -466,7 +468,7 @@ mod test {
 
     impl<R> ValueVisitor<R> {
         pub fn new() -> Self {
-            Self(std::marker::PhantomData)
+            Self(PhantomData)
         }
     }
 
