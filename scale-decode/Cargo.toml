@@ -28,7 +28,7 @@ derive = ["dep:scale-decode-derive"]
 [dependencies]
 scale-info = { version = "2.7.0", default-features = false, features = ["bit-vec"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-scale-bits = { path = "../../scale-bits", version = "0.5.0", default-features = false, features = ["scale-info"] } # TODO: Update to released crate when ready.
+scale-bits = { version = "0.5.0", default-features = false, features = ["scale-info"] }
 scale-decode-derive = { workspace = true, optional = true }
 primitive-types = { version = "0.12.0", optional = true, default-features = false }
 smallvec = "1.10.0"
