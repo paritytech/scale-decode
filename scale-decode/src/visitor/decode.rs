@@ -25,7 +25,7 @@ use scale_type_resolver::{
     UnhandledKind, VariantIter,
 };
 
-/// Decode data according to the type ID and [`PortableRegistry`] provided.
+/// Decode data according to the type ID and type resolver provided.
 /// The provided pointer to the data slice will be moved forwards as needed
 /// depending on what was decoded, and a method on the provided [`Visitor`]
 /// will be called depending on the type that needs to be decoded.
