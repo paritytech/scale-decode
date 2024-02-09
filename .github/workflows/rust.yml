@@ -16,7 +16,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  check:
     name: Cargo check
     runs-on: ubuntu-latest
     steps:
@@ -31,7 +31,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Check all features
         uses: actions-rs/cargo@v1.0.3
@@ -44,6 +44,31 @@ jobs:
         with:
           command: check
           args: --all-targets --no-default-features --workspace
+
+  machete:
+    name: Check unused dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+
+      - name: Install cargo-machete
+        run: cargo install cargo-machete
+
+      - name: Check unused dependencies
+        uses: actions-rs/cargo@v1.0.3
+        with:
+          command: machete
 
   wasm:
     name: Check WASM compatibility
@@ -61,7 +86,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Check all features
         uses: actions-rs/cargo@v1.0.3
@@ -87,7 +112,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Check no_std build
         uses: actions-rs/cargo@v1.0.3
@@ -113,7 +138,7 @@ jobs:
             components: rustfmt
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Cargo fmt
         uses: actions-rs/cargo@v1.0.3
@@ -136,7 +161,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Check internal documentation links
         run: RUSTDOCFLAGS="--deny rustdoc::broken_intra_doc_links" cargo doc -vv --workspace --no-deps --document-private-items
@@ -156,7 +181,7 @@ jobs:
           override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Cargo test
         uses: actions-rs/cargo@v1.0.3
@@ -192,7 +217,7 @@ jobs:
             override: true
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@a22603398250b864f7190077025cf752307154dc # v2.7.2
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
 
       - name: Run clippy
         uses: actions-rs/cargo@v1
