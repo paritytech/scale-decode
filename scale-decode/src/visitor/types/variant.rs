@@ -37,9 +37,8 @@ impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
         let item_bytes = &bytes[1..];
 
         // Does a variant exist with the index we're looking for?
-        let mut variant = variants
-            .find(|v| v.index == index)
-            .ok_or_else(|| DecodeError::VariantNotFound(index))?;
+        let mut variant =
+            variants.find(|v| v.index == index).ok_or(DecodeError::VariantNotFound(index))?;
 
         // Allow decoding of the fields:
         let fields = Composite::new(item_bytes, &mut variant.fields, types, false);

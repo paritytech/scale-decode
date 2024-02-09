@@ -766,8 +766,7 @@ mod test {
 
         let new_foo = match &types.resolve(ty).unwrap().type_def {
             scale_info::TypeDef::Composite(c) => {
-                let mut field_iter =
-                    c.fields.iter().map(|f| Field::new(&f.ty.id, f.name.as_deref()));
+                let mut field_iter = c.fields.iter().map(|f| Field::new(&f.ty.id, f.name));
                 Foo::decode_as_fields(foo_encoded_cursor, &mut field_iter, &types).unwrap()
             }
             scale_info::TypeDef::Tuple(t) => {
