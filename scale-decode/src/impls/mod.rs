@@ -376,8 +376,6 @@ impl<T: IntoVisitor> IntoVisitor for BTreeMap<String, T> {
     }
 }
 
-// impl_into_visitor!(BTreeMap<String, T> where T: IntoVisitor);
-
 impl<T: IntoVisitor, R: TypeResolver> Visitor for BasicVisitor<Option<T>, R> {
     type Error = Error;
     type Value<'scale, 'resolver> = Option<T>;
