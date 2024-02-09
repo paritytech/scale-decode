@@ -1,8 +1,8 @@
 # scale-decode
 
-This crate makes it easy to decode SCALE encoded bytes into a custom data structure with the help of `scale_info` types.
-By using this type information to guide decoding (instead of just trying to decode bytes based on the shape of the target type),
-it's possible to be much more flexible in how data is decoded and mapped to some target type.
+This crate makes it easy to decode SCALE encoded bytes into a custom data structure with the help of a `TypeResolver` (one of which
+is a `scale_info::PortableRegistry`). By using this type information to guide decoding (instead of just trying to decode bytes based
+on the shape of the target type), it's possible to be much more flexible in how data is decoded and mapped to some target type.
 
 The main trait used to decode types is a `Visitor` trait (example below). By implementing this trait, you can describe how to
 take SCALE decoded values and map them to some custom type of your choosing (whether it is a dynamically shaped type or some
@@ -260,8 +260,8 @@ let value: Value = scale_decode::visitor::decode_with_visitor(scale_bytes, &type
 ```
 
 Where `scale_bytes` are the bytes you'd like to decode, `type_id` is the type stored in the `types` registry
-that you'd like to try and decode the bytes into, and `types` is a `scale_info::PortableRegistry` containing
-information about the various types in use.
+that you'd like to try and decode the bytes into, and `types` is a `scale_type_resolver::TypeResolver` containing
+information about the various types in use (a concrete implementation of this is `scale_info::PortableRegistry`).
 
 If we were to then write an `IntoVisitor` implementation like so:
 

@@ -16,8 +16,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /*!
-`parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those types.
-This crate builds on this, and allows bytes to be decoded into types based on [`scale_info`] type information, rather than the shape
+`parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those
+types. This crate builds on this, and allows bytes to be decoded into types based on type information, rather than the shape
 of the target type. At a high level, this crate just aims to do the reverse of the `scale-encode` crate.
 
 This crate exposes four traits:
@@ -26,7 +26,7 @@ This crate exposes four traits:
   to decode SCALE encoded bytes based on some type information into some arbitrary type.
 - An [`IntoVisitor`] trait which can be used to obtain the [`visitor::Visitor`] implementation for some type.
 - A [`DecodeAsType`] trait which is implemented for types which implement [`IntoVisitor`], and provides a high level interface for
-  decoding SCALE encoded bytes into some type with the help of a type ID and [`scale_info::PortableRegistry`].
+  decoding SCALE encoded bytes into some type with the help of a type ID and a [`scale_type_resolver::TypeResolver`].
 - A [`DecodeAsFields`] trait which when implemented on some type, describes how SCALE encoded bytes can be decoded
   into it with the help of an iterator of [`Field`]s and a type registry describing the shape of the encoded bytes. This is
   generally only implemented for tuples and structs, since we need a set of fields to map to the provided slices.
