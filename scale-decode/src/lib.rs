@@ -55,7 +55,7 @@ fn get_type_info<T: TypeInfo + 'static>() -> (u32, PortableRegistry) {
     let mut types = scale_info::Registry::new();
     let ty = types.register_type(&m);
     let portable_registry: PortableRegistry = types.into();
-    (ty.id(), portable_registry)
+    (ty.id, portable_registry)
 }
 
 // Encode the left value statically.
@@ -68,7 +68,7 @@ where
 {
     let (type_id, types) = get_type_info::<A>();
     let a_bytes = a.encode();
-    let new_b = B::decode_as_type(&mut &*a_bytes, type_id, &types).unwrap();
+    let new_b = B::decode_as_type(&mut &*a_bytes, &type_id, &types).unwrap();
     assert_eq!(b, new_b);
 }
 
@@ -145,11 +145,10 @@ pub mod error;
 pub mod visitor;
 
 pub use crate::error::Error;
+pub use scale_type_resolver::Field;
+pub use scale_type_resolver::FieldIter;
+pub use scale_type_resolver::TypeResolver;
 pub use visitor::Visitor;
-
-// Used in trait definitions.
-use scale_info::form::PortableForm;
-pub use scale_info::PortableRegistry;
 
 // This is exported for generated derive code to use, to be compatible with std or no-std as needed.
 #[doc(hidden)]
@@ -159,9 +158,8 @@ pub use alloc::{collections::BTreeMap, string::ToString, vec};
 pub mod ext {
     #[cfg(feature = "primitive-types")]
     pub use primitive_types;
+    pub use scale_type_resolver;
 }
-
-use alloc::vec::Vec;
 
 /// This trait is implemented for any type `T` where `T` implements [`IntoVisitor`] and the errors returned
 /// from this [`Visitor`] can be converted into [`Error`]. It's essentially a convenience wrapper around
@@ -170,10 +168,10 @@ pub trait DecodeAsType: Sized + IntoVisitor {
     /// Given some input bytes, a `type_id`, and type registry, attempt to decode said bytes into
     /// `Self`. Implementations should modify the `&mut` reference to the bytes such that any bytes
     /// not used in the course of decoding are still pointed to after decoding is complete.
-    fn decode_as_type(
+    fn decode_as_type<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: u32,
-        types: &PortableRegistry,
+        type_id: &R::TypeId,
+        types: &R,
     ) -> Result<Self, Error> {
         Self::decode_as_type_maybe_compact(input, type_id, types, false)
     }
@@ -184,26 +182,26 @@ pub trait DecodeAsType: Sized + IntoVisitor {
     ///
     /// If is_compact=true, it is assumed the value is compact encoded (only works for some types).
     #[doc(hidden)]
-    fn decode_as_type_maybe_compact(
+    fn decode_as_type_maybe_compact<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: u32,
-        types: &PortableRegistry,
+        type_id: &R::TypeId,
+        types: &R,
         is_compact: bool,
     ) -> Result<Self, Error>;
 }
 
 impl<T: Sized + IntoVisitor> DecodeAsType for T {
-    fn decode_as_type_maybe_compact(
+    fn decode_as_type_maybe_compact<R: TypeResolver>(
         input: &mut &[u8],
-        type_id: u32,
-        types: &scale_info::PortableRegistry,
+        type_id: &R::TypeId,
+        types: &R,
         is_compact: bool,
     ) -> Result<Self, Error> {
         let res = visitor::decode_with_visitor_maybe_compact(
             input,
             type_id,
             types,
-            T::into_visitor(),
+            T::into_visitor::<R>(),
             is_compact,
         )?;
         Ok(res)
@@ -215,52 +213,12 @@ impl<T: Sized + IntoVisitor> DecodeAsType for T {
 /// for tuple and struct types, and is automatically implemented via the [`macro@DecodeAsType`] macro.
 pub trait DecodeAsFields: Sized {
     /// Given some bytes and some fields denoting their structure, attempt to decode.
-    fn decode_as_fields<'info>(
+    fn decode_as_fields<'resolver, R: TypeResolver>(
         input: &mut &[u8],
-        fields: &mut dyn FieldIter<'info>,
-        types: &'info PortableRegistry,
+        fields: &mut dyn FieldIter<'resolver, R::TypeId>,
+        types: &'resolver R,
     ) -> Result<Self, Error>;
 }
-
-/// A representation of a single field to be encoded via [`DecodeAsFields::decode_as_fields`].
-#[derive(Debug, Clone, Copy)]
-pub struct Field<'a> {
-    name: Option<&'a str>,
-    id: u32,
-}
-
-impl<'a> Field<'a> {
-    /// Construct a new field with an ID and optional name.
-    pub fn new(id: u32, name: Option<&'a str>) -> Self {
-        Field { id, name }
-    }
-    /// Create a new unnamed field.
-    pub fn unnamed(id: u32) -> Self {
-        Field { name: None, id }
-    }
-    /// Create a new named field.
-    pub fn named(id: u32, name: &'a str) -> Self {
-        Field { name: Some(name), id }
-    }
-    /// The field name, if any.
-    pub fn name(&self) -> Option<&'a str> {
-        self.name
-    }
-    /// The field ID.
-    pub fn id(&self) -> u32 {
-        self.id
-    }
-}
-
-impl<'a> From<&'a scale_info::Field<PortableForm>> for Field<'a> {
-    fn from(value: &'a scale_info::Field<PortableForm>) -> Self {
-        Field { name: value.name.as_deref(), id: value.ty.id }
-    }
-}
-
-/// An iterator over a set of fields.
-pub trait FieldIter<'a>: Iterator<Item = Field<'a>> {}
-impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 
 /// This trait can be implemented on any type that has an associated [`Visitor`] responsible for decoding
 /// SCALE encoded bytes to it whose error type is [`Error`]. Anything that implements this trait gets a
@@ -272,16 +230,14 @@ impl<'a, T> FieldIter<'a> for T where T: Iterator<Item = Field<'a>> {}
 // rather than rely on auto conversion, if they care about also being able to impl `DecodeAsType`.
 pub trait IntoVisitor {
     /// The visitor type used to decode SCALE encoded bytes to `Self`.
-    type Visitor: for<'scale, 'info> visitor::Visitor<Value<'scale, 'info> = Self, Error = Error>;
+    type AnyVisitor<R: TypeResolver>: for<'scale, 'resolver> visitor::Visitor<
+        Value<'scale, 'resolver> = Self,
+        Error = Error,
+        TypeResolver = R,
+    >;
     /// A means of obtaining this visitor.
-    fn into_visitor() -> Self::Visitor;
+    fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R>;
 }
-
-// In a few places, we need an empty path with a lifetime that outlives 'info,
-// so here's one that lives forever that we can use.
-#[doc(hidden)]
-pub static EMPTY_SCALE_INFO_PATH: &scale_info::Path<scale_info::form::PortableForm> =
-    &scale_info::Path { segments: Vec::new() };
 
 /// The `DecodeAsType` derive macro can be used to implement `DecodeAsType` on structs and enums whose
 /// fields all implement `DecodeAsType`. Under the hood, the macro generates `scale_decode::visitor::Visitor`

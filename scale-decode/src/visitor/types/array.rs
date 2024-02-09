@@ -17,31 +17,31 @@ use crate::{
     visitor::{DecodeError, IgnoreVisitor, Visitor},
     DecodeAsType,
 };
-use scale_info::PortableRegistry;
+use scale_type_resolver::TypeResolver;
 
 /// This enables a visitor to decode items from an array type.
-pub struct Array<'scale, 'info> {
+pub struct Array<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    type_id: u32,
-    types: &'info PortableRegistry,
+    type_id: &'resolver R::TypeId,
+    types: &'resolver R,
     remaining: usize,
 }
 
-impl<'scale, 'info> Array<'scale, 'info> {
+impl<'scale, 'resolver, R: TypeResolver> Array<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: u32,
+        type_id: &'resolver R::TypeId,
         len: usize,
-        types: &'info PortableRegistry,
-    ) -> Array<'scale, 'info> {
+        types: &'resolver R,
+    ) -> Array<'scale, 'resolver, R> {
         Array { bytes, item_bytes: bytes, type_id, types, remaining: len }
     }
     /// Skip over all bytes associated with this array. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this array.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {
         while self.remaining > 0 {
-            self.decode_item(IgnoreVisitor).transpose()?;
+            self.decode_item(IgnoreVisitor::<R>::new()).transpose()?;
         }
         Ok(())
     }
@@ -63,10 +63,10 @@ impl<'scale, 'info> Array<'scale, 'info> {
         self.remaining == 0
     }
     /// Decode an item from the array by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(
+    pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         if self.remaining == 0 {
             return None;
         }
@@ -82,14 +82,14 @@ impl<'scale, 'info> Array<'scale, 'info> {
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info> Iterator for Array<'scale, 'info> {
-    type Item = Result<ArrayItem<'scale, 'info>, DecodeError>;
+impl<'scale, 'resolver, R: TypeResolver> Iterator for Array<'scale, 'resolver, R> {
+    type Item = Result<ArrayItem<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
-        if let Err(e) = self.decode_item(IgnoreVisitor)? {
+        if let Err(e) = self.decode_item(IgnoreVisitor::<R>::new())? {
             return Some(Err(e));
         };
 
@@ -102,27 +102,33 @@ impl<'scale, 'info> Iterator for Array<'scale, 'info> {
 }
 
 /// A single item in the array.
-#[derive(Copy, Clone)]
-pub struct ArrayItem<'scale, 'info> {
+pub struct ArrayItem<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: u32,
-    types: &'info PortableRegistry,
+    type_id: &'resolver R::TypeId,
+    types: &'resolver R,
 }
 
-impl<'scale, 'info> ArrayItem<'scale, 'info> {
+impl<'scale, 'resolver, R: TypeResolver> Copy for ArrayItem<'scale, 'resolver, R> {}
+impl<'scale, 'resolver, R: TypeResolver> Clone for ArrayItem<'scale, 'resolver, R> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'scale, 'resolver, R: TypeResolver> ArrayItem<'scale, 'resolver, R> {
     /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.bytes
     }
     /// The type ID associated with this item.
-    pub fn type_id(&self) -> u32 {
+    pub fn type_id(&self) -> &R::TypeId {
         self.type_id
     }
     /// Decode this item using a visitor.
-    pub fn decode_with_visitor<V: Visitor>(
+    pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
         crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
     }
     /// Decode this item into a specific type via [`DecodeAsType`].
@@ -131,11 +137,13 @@ impl<'scale, 'info> ArrayItem<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Array<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(
+impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'resolver, R>
+    for Array<'scale, 'resolver, R>
+{
+    fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.decode_item(visitor)
     }
 }

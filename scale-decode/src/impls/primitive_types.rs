@@ -20,27 +20,29 @@ use crate::{
     IntoVisitor,
 };
 use primitive_types::{H128, H160, H256, H384, H512, H768};
+use scale_type_resolver::TypeResolver;
 
 macro_rules! impl_visitor {
     ($ty:ty: $len:literal) => {
-        impl Visitor for BasicVisitor<$ty> {
+        impl<R: TypeResolver> Visitor for BasicVisitor<$ty, R> {
             type Error = Error;
-            type Value<'scale, 'info> = $ty;
+            type Value<'scale, 'resolver> = $ty;
+            type TypeResolver = R;
 
-            fn unchecked_decode_as_type<'scale, 'info>(
+            fn unchecked_decode_as_type<'scale, 'resolver>(
                 self,
                 input: &mut &'scale [u8],
-                type_id: crate::visitor::TypeId,
-                types: &'info scale_info::PortableRegistry,
+                type_id: &<Self::TypeResolver as TypeResolver>::TypeId,
+                types: &'resolver Self::TypeResolver,
             ) -> crate::visitor::DecodeAsTypeResult<
                 Self,
-                Result<Self::Value<'scale, 'info>, Self::Error>,
+                Result<Self::Value<'scale, 'resolver>, Self::Error>,
             > {
                 let res = decode_with_visitor(
                     input,
-                    type_id.0,
+                    type_id,
                     types,
-                    BasicVisitor::<[u8; $len / 8]> { _marker: core::marker::PhantomData },
+                    BasicVisitor::<[u8; $len / 8], R> { _marker: core::marker::PhantomData },
                 )
                 .map(|res| <$ty>::from(res));
                 DecodeAsTypeResult::Decoded(res)
@@ -48,8 +50,8 @@ macro_rules! impl_visitor {
         }
 
         impl IntoVisitor for $ty {
-            type Visitor = BasicVisitor<$ty>;
-            fn into_visitor() -> Self::Visitor {
+            type AnyVisitor<R: TypeResolver> = BasicVisitor<$ty, R>;
+            fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R> {
                 BasicVisitor { _marker: core::marker::PhantomData }
             }
         }
