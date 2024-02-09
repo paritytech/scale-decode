@@ -250,7 +250,7 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
         let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
         Ok(Value::BitSequence(bools?))
     }
-}
+}s
 ```
 
 This can then be passed to a decode function like so:

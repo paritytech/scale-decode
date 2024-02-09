@@ -146,6 +146,16 @@ jobs:
           command: fmt
           args: --all -- --check
 
+  diff-readme-files:
+    name: Check that READMEs are identical
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Diff READMEs
+        run: diff -q README.md scale-decode/README.md
+
   docs:
     name: Check documentation
     runs-on: ubuntu-latest
