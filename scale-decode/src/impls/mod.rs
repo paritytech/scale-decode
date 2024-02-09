@@ -577,7 +577,7 @@ macro_rules! decode_inner_type_when_one_tuple_entry {
                 }
             }
 
-            // If error decoding, or false, just fall back to default behavious and don't try to decode as inner.
+            // If error decoding, or false, just fall back to default behaviour and don't try to decode as inner.
             if let Err(_) | Ok(false) = types.resolve_type(type_id, TryDecodeAsInner(PhantomData)) {
                 return DecodeAsTypeResult::Skipped(self);
             }

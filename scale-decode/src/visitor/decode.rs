@@ -214,7 +214,7 @@ impl<'a, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 Ok(arr) => arr,
                 Err(_) => return Err(DecodeError::NotEnoughInput),
             };
-            // If this works out, remember to shift data 32 bytes forward.
+            // If we successfully read the bytes, then advance the pointer past them.
             *data = &data[32..];
             Ok(arr)
         }
