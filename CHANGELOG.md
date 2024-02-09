@@ -4,6 +4,111 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.11.0 - 2023-02-09
+
+Up until now, this crate depended heavily on `scale_info` to provide the type information that we used to drive our decoding of types. This release removes the explicit dependency on `scale-info`, and instead depends on `scale-type-resolver`, which offers a generic `TypeResolver` trait whose implementations are able to provide the information needed to decode types (see [this PR](https://github.com/paritytech/scale-decode/pull/45) for more details). So now, the traits and types in `scale-decode` have been made generic over which `TypeResolver` is used to help decode things. `scale-info::POrtableRegistry` is one such implementation of `TypeResolver`, and so can continue to be used in a similar way to before.
+
+The main breaking changes are:
+
+### Visitor trait
+
+The `scale_decode::Visitor` trait now has an additional associated type, `TypeResolver`.
+
+The simplest change to recover the previous behaviour is to just continue to use `scale_info::PortableRegistry` for this task, as was the case implicitly before:
+
+```rust
+struct MyVisitor;
+
+impl Visitor for MyVisitor {
+  // ...
+  type TypeResolver = scale_info::PortableRegistry;
+
+  // ...
+}
+```
+
+A better change is to make your `Visitor` impls generic over what is used to resolve types unless you need a specific resolver:
+
+```rust
+struct MyVisitor<R>(PhantomData<R>);
+
+impl <R> MyVisitor<R> {
+  pub fn new() -> Self {
+    Self(PhantomData)
+  }
+}
+
+impl <R: TypeResolver> Visitor for MyVisitor<R> {
+  // ...
+  type TypeResolver = R;
+
+  // ...
+}
+```
+
+### IntoVisitor trait
+
+`scale_decode::IntoVisitor` is implemented on all types that have an associated `Visitor` that we can use to decode it. It used to look like this:
+
+```rust
+pub trait IntoVisitor {
+    type Visitor: for<'scale, 'resolver> visitor::Visitor<
+        Value<'scale, 'resolver> = Self,
+        Error = Error,
+    >;
+    fn into_visitor() -> Self::Visitor;
+}
+```
+
+Now it looks like this:
+
+```rust
+pub trait IntoVisitor {
+    type AnyVisitor<R: TypeResolver>: for<'scale, 'resolver> visitor::Visitor<
+        Value<'scale, 'resolver> = Self,
+        Error = Error,
+        TypeResolver = R,
+    >;
+    fn into_visitor<R: TypeResolver>() -> Self::AnyVisitor<R>;
+}
+```
+
+What this means is that if you want to implement `IntoVisitor` for some type, then your `Visitor` must be able to accept any valid `TypeResolver`. This allows `DecodeAsType` to also be generic over which `TypeResolver` is provided.
+
+### DecodeAsType
+
+This trait previously was specific to `scale_info::PortableRegistry` and looked something like this:
+
+```rust
+pub trait DecodeAsType: Sized + IntoVisitor {
+    fn decode_as_type<R: TypeResolver>(
+        input: &mut &[u8],
+        type_id: u32,
+        types: &scale_info::PortableRegistry,
+    ) -> Result<Self, Error> {
+        // ...
+    }
+```
+
+Now, it is generic over which type resolver to use (and as a side effect, requires a reference to the `type_id` now, because it may not be `Copy` any more):
+
+```rust
+pub trait DecodeAsType: Sized + IntoVisitor {
+    fn decode_as_type<R: TypeResolver>(
+        input: &mut &[u8],
+        type_id: &R::TypeId,
+        types: &R,
+    ) -> Result<Self, Error> {
+        // ...
+    }
+```
+
+This is automatically implemented for all types which implement `IntoVisitor`, as before.
+
+### Composite and Variant paths
+
+Mostly, the changes just exist to make things generic over the `TypeResolver`. One consequence of this is that Composite and Variant types no longer know their _path_, because currently `TypeResolver` doesn't provide that information (since it's not necessary to the actual encoding/decoding of types). If there is demand for this, we can consider allowing `TypeResolver` impls to optionally provide these extra details.
+
 ## 0.10.0 - 2023-11-10
 
 This release changes `IntoVisitor` to require that the corresponding `Visitor` implements `scale_decode::Error`, rather than allowing the error to be anything that can be converted into a `scale_decode::Error`. This has the following advantages:
