@@ -244,7 +244,7 @@ pub trait Visitor: Sized {
 #[derive(Debug, Clone, PartialEq, Eq, derive_more::From, derive_more::Display)]
 pub enum DecodeError {
     /// Type ID was not found
-    #[display(fmt = "Could not find type with ID '{_0:?}'")]
+    #[display(fmt = "Could not find type with ID '{_0}'")]
     TypeIdNotFound(String),
     /// A low level error trying to resolve a type.
     #[display(fmt = "Failed to resolve type: {_0}")]
