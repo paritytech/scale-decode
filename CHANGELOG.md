@@ -4,11 +4,11 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
-## 0.11.1 - 2023-02-16
+## 0.11.1 - 2024-02-16
 
 - `scale-info` was still being pulled in via `scale-type-resolver`; this has now been fixed
 
-## 0.11.0 - 2023-02-09
+## 0.11.0 - 2024-02-09
 
 Up until now, this crate depended heavily on `scale_info` to provide the type information that we used to drive our decoding of types. This release removes the explicit dependency on `scale-info`, and instead depends on `scale-type-resolver`, which offers a generic `TypeResolver` trait whose implementations are able to provide the information needed to decode types (see [this PR](https://github.com/paritytech/scale-decode/pull/45) for more details). So now, the traits and types in `scale-decode` have been made generic over which `TypeResolver` is used to help decode things. `scale-info::PortableRegistry` is one such implementation of `TypeResolver`, and so can continue to be used in a similar way to before.
 
