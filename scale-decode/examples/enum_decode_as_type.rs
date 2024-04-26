@@ -63,7 +63,7 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
     fn visit_variant<'scale, 'resolver>(
         self,
         value: &mut scale_decode::visitor::types::Variant<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.name() == "Bar" {
             // Here we choose to support decoding named or unnamed fields into our Bar variant.
@@ -81,9 +81,12 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
                 let vals: HashMap<Option<&str>, _> = fields
                     .map(|res| res.map(|item| (item.name(), item)))
                     .collect::<Result<_, _>>()?;
-                let bar = *vals.get(&Some("bar")).ok_or_else(|| {
-                    Error::new(ErrorKind::CannotFindField { name: "bar".to_owned() })
-                })?;
+                let bar = vals
+                    .get(&Some("bar"))
+                    .ok_or_else(|| {
+                        Error::new(ErrorKind::CannotFindField { name: "bar".to_owned() })
+                    })?
+                    .clone();
                 Ok(Foo::Bar { bar: bar.decode_as_type().map_err(|e| e.at_field("bar"))? })
             }
         } else if value.name() == "Wibble" {
@@ -125,30 +128,30 @@ fn main() {
     let (type_id, types) = make_type::<Foo>();
 
     // We can decode via `DecodeAsType`, which is automatically implemented:
-    let bar_via_decode_as_type = Foo::decode_as_type(&mut &*bar_bytes, &type_id, &types).unwrap();
+    let bar_via_decode_as_type = Foo::decode_as_type(&mut &*bar_bytes, type_id, &types).unwrap();
     let wibble_via_decode_as_type =
-        Foo::decode_as_type(&mut &*wibble_bytes, &type_id, &types).unwrap();
+        Foo::decode_as_type(&mut &*wibble_bytes, type_id, &types).unwrap();
     let empty_via_decode_as_type =
-        Foo::decode_as_type(&mut &*empty_bytes, &type_id, &types).unwrap();
+        Foo::decode_as_type(&mut &*empty_bytes, type_id, &types).unwrap();
 
     // Or we can also manually use our `Visitor` impl:
     let bar_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*bar_bytes,
-        &type_id,
+        type_id,
         &types,
         FooVisitor::new(),
     )
     .unwrap();
     let wibble_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*wibble_bytes,
-        &type_id,
+        type_id,
         &types,
         FooVisitor::new(),
     )
     .unwrap();
     let empty_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*empty_bytes,
-        &type_id,
+        type_id,
         &types,
         FooVisitor::new(),
     )

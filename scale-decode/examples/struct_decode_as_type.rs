@@ -63,7 +63,7 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
     fn visit_composite<'scale, 'resolver>(
         self,
         value: &mut scale_decode::visitor::types::Composite<'scale, 'resolver, Self::TypeResolver>,
-        type_id: &TypeIdFor<Self>,
+        type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.has_unnamed_fields() {
             // handle it like a tuple if there are unnamed fields in it:
@@ -73,12 +73,14 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
         let vals: HashMap<Option<&str>, _> =
             value.map(|res| res.map(|item| (item.name(), item))).collect::<Result<_, _>>()?;
 
-        let bar = *vals
+        let bar = vals
             .get(&Some("bar"))
-            .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "bar".to_owned() }))?;
-        let wibble = *vals
+            .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "bar".to_owned() }))?
+            .clone();
+        let wibble = vals
             .get(&Some("wibble"))
-            .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "wibble".to_owned() }))?;
+            .ok_or_else(|| Error::new(ErrorKind::CannotFindField { name: "wibble".to_owned() }))?
+            .clone();
 
         Ok(Foo {
             bar: bar.decode_as_type().map_err(|e| e.at_field("bar"))?,
@@ -90,7 +92,7 @@ impl<R: TypeResolver> Visitor for FooVisitor<R> {
     fn visit_tuple<'scale, 'resolver>(
         self,
         value: &mut scale_decode::visitor::types::Tuple<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         if value.remaining() != 2 {
             return Err(Error::new(ErrorKind::WrongLength {
@@ -119,14 +121,14 @@ fn main() {
     let (type_id, types) = make_type::<Foo>();
 
     // We can decode via `DecodeAsType`, which is automatically implemented:
-    let foo_via_decode_as_type = Foo::decode_as_type(&mut &*foo_bytes, &type_id, &types).unwrap();
+    let foo_via_decode_as_type = Foo::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
     // We can also attempt to decode it into any other type; we'll get an error if this fails:
     let foo_via_decode_as_type_arc =
-        <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, &type_id, &types).unwrap();
+        <std::sync::Arc<Foo>>::decode_as_type(&mut &*foo_bytes, type_id, &types).unwrap();
     // Or we can also manually use our `Visitor` impl:
     let foo_via_visitor = scale_decode::visitor::decode_with_visitor(
         &mut &*foo_bytes,
-        &type_id,
+        type_id,
         &types,
         FooVisitor::new(),
     )

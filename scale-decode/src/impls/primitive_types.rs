@@ -32,7 +32,7 @@ macro_rules! impl_visitor {
             fn unchecked_decode_as_type<'scale, 'resolver>(
                 self,
                 input: &mut &'scale [u8],
-                type_id: &<Self::TypeResolver as TypeResolver>::TypeId,
+                type_id: <Self::TypeResolver as TypeResolver>::TypeId,
                 types: &'resolver Self::TypeResolver,
             ) -> crate::visitor::DecodeAsTypeResult<
                 Self,

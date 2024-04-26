@@ -33,7 +33,7 @@ pub struct Sequence<'scale, 'resolver, R: TypeResolver> {
 impl<'scale, 'resolver, R: TypeResolver> Sequence<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: &'resolver R::TypeId,
+        type_id: R::TypeId,
         types: &'resolver R,
     ) -> Result<Sequence<'scale, 'resolver, R>, DecodeError> {
         // Sequences are prefixed with their length in bytes. Make a note of this,
@@ -84,10 +84,15 @@ pub struct SequenceItem<'scale, 'resolver, R: TypeResolver> {
     item: ArrayItem<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'resolver, R: TypeResolver> Copy for SequenceItem<'scale, 'resolver, R> {}
+impl<'scale, 'resolver, R> Copy for SequenceItem<'scale, 'resolver, R>
+where
+    R: TypeResolver,
+    R::TypeId: Copy,
+{
+}
 impl<'scale, 'resolver, R: TypeResolver> Clone for SequenceItem<'scale, 'resolver, R> {
     fn clone(&self) -> Self {
-        *self
+        SequenceItem { item: self.item.clone() }
     }
 }
 

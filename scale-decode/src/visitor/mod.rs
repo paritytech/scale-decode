@@ -54,7 +54,7 @@ pub trait Visitor: Sized {
     fn unchecked_decode_as_type<'scale, 'resolver>(
         self,
         _input: &mut &'scale [u8],
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
         _types: &'resolver Self::TypeResolver,
     ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'resolver>, Self::Error>> {
         DecodeAsTypeResult::Skipped(self)
@@ -74,7 +74,7 @@ pub trait Visitor: Sized {
     fn visit_bool<'scale, 'resolver>(
         self,
         _value: bool,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Bool)
     }
@@ -82,7 +82,7 @@ pub trait Visitor: Sized {
     fn visit_char<'scale, 'resolver>(
         self,
         _value: char,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Char)
     }
@@ -90,7 +90,7 @@ pub trait Visitor: Sized {
     fn visit_u8<'scale, 'resolver>(
         self,
         _value: u8,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U8)
     }
@@ -98,7 +98,7 @@ pub trait Visitor: Sized {
     fn visit_u16<'scale, 'resolver>(
         self,
         _value: u16,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U16)
     }
@@ -106,7 +106,7 @@ pub trait Visitor: Sized {
     fn visit_u32<'scale, 'resolver>(
         self,
         _value: u32,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U32)
     }
@@ -114,7 +114,7 @@ pub trait Visitor: Sized {
     fn visit_u64<'scale, 'resolver>(
         self,
         _value: u64,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U64)
     }
@@ -122,7 +122,7 @@ pub trait Visitor: Sized {
     fn visit_u128<'scale, 'resolver>(
         self,
         _value: u128,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U128)
     }
@@ -130,7 +130,7 @@ pub trait Visitor: Sized {
     fn visit_u256<'scale, 'resolver>(
         self,
         _value: &'scale [u8; 32],
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U256)
     }
@@ -138,7 +138,7 @@ pub trait Visitor: Sized {
     fn visit_i8<'scale, 'resolver>(
         self,
         _value: i8,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I8)
     }
@@ -146,7 +146,7 @@ pub trait Visitor: Sized {
     fn visit_i16<'scale, 'resolver>(
         self,
         _value: i16,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I16)
     }
@@ -154,7 +154,7 @@ pub trait Visitor: Sized {
     fn visit_i32<'scale, 'resolver>(
         self,
         _value: i32,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I32)
     }
@@ -162,7 +162,7 @@ pub trait Visitor: Sized {
     fn visit_i64<'scale, 'resolver>(
         self,
         _value: i64,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I64)
     }
@@ -170,7 +170,7 @@ pub trait Visitor: Sized {
     fn visit_i128<'scale, 'resolver>(
         self,
         _value: i128,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I128)
     }
@@ -178,7 +178,7 @@ pub trait Visitor: Sized {
     fn visit_i256<'scale, 'resolver>(
         self,
         _value: &'scale [u8; 32],
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I256)
     }
@@ -186,7 +186,7 @@ pub trait Visitor: Sized {
     fn visit_sequence<'scale, 'resolver>(
         self,
         _value: &mut Sequence<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Sequence)
     }
@@ -194,7 +194,7 @@ pub trait Visitor: Sized {
     fn visit_composite<'scale, 'resolver>(
         self,
         _value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Composite)
     }
@@ -202,7 +202,7 @@ pub trait Visitor: Sized {
     fn visit_tuple<'scale, 'resolver>(
         self,
         _value: &mut Tuple<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Tuple)
     }
@@ -210,7 +210,7 @@ pub trait Visitor: Sized {
     fn visit_str<'scale, 'resolver>(
         self,
         _value: &mut Str<'scale>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Str)
     }
@@ -218,7 +218,7 @@ pub trait Visitor: Sized {
     fn visit_variant<'scale, 'resolver>(
         self,
         _value: &mut Variant<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Variant)
     }
@@ -226,7 +226,7 @@ pub trait Visitor: Sized {
     fn visit_array<'scale, 'resolver>(
         self,
         _value: &mut Array<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Array)
     }
@@ -234,7 +234,7 @@ pub trait Visitor: Sized {
     fn visit_bitsequence<'scale, 'resolver>(
         self,
         _value: &mut BitSequence<'scale>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::Bitsequence)
     }
@@ -413,7 +413,7 @@ where
     fn unchecked_decode_as_type<'scale, 'resolver>(
         self,
         input: &mut &'scale [u8],
-        type_id: &TypeIdFor<Self>,
+        type_id: TypeIdFor<Self>,
         types: &'resolver Self::TypeResolver,
     ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'resolver>, Self::Error>> {
         let res = decode_with_visitor(input, type_id, types, self.0).map_err(Into::into);
@@ -480,105 +480,105 @@ mod test {
         fn visit_bool<'scale, 'resolver>(
             self,
             value: bool,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::Bool(value))
         }
         fn visit_char<'scale, 'resolver>(
             self,
             value: char,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::Char(value))
         }
         fn visit_u8<'scale, 'resolver>(
             self,
             value: u8,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U8(value))
         }
         fn visit_u16<'scale, 'resolver>(
             self,
             value: u16,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U16(value))
         }
         fn visit_u32<'scale, 'resolver>(
             self,
             value: u32,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U32(value))
         }
         fn visit_u64<'scale, 'resolver>(
             self,
             value: u64,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U64(value))
         }
         fn visit_u128<'scale, 'resolver>(
             self,
             value: u128,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U128(value))
         }
         fn visit_u256<'scale, 'resolver>(
             self,
             value: &'scale [u8; 32],
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U256(*value))
         }
         fn visit_i8<'scale, 'resolver>(
             self,
             value: i8,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I8(value))
         }
         fn visit_i16<'scale, 'resolver>(
             self,
             value: i16,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I16(value))
         }
         fn visit_i32<'scale, 'resolver>(
             self,
             value: i32,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I32(value))
         }
         fn visit_i64<'scale, 'resolver>(
             self,
             value: i64,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I64(value))
         }
         fn visit_i128<'scale, 'resolver>(
             self,
             value: i128,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I128(value))
         }
         fn visit_i256<'scale, 'resolver>(
             self,
             value: &'scale [u8; 32],
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I256(*value))
         }
         fn visit_sequence<'scale, 'resolver>(
             self,
             value: &mut Sequence<'scale, 'resolver, Self::TypeResolver>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -590,7 +590,7 @@ mod test {
         fn visit_composite<'scale, 'resolver>(
             self,
             value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let mut vals = vec![];
             for item in value.by_ref() {
@@ -604,7 +604,7 @@ mod test {
         fn visit_tuple<'scale, 'resolver>(
             self,
             value: &mut Tuple<'scale, 'resolver, Self::TypeResolver>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -616,14 +616,14 @@ mod test {
         fn visit_str<'scale, 'resolver>(
             self,
             value: &mut Str<'scale>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::Str(value.as_str()?.to_owned()))
         }
         fn visit_variant<'scale, 'resolver>(
             self,
             value: &mut Variant<'scale, 'resolver, Self::TypeResolver>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let mut vals = vec![];
             let fields = value.fields();
@@ -638,7 +638,7 @@ mod test {
         fn visit_array<'scale, 'resolver>(
             self,
             value: &mut Array<'scale, 'resolver, Self::TypeResolver>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let mut vals = vec![];
             while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -650,7 +650,7 @@ mod test {
         fn visit_bitsequence<'scale, 'resolver>(
             self,
             value: &mut BitSequence<'scale>,
-            _type_id: &TypeIdFor<Self>,
+            _type_id: TypeIdFor<Self>,
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
             Ok(Value::BitSequence(bools?))
@@ -684,7 +684,7 @@ mod test {
         let (id, types) = make_type::<Ty>();
         let bytes = &mut &*encoded;
         let val =
-            decode_with_visitor(bytes, &id, &types, visitor).expect("decoding should not error");
+            decode_with_visitor(bytes, id, &types, visitor).expect("decoding should not error");
 
         assert_eq!(bytes.len(), 0, "Decoding should consume all bytes");
         assert_eq!(val, expected);
@@ -972,7 +972,7 @@ mod test {
             fn visit_str<'scale, 'resolver>(
                 self,
                 value: &mut Str<'scale>,
-                _type_id: &TypeIdFor<Self>,
+                _type_id: TypeIdFor<Self>,
             ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
                 value.as_str()
             }
@@ -988,7 +988,7 @@ mod test {
             fn visit_tuple<'scale, 'resolver>(
                 self,
                 value: &mut Tuple<'scale, 'resolver, Self::TypeResolver>,
-                _type_id: &TypeIdFor<Self>,
+                _type_id: TypeIdFor<Self>,
             ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
                 let fst = value.decode_item(ZeroCopyStrVisitor).unwrap()?;
                 let snd = value.decode_item(ZeroCopyStrVisitor).unwrap()?;
@@ -998,7 +998,7 @@ mod test {
 
         let (ty_id, types) = make_type::<(&str, &str)>();
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, &ty_id, &types, ZeroCopyPairVisitor).unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyPairVisitor).unwrap();
         assert_eq!(decoded, ("hello", "world"));
     }
 
@@ -1025,7 +1025,7 @@ mod test {
             fn visit_str<'scale, 'resolver>(
                 self,
                 value: &mut Str<'scale>,
-                _type_id: &TypeIdFor<Self>,
+                _type_id: TypeIdFor<Self>,
             ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
                 value.as_str()
             }
@@ -1042,7 +1042,7 @@ mod test {
             fn visit_composite<'scale, 'resolver>(
                 self,
                 value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
-                _type_id: &TypeIdFor<Self>,
+                _type_id: TypeIdFor<Self>,
             ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
                 let mut vals = alloc::collections::BTreeMap::<&'resolver str, &'scale str>::new();
                 for item in value {
@@ -1058,7 +1058,7 @@ mod test {
         // Decode and check:
         let (ty_id, types) = make_type::<Foo>();
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, &ty_id, &types, ZeroCopyMapVisitor).unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, ZeroCopyMapVisitor).unwrap();
         assert_eq!(decoded, BTreeMap::from_iter([("hello", "hi"), ("world", "planet")]));
     }
 
@@ -1079,16 +1079,16 @@ mod test {
             fn unchecked_decode_as_type<'scale, 'resolver>(
                 self,
                 input: &mut &'scale [u8],
-                type_id: &u32,
+                type_id: u32,
                 _types: &'resolver scale_info::PortableRegistry,
             ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'resolver>, Self::Error>>
             {
-                DecodeAsTypeResult::Decoded(Ok((*input, *type_id)))
+                DecodeAsTypeResult::Decoded(Ok((*input, type_id)))
             }
         }
 
         let decoded =
-            decode_with_visitor(&mut &*input_encoded, &ty_id, &types, BailOutVisitor).unwrap();
+            decode_with_visitor(&mut &*input_encoded, ty_id, &types, BailOutVisitor).unwrap();
         assert_eq!(decoded, (&*input_encoded, ty_id));
 
         // We can also use this functionality to "fall-back" to a Decode impl
@@ -1102,7 +1102,7 @@ mod test {
             fn unchecked_decode_as_type<'scale, 'resolver>(
                 self,
                 input: &mut &'scale [u8],
-                _type_id: &TypeIdFor<Self>,
+                _type_id: TypeIdFor<Self>,
                 _types: &'resolver scale_info::PortableRegistry,
             ) -> DecodeAsTypeResult<Self, Result<Self::Value<'scale, 'resolver>, Self::Error>>
             {
@@ -1112,7 +1112,7 @@ mod test {
 
         let decoded: (String, String) = decode_with_visitor(
             &mut &*input_encoded,
-            &ty_id,
+            ty_id,
             &types,
             CodecDecodeVisitor(core::marker::PhantomData),
         )

@@ -19,3 +19,6 @@ include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 [workspace.dependencies]
 scale-decode = { version = "0.11.1", path = "scale-decode" }
 scale-decode-derive = { version = "0.11.1", path = "scale-decode-derive" }
+
+[patch.crates-io]
+scale-type-resolver = { path = "../scale-type-resolver" }

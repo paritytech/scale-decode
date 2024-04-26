@@ -70,7 +70,7 @@ impl<'scale, 'resolver, R: TypeResolver> Tuple<'scale, 'resolver, R> {
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor_maybe_compact(
             b,
-            field.id,
+            field.id.clone(),
             self.types,
             visitor,
             self.is_compact,
@@ -94,7 +94,7 @@ impl<'scale, 'resolver, R: TypeResolver> Iterator for Tuple<'scale, 'resolver, R
     type Item = Result<TupleField<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
-        let field = *self.fields.get(self.next_field_idx)?;
+        let field = self.fields.get(self.next_field_idx)?.clone();
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
@@ -120,7 +120,7 @@ impl<'scale, 'resolver, R: TypeResolver> Iterator for Tuple<'scale, 'resolver, R
 #[derive(Copy, Clone, Debug)]
 pub struct TupleField<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: &'resolver R::TypeId,
+    type_id: R::TypeId,
     types: &'resolver R,
     is_compact: bool,
 }
@@ -132,7 +132,7 @@ impl<'scale, 'resolver, R: TypeResolver> TupleField<'scale, 'resolver, R> {
     }
     /// The type ID associated with this field.
     pub fn type_id(&self) -> &R::TypeId {
-        self.type_id
+        &self.type_id
     }
     /// If the field is compact encoded
     pub fn is_compact(&self) -> bool {
@@ -143,13 +143,18 @@ impl<'scale, 'resolver, R: TypeResolver> TupleField<'scale, 'resolver, R> {
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
-        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
+        crate::visitor::decode_with_visitor(
+            &mut &*self.bytes,
+            self.type_id.clone(),
+            self.types,
+            visitor,
+        )
     }
     /// Decode this field into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
         T::decode_as_type_maybe_compact(
             &mut &*self.bytes,
-            self.type_id,
+            self.type_id.clone(),
             self.types,
             self.is_compact,
         )
