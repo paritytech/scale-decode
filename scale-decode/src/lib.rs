@@ -68,7 +68,7 @@ where
 {
     let (type_id, types) = get_type_info::<A>();
     let a_bytes = a.encode();
-    let new_b = B::decode_as_type(&mut &*a_bytes, &type_id, &types).unwrap();
+    let new_b = B::decode_as_type(&mut &*a_bytes, type_id, &types).unwrap();
     assert_eq!(b, new_b);
 }
 

@@ -24,6 +24,7 @@ pub struct Composite<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
     fields: smallvec::SmallVec<[Field<'resolver, R::TypeId>; 16]>,
+    path: smallvec::SmallVec<[&'resolver str; 5]>,
     next_field_idx: usize,
     types: &'resolver R,
     is_compact: bool,
@@ -33,13 +34,23 @@ impl<'scale, 'resolver, R: TypeResolver> Composite<'scale, 'resolver, R> {
     // Used in macros, but not really expected to be used elsewhere.
     #[doc(hidden)]
     pub fn new(
+        path: impl Iterator<Item = &'resolver str>,
         bytes: &'scale [u8],
         fields: &mut dyn FieldIter<'resolver, R::TypeId>,
         types: &'resolver R,
         is_compact: bool,
     ) -> Composite<'scale, 'resolver, R> {
+        let path = smallvec::SmallVec::from_iter(path);
         let fields = smallvec::SmallVec::from_iter(fields);
-        Composite { bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
+        Composite { path, bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
+    }
+    /// Return the name of the composite type, if one was given.
+    pub fn name(&self) -> Option<&'resolver str> {
+        self.path.iter().last().map(|name| *name)
+    }
+    /// Return the full path to the composite type (including the name) if one was given.
+    pub fn path(&self) -> impl Iterator<Item = &'resolver str> + '_ {
+        self.path.iter().map(|name| *name)
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.

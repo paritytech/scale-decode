@@ -317,7 +317,7 @@ fn generate_struct_impl(
                     types: &'info R
                 ) -> Result<Self, #path_to_scale_decode::Error>
                 {
-                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, fields, types, false);
+                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(core::iter::empty(), input, fields, types, false);
                     use #path_to_scale_decode::{ Visitor, IntoVisitor };
                     let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, Default::default());
 

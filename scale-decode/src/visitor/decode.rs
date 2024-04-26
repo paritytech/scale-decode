@@ -109,9 +109,9 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         Err(DecodeError::TypeIdNotFound(format!("{type_id:?}")).into())
     }
 
-    fn visit_composite<'a, Path, Fields>(self, _path: Path, mut fields: Fields) -> Self::Value
+    fn visit_composite<Path, Fields>(self, path: Path, mut fields: Fields) -> Self::Value
     where
-        Path: PathIter<'a>,
+        Path: PathIter<'resolver>,
         Fields: FieldIter<'resolver, Self::TypeId>,
     {
         // guard against invalid compact types: only composites with 1 field can be compact encoded
@@ -119,7 +119,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut items = Composite::new(self.data, &mut fields, self.types, self.is_compact);
+        let mut items = Composite::new(path, self.data, &mut fields, self.types, self.is_compact);
         let res = self.visitor.visit_composite(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
@@ -129,9 +129,9 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         res
     }
 
-    fn visit_variant<'a, Path, Fields, Var>(self, _path: Path, variants: Var) -> Self::Value
+    fn visit_variant<Path, Fields, Var>(self, _path: Path, variants: Var) -> Self::Value
     where
-        Path: PathIter<'a>,
+        Path: PathIter<'resolver>,
         Fields: FieldIter<'resolver, Self::TypeId>,
         Var: VariantIter<'resolver, Fields>,
     {
@@ -149,9 +149,9 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         res
     }
 
-    fn visit_sequence<'a, Path>(self, _path: Path, inner_type_id: Self::TypeId) -> Self::Value
+    fn visit_sequence<Path>(self, _path: Path, inner_type_id: Self::TypeId) -> Self::Value
     where
-        Path: PathIter<'a>,
+        Path: PathIter<'resolver>,
     {
         if self.is_compact {
             return Err(DecodeError::CannotDecodeCompactIntoType.into());

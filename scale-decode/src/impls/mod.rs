@@ -638,7 +638,7 @@ macro_rules! impl_decode_tuple {
         where $( $t: IntoVisitor, )*
         {
             fn decode_as_fields<'resolver, Resolver: TypeResolver>(input: &mut &[u8], fields: &mut dyn FieldIter<'resolver, Resolver::TypeId>, types: &'resolver Resolver) -> Result<Self, Error> {
-                let mut composite = crate::visitor::types::Composite::new(input, fields, types, false);
+                let mut composite = crate::visitor::types::Composite::new(core::iter::empty(), input, fields, types, false);
 
                 // [jsdw] TODO: Passing a "default type ID" to a visitor just to satisfy the signature is
                 // a bit hideous (and requires `TypeId: Default`). Can we re-work this to avoid?

@@ -41,7 +41,13 @@ impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
             variants.find(|v| v.index == index).ok_or(DecodeError::VariantNotFound(index))?;
 
         // Allow decoding of the fields:
-        let fields = Composite::new(item_bytes, &mut variant.fields, types, false);
+        let fields = Composite::new(
+            core::iter::once(variant.name),
+            item_bytes,
+            &mut variant.fields,
+            types,
+            false,
+        );
 
         Ok(Variant { bytes, variant_index: index, variant_name: variant.name, fields })
     }
