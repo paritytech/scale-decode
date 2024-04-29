@@ -67,105 +67,105 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_bool<'scale, 'resolver>(
         self,
         value: bool,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::Bool(value))
     }
     fn visit_char<'scale, 'resolver>(
         self,
         value: char,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::Char(value))
     }
     fn visit_u8<'scale, 'resolver>(
         self,
         value: u8,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U8(value))
     }
     fn visit_u16<'scale, 'resolver>(
         self,
         value: u16,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U16(value))
     }
     fn visit_u32<'scale, 'resolver>(
         self,
         value: u32,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U32(value))
     }
     fn visit_u64<'scale, 'resolver>(
         self,
         value: u64,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U64(value))
     }
     fn visit_u128<'scale, 'resolver>(
         self,
         value: u128,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U128(value))
     }
-    fn visit_u256<'scale, 'resolver>(
+    fn visit_u256<'resolver>(
         self,
-        value: &'scale [u8; 32],
-        _type_id: &TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+        value: &[u8; 32],
+        _type_id: TypeIdFor<Self>,
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         Ok(Value::U256(*value))
     }
     fn visit_i8<'scale, 'resolver>(
         self,
         value: i8,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I8(value))
     }
     fn visit_i16<'scale, 'resolver>(
         self,
         value: i16,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I16(value))
     }
     fn visit_i32<'scale, 'resolver>(
         self,
         value: i32,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I32(value))
     }
     fn visit_i64<'scale, 'resolver>(
         self,
         value: i64,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I64(value))
     }
     fn visit_i128<'scale, 'resolver>(
         self,
         value: i128,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I128(value))
     }
-    fn visit_i256<'scale, 'resolver>(
+    fn visit_i256<'resolver>(
         self,
-        value: &'scale [u8; 32],
-        _type_id: &TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+        value: &[u8; 32],
+        _type_id: TypeIdFor<Self>,
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         Ok(Value::I256(*value))
     }
     fn visit_sequence<'scale, 'resolver>(
         self,
         value: &mut Sequence<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -177,7 +177,7 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_composite<'scale, 'resolver>(
         self,
         value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let mut vals = vec![];
         for item in value.by_ref() {
@@ -191,7 +191,7 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_tuple<'scale, 'resolver>(
         self,
         value: &mut Tuple<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -203,14 +203,14 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_str<'scale, 'resolver>(
         self,
         value: &mut Str<'scale>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::Str(value.as_str()?.to_owned()))
     }
     fn visit_variant<'scale, 'resolver>(
         self,
         value: &mut Variant<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let mut vals = vec![];
         let fields = value.fields();
@@ -225,7 +225,7 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_array<'scale, 'resolver>(
         self,
         value: &mut Array<'scale, 'resolver, Self::TypeResolver>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let mut vals = vec![];
         while let Some(val) = value.decode_item(ValueVisitor::new()) {
@@ -237,7 +237,7 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     fn visit_bitsequence<'scale, 'resolver>(
         self,
         value: &mut BitSequence<'scale>,
-        _type_id: &TypeIdFor<Self>,
+        _type_id: TypeIdFor<Self>,
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         let bools: Result<scale_bits::Bits, _> = value.decode()?.collect();
         Ok(Value::BitSequence(bools?))
@@ -265,7 +265,7 @@ fn main() {
     assert_eq!(
         scale_decode::visitor::decode_with_visitor(
             &mut &*bytes,
-            &type_id,
+            type_id,
             &types,
             ValueVisitor::new()
         )

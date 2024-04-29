@@ -24,6 +24,7 @@ pub struct Composite<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
     fields: smallvec::SmallVec<[Field<'resolver, R::TypeId>; 16]>,
+    path: smallvec::SmallVec<[&'resolver str; 5]>,
     next_field_idx: usize,
     types: &'resolver R,
     is_compact: bool,
@@ -33,13 +34,23 @@ impl<'scale, 'resolver, R: TypeResolver> Composite<'scale, 'resolver, R> {
     // Used in macros, but not really expected to be used elsewhere.
     #[doc(hidden)]
     pub fn new(
+        path: impl Iterator<Item = &'resolver str>,
         bytes: &'scale [u8],
         fields: &mut dyn FieldIter<'resolver, R::TypeId>,
         types: &'resolver R,
         is_compact: bool,
     ) -> Composite<'scale, 'resolver, R> {
+        let path = smallvec::SmallVec::from_iter(path);
         let fields = smallvec::SmallVec::from_iter(fields);
-        Composite { bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
+        Composite { path, bytes, item_bytes: bytes, fields, types, next_field_idx: 0, is_compact }
+    }
+    /// Return the name of the composite type, if one was given.
+    pub fn name(&self) -> Option<&'resolver str> {
+        self.path.iter().last().copied()
+    }
+    /// Return the full path to the composite type (including the name) if one was given.
+    pub fn path(&self) -> impl Iterator<Item = &'resolver str> + '_ {
+        self.path.iter().copied()
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
@@ -98,7 +109,7 @@ impl<'scale, 'resolver, R: TypeResolver> Composite<'scale, 'resolver, R> {
         // Decode the bytes:
         let res = crate::visitor::decode_with_visitor_maybe_compact(
             b,
-            field.id,
+            field.id.clone(),
             self.types,
             visitor,
             self.is_compact,
@@ -122,7 +133,7 @@ impl<'scale, 'resolver, R: TypeResolver> Iterator for Composite<'scale, 'resolve
     type Item = Result<CompositeField<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         // Record details we need before we decode and skip over the thing:
-        let field = *self.fields.get(self.next_field_idx)?;
+        let field = self.fields.get(self.next_field_idx)?.clone();
         let num_bytes_before = self.item_bytes.len();
         let item_bytes = self.item_bytes;
 
@@ -152,10 +163,14 @@ pub struct CompositeField<'scale, 'resolver, R: TypeResolver> {
     is_compact: bool,
 }
 
-impl<'scale, 'resolver, R: TypeResolver> Copy for CompositeField<'scale, 'resolver, R> {}
 impl<'scale, 'resolver, R: TypeResolver> Clone for CompositeField<'scale, 'resolver, R> {
     fn clone(&self) -> Self {
-        *self
+        CompositeField {
+            bytes: self.bytes,
+            types: self.types,
+            is_compact: self.is_compact,
+            field: self.field.clone(),
+        }
     }
 }
 
@@ -170,7 +185,7 @@ impl<'scale, 'resolver, R: TypeResolver> CompositeField<'scale, 'resolver, R> {
     }
     /// The type ID associated with this field.
     pub fn type_id(&self) -> &R::TypeId {
-        self.field.id
+        &self.field.id
     }
     /// If the field is compact encoded
     pub fn is_compact(&self) -> bool {
@@ -183,7 +198,7 @@ impl<'scale, 'resolver, R: TypeResolver> CompositeField<'scale, 'resolver, R> {
     ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
         crate::visitor::decode_with_visitor_maybe_compact(
             &mut &*self.bytes,
-            self.field.id,
+            self.field.id.clone(),
             self.types,
             visitor,
             self.is_compact,
@@ -193,7 +208,7 @@ impl<'scale, 'resolver, R: TypeResolver> CompositeField<'scale, 'resolver, R> {
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
         T::decode_as_type_maybe_compact(
             &mut &*self.bytes,
-            self.field.id,
+            self.field.id.clone(),
             self.types,
             self.is_compact,
         )

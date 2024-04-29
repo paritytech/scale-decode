@@ -159,7 +159,7 @@ fn generate_enum_impl(
                 fn visit_variant<'scale, 'info>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Variant<'scale, 'info, Self::TypeResolver>,
-                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
+                    type_id: <Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #(
                         #variant_ifs
@@ -173,7 +173,7 @@ fn generate_enum_impl(
                 fn visit_composite<'scale, 'info>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
-                    _type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
+                    _type_id: <Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
                         return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Composite);
@@ -183,7 +183,7 @@ fn generate_enum_impl(
                 fn visit_tuple<'scale, 'info>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
-                    _type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
+                    _type_id: <Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     if value.remaining() != 1 {
                         return self.visit_unexpected(#path_to_scale_decode::visitor::Unexpected::Tuple);
@@ -297,14 +297,14 @@ fn generate_struct_impl(
                 fn visit_composite<'scale, 'info>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Composite<'scale, 'info, Self::TypeResolver>,
-                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
+                    type_id: <Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_composite_body
                 }
                 fn visit_tuple<'scale, 'info>(
                     self,
                     value: &mut #path_to_scale_decode::visitor::types::Tuple<'scale, 'info, Self::TypeResolver>,
-                    type_id: &<Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
+                    type_id: <Self::TypeResolver as #path_to_scale_decode::TypeResolver>::TypeId,
                 ) -> Result<Self::Value<'scale, 'info>, Self::Error> {
                     #visit_tuple_body
                 }
@@ -317,9 +317,9 @@ fn generate_struct_impl(
                     types: &'info R
                 ) -> Result<Self, #path_to_scale_decode::Error>
                 {
-                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(input, fields, types, false);
+                    let mut composite = #path_to_scale_decode::visitor::types::Composite::new(core::iter::empty(), input, fields, types, false);
                     use #path_to_scale_decode::{ Visitor, IntoVisitor };
-                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, &Default::default());
+                    let val = <#path_to_type #ty_generics>::into_visitor().visit_composite(&mut composite, Default::default());
 
                     // Consume any remaining bytes and update input:
                     composite.skip_decoding()?;
@@ -357,9 +357,10 @@ fn named_field_keyvals<'f>(
             true,
             // For turning named fields in scale typeinfo into named fields on struct like type:
             quote!(#field_ident: {
-                let val = *vals
+                let val = vals
                     .get(&Some(#field_name))
-                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_string() }))?;
+                    .ok_or_else(|| #path_to_scale_decode::Error::new(#path_to_scale_decode::error::ErrorKind::CannotFindField { name: #field_name.to_string() }))?
+                    .clone();
                 val.decode_as_type().map_err(|e| e.at_field(#field_name))?
             }),
             // For turning named fields in scale typeinfo into unnamed fields on tuple like type:

@@ -23,7 +23,7 @@ use scale_type_resolver::TypeResolver;
 pub struct Array<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     item_bytes: &'scale [u8],
-    type_id: &'resolver R::TypeId,
+    type_id: R::TypeId,
     types: &'resolver R,
     remaining: usize,
 }
@@ -31,7 +31,7 @@ pub struct Array<'scale, 'resolver, R: TypeResolver> {
 impl<'scale, 'resolver, R: TypeResolver> Array<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: &'resolver R::TypeId,
+        type_id: R::TypeId,
         len: usize,
         types: &'resolver R,
     ) -> Array<'scale, 'resolver, R> {
@@ -74,7 +74,7 @@ impl<'scale, 'resolver, R: TypeResolver> Array<'scale, 'resolver, R> {
         let b = &mut self.item_bytes;
         // Don't return here; decrement bytes and remaining properly first and then return, so that
         // calling decode_item again works as expected.
-        let res = crate::visitor::decode_with_visitor(b, self.type_id, self.types, visitor);
+        let res = crate::visitor::decode_with_visitor(b, self.type_id.clone(), self.types, visitor);
         self.item_bytes = *b;
         self.remaining -= 1;
         Some(res)
@@ -97,21 +97,26 @@ impl<'scale, 'resolver, R: TypeResolver> Iterator for Array<'scale, 'resolver, R
         let num_bytes_after = self.item_bytes.len();
         let res_bytes = &item_bytes[..num_bytes_before - num_bytes_after];
 
-        Some(Ok(ArrayItem { bytes: res_bytes, type_id: self.type_id, types: self.types }))
+        Some(Ok(ArrayItem { bytes: res_bytes, type_id: self.type_id.clone(), types: self.types }))
     }
 }
 
 /// A single item in the array.
 pub struct ArrayItem<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
-    type_id: &'resolver R::TypeId,
+    type_id: R::TypeId,
     types: &'resolver R,
 }
 
-impl<'scale, 'resolver, R: TypeResolver> Copy for ArrayItem<'scale, 'resolver, R> {}
+impl<'scale, 'resolver, R> Copy for ArrayItem<'scale, 'resolver, R>
+where
+    R: TypeResolver,
+    R::TypeId: Copy,
+{
+}
 impl<'scale, 'resolver, R: TypeResolver> Clone for ArrayItem<'scale, 'resolver, R> {
     fn clone(&self) -> Self {
-        *self
+        ArrayItem { bytes: self.bytes, types: self.types, type_id: self.type_id.clone() }
     }
 }
 
@@ -122,18 +127,23 @@ impl<'scale, 'resolver, R: TypeResolver> ArrayItem<'scale, 'resolver, R> {
     }
     /// The type ID associated with this item.
     pub fn type_id(&self) -> &R::TypeId {
-        self.type_id
+        &self.type_id
     }
     /// Decode this item using a visitor.
     pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
     ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
-        crate::visitor::decode_with_visitor(&mut &*self.bytes, self.type_id, self.types, visitor)
+        crate::visitor::decode_with_visitor(
+            &mut &*self.bytes,
+            self.type_id.clone(),
+            self.types,
+            visitor,
+        )
     }
     /// Decode this item into a specific type via [`DecodeAsType`].
     pub fn decode_as_type<T: DecodeAsType>(&self) -> Result<T, crate::Error> {
-        T::decode_as_type(&mut &*self.bytes, self.type_id, self.types)
+        T::decode_as_type(&mut &*self.bytes, self.type_id.clone(), self.types)
     }
 }
 
