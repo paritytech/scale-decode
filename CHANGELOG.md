@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.12.0 - 2024-04-29
+
+Update the `scale-type-resolver` dependency to 0.2.0 (and bump `scale-bits` for the same reason).
+
+The main changes here are:
+- Type IDs are now passed by value rather than reference.
+- The `Composite` type handed back in the visitor's `visit_composite()` method now exposes the name and path of the composite type being decoded, if one was provided.
+
 ## 0.11.1 - 2024-02-16
 
 - `scale-info` was still being pulled in via `scale-type-resolver`; this has now been fixed
