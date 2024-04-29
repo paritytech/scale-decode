@@ -127,11 +127,11 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::U128)
     }
     /// Called when a u256 is seen in the input bytes.
-    fn visit_u256<'scale, 'resolver>(
+    fn visit_u256<'resolver>(
         self,
-        _value: &'scale [u8; 32],
+        _value: &[u8; 32],
         _type_id: TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::U256)
     }
     /// Called when an i8 is seen in the input bytes.
@@ -175,11 +175,11 @@ pub trait Visitor: Sized {
         self.visit_unexpected(Unexpected::I128)
     }
     /// Called when an i256 is seen in the input bytes.
-    fn visit_i256<'scale, 'resolver>(
+    fn visit_i256<'resolver>(
         self,
-        _value: &'scale [u8; 32],
+        _value: &[u8; 32],
         _type_id: TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         self.visit_unexpected(Unexpected::I256)
     }
     /// Called when a sequence of values is seen in the input bytes.
@@ -526,11 +526,11 @@ mod test {
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::U128(value))
         }
-        fn visit_u256<'scale, 'resolver>(
+        fn visit_u256<'resolver>(
             self,
-            value: &'scale [u8; 32],
+            value: &[u8; 32],
             _type_id: TypeIdFor<Self>,
-        ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+        ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
             Ok(Value::U256(*value))
         }
         fn visit_i8<'scale, 'resolver>(
@@ -568,11 +568,11 @@ mod test {
         ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
             Ok(Value::I128(value))
         }
-        fn visit_i256<'scale, 'resolver>(
+        fn visit_i256<'resolver>(
             self,
-            value: &'scale [u8; 32],
+            value: &[u8; 32],
             _type_id: TypeIdFor<Self>,
-        ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+        ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
             Ok(Value::I256(*value))
         }
         fn visit_sequence<'scale, 'resolver>(

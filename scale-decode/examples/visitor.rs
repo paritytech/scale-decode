@@ -113,11 +113,11 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::U128(value))
     }
-    fn visit_u256<'scale, 'resolver>(
+    fn visit_u256<'resolver>(
         self,
-        value: &'scale [u8; 32],
+        value: &[u8; 32],
         _type_id: TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         Ok(Value::U256(*value))
     }
     fn visit_i8<'scale, 'resolver>(
@@ -155,11 +155,11 @@ impl<R: TypeResolver> visitor::Visitor for ValueVisitor<R> {
     ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
         Ok(Value::I128(value))
     }
-    fn visit_i256<'scale, 'resolver>(
+    fn visit_i256<'resolver>(
         self,
-        value: &'scale [u8; 32],
+        value: &[u8; 32],
         _type_id: TypeIdFor<Self>,
-    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+    ) -> Result<Self::Value<'_, 'resolver>, Self::Error> {
         Ok(Value::I256(*value))
     }
     fn visit_sequence<'scale, 'resolver>(

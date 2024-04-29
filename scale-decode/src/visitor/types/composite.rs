@@ -46,11 +46,11 @@ impl<'scale, 'resolver, R: TypeResolver> Composite<'scale, 'resolver, R> {
     }
     /// Return the name of the composite type, if one was given.
     pub fn name(&self) -> Option<&'resolver str> {
-        self.path.iter().last().map(|name| *name)
+        self.path.iter().last().copied()
     }
     /// Return the full path to the composite type (including the name) if one was given.
     pub fn path(&self) -> impl Iterator<Item = &'resolver str> + '_ {
-        self.path.iter().map(|name| *name)
+        self.path.iter().copied()
     }
     /// Skip over all bytes associated with this composite type. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this composite type.
