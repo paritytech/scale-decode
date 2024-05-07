@@ -248,7 +248,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 // and let the visitor decide whether to use them or not.
                 let mut s = Str::new(data)?;
                 // Since we aren't decoding here, shift our bytes along to after the str:
-                *data = s.bytes_after();
+                *data = s.bytes_after()?;
                 visitor.visit_str(&mut s, type_id)
             }
             Primitive::U8 => {
