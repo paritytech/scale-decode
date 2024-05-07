@@ -46,14 +46,15 @@ impl<'scale> BitSequence<'scale> {
             Ok(bytes_after)
         } else {
             let decoder = decode_using_format_from(self.bytes, self.format)?;
-            Ok(&self.bytes[decoder.encoded_size()..])
+            self.bytes.get(decoder.encoded_size()..).ok_or(DecodeError::NotEnoughInput)
         }
     }
 
     /// Return a decoder to decode the bits in this bit sequence.
     pub fn decode(&mut self) -> Result<Decoder<'scale>, DecodeError> {
         let decoder = decode_using_format_from(self.bytes, self.format)?;
-        self.bytes_after = Some(&self.bytes[decoder.encoded_size()..]);
+        self.bytes_after =
+            Some(self.bytes.get(decoder.encoded_size()..).ok_or(DecodeError::NotEnoughInput)?);
         Ok(decoder)
     }
 }
