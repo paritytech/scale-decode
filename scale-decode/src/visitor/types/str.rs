@@ -14,7 +14,7 @@
 // limitations under the License.
 
 use crate::visitor::DecodeError;
-use codec::{Compact, Decode};
+use codec::{Compact, CompactLen, Decode};
 
 /// This represents a string, but defers proper decoding of it until it's asked for,
 /// and avoids allocating.
@@ -31,8 +31,9 @@ impl<'scale> Str<'scale> {
         // encoded string (and the rest of the input) around so that we can provide a
         // consistent interface with Array/Sequence etc.
         let remaining_bytes = &mut &*bytes;
-        let len = <Compact<u64>>::decode(remaining_bytes)?.0 as usize;
-        let compact_len = bytes.len() - remaining_bytes.len();
+        let compact_len = Compact::<u32>::decode(remaining_bytes)?;
+        let len = compact_len.0 as usize;
+        let compact_len = Compact::<u32>::compact_len(&compact_len.0);
 
         Ok(Str { len, bytes, compact_len })
     }
@@ -45,8 +46,8 @@ impl<'scale> Str<'scale> {
         self.bytes
     }
     /// The bytes remaining in the input after this string.
-    pub fn bytes_after(&self) -> &'scale [u8] {
-        &self.bytes[self.compact_len + self.len..]
+    pub fn bytes_after(&self) -> Result<&'scale [u8], DecodeError> {
+        self.bytes.get(self.compact_len + self.len..).ok_or(DecodeError::NotEnoughInput)
     }
     /// Is the string zero bytes long?
     pub fn is_empty(&self) -> bool {
@@ -56,6 +57,7 @@ impl<'scale> Str<'scale> {
     pub fn as_str(&self) -> Result<&'scale str, DecodeError> {
         let start = self.compact_len;
         let end = start + self.len;
-        alloc::str::from_utf8(&self.bytes[start..end]).map_err(DecodeError::InvalidStr)
+        alloc::str::from_utf8(&self.bytes.get(start..end).ok_or(DecodeError::NotEnoughInput)?)
+            .map_err(DecodeError::InvalidStr)
     }
 }
