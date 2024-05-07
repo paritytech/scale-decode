@@ -57,7 +57,7 @@ impl<'scale> Str<'scale> {
     pub fn as_str(&self) -> Result<&'scale str, DecodeError> {
         let start = self.compact_len;
         let end = start + self.len;
-        alloc::str::from_utf8(&self.bytes.get(start..end).ok_or(DecodeError::NotEnoughInput)?)
+        alloc::str::from_utf8(self.bytes.get(start..end).ok_or(DecodeError::NotEnoughInput)?)
             .map_err(DecodeError::InvalidStr)
     }
 }
