@@ -1122,6 +1122,7 @@ mod test {
 
     // A couple of tests to check that invalid input doesn't lead to panics
     // when we attempt to decode it to certain types.
+    #[cfg(feature = "std")]
     mod proptests {
         use super::*;
         use proptest::prelude::*;
