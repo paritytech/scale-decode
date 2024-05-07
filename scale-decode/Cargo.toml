@@ -33,7 +33,6 @@ primitive-types = { version = "0.12.0", optional = true, default-features = fals
 smallvec = "1.10.0"
 derive_more = { version = "0.99.17", default-features = false, features = ["from", "display"] }
 scale-type-resolver = { version = "0.2.0", default-features = false }
-proptest = "1.4.0"
 
 [dev-dependencies]
 scale-info = { version = "2.7.0", default-features = false, features = ["bit-vec", "derive"] }
@@ -44,3 +43,4 @@ trybuild = "1.0.72"
 scale-bits = { version = "0.6.0", default-features = false, features = ["scale-info"] }
 primitive-types = { version = "0.12.0", default-features = false, features = ["scale-info"] }
 scale-type-resolver = { version = "0.2.0", default-features = false, features = ["scale-info"] }
+proptest = "1.4.0"
