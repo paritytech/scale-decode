@@ -1119,4 +1119,40 @@ mod test {
         .unwrap();
         assert_eq!(decoded, ("hello".to_string(), "world".to_string()));
     }
+
+    // A couple of tests to check that invalid input doesn't lead to panics
+    // when we attempt to decode it to certain types.
+    #[cfg(feature = "std")]
+    mod proptests {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn invalid_strings_dont_panic(bytes in any::<Vec<u8>>()) {
+                let (id, types) = make_type::<String>();
+                let _ = decode_with_visitor(&mut &*bytes, id, &types, ValueVisitor::new());
+            }
+
+            #[test]
+            fn invalid_bitvecs_dont_panic(bytes in any::<Vec<u8>>()) {
+                use bitvec::{
+                    vec::BitVec,
+                    order::{Lsb0, Msb0},
+                };
+
+                let (id, types) = make_type::<BitVec<u8,Lsb0>>();
+                let _ = decode_with_visitor(&mut &*bytes, id, &types, ValueVisitor::new());
+
+                let (id, types) = make_type::<BitVec<u8,Msb0>>();
+                let _ = decode_with_visitor(&mut &*bytes, id, &types, ValueVisitor::new());
+
+                let (id, types) = make_type::<BitVec<u32,Lsb0>>();
+                let _ = decode_with_visitor(&mut &*bytes, id, &types, ValueVisitor::new());
+
+                let (id, types) = make_type::<BitVec<u32,Msb0>>();
+                let _ = decode_with_visitor(&mut &*bytes, id, &types, ValueVisitor::new());
+            }
+        }
+    }
 }
