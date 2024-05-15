@@ -4,6 +4,17 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.13.0 - 2023-05-15
+
+This minor release avoids a couple of panics in the case of invalid bytes being interpreted as BitVecs or strings.
+
+A small API change was made to accommodate this, such that the `Str::bytes_after` now returns a result rather than just the bytes.
+
+### Fixed
+
+- Avoid panic on invalid bitvec input bytes ([#53](https://github.com/paritytech/scale-decode/pull/53)
+- Avoid panic on invalid str input bytes ([#54](https://github.com/paritytech/scale-decode/pull/54))
+
 ## 0.12.0 - 2024-04-29
 
 Update the `scale-type-resolver` dependency to 0.2.0 (and bump `scale-bits` for the same reason).
@@ -174,7 +185,7 @@ Any `Visitor` impls will need to be updated to use the refined `Visitor` trait; 
 (check out the examples and follow the compiler guidance to do this). Otherwise, the rest of the changes are
 additive and just make it easier to implement this trait and obtain a `DecodeAsType` implementation, if desired.
 
-## Changed
+### Changed
 
 - Add DecodeAsType backed by Visitor impls for standard types. ([#11](https://github.com/paritytech/scale-decode/pull/11))
 
@@ -183,7 +194,7 @@ additive and just make it easier to implement this trait and obtain a `DecodeAsT
 This release removes `bitvec` and the 32bit feature flag needed to play nicely with it and leans on `scale-bits` instead
 to decode bit sequences. We add a CI check to ensure that it can be compiled to WASM.
 
-## Changed
+### Changed
 
 - Use scale-bits to handle bit sequences ([#5](https://github.com/paritytech/scale-decode/pull/5)
 
@@ -203,7 +214,7 @@ This release makes the following changes:
 - `Visitor` related types are now exported directly from the `visitor` module rather than a `visitor::types` module.
 - Lifetimes have been made more precise to avoid unnecessary lifetime related errors.
 
-## Changed
+### Changed
 
 - TypeIds, more info for compact encoded values and tidy up ([#1](https://github.com/paritytech/scale-decode/pull/1))
 
