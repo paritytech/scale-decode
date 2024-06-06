@@ -123,10 +123,17 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let res = self.visitor.visit_composite(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
+        let skip_res = items.skip_decoding();
+        if skip_res.is_ok() {
+            *self.data = items.bytes_from_undecoded();
+        }
 
-        res
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match (res, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
     }
 
     fn visit_variant<Path, Fields, Var>(self, _path: Path, variants: Var) -> Self::Value
@@ -143,10 +150,17 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let res = self.visitor.visit_variant(&mut variant, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
-        variant.skip_decoding()?;
-        *self.data = variant.bytes_from_undecoded();
+        let skip_res = variant.skip_decoding();
+        if skip_res.is_ok() {
+            *self.data = variant.bytes_from_undecoded();
+        }
 
-        res
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match (res, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
     }
 
     fn visit_sequence<Path>(self, _path: Path, inner_type_id: Self::TypeId) -> Self::Value
@@ -161,10 +175,17 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let res = self.visitor.visit_sequence(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
+        let skip_res = items.skip_decoding();
+        if skip_res.is_ok() {
+            *self.data = items.bytes_from_undecoded();
+        }
 
-        res
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match (res, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
     }
 
     fn visit_array(self, inner_type_id: Self::TypeId, len: usize) -> Self::Value {
@@ -176,10 +197,17 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let res = self.visitor.visit_array(&mut arr, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
-        arr.skip_decoding()?;
-        *self.data = arr.bytes_from_undecoded();
+        let skip_res = arr.skip_decoding();
+        if skip_res.is_ok() {
+            *self.data = arr.bytes_from_undecoded();
+        }
 
-        res
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match (res, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
     }
 
     fn visit_tuple<TypeIds>(self, type_ids: TypeIds) -> Self::Value
@@ -196,10 +224,17 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let res = self.visitor.visit_tuple(&mut items, self.type_id);
 
         // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
+        let skip_res = items.skip_decoding();
+        if skip_res.is_ok() {
+            *self.data = items.bytes_from_undecoded();
+        }
 
-        res
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match (res, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
     }
 
     fn visit_primitive(self, primitive: Primitive) -> Self::Value {
