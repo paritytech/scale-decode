@@ -957,6 +957,10 @@ mod test {
 
     #[test]
     fn decoding_returns_visitor_error_first() {
+        fn visitor_err() -> DecodeError {
+            DecodeError::TypeResolvingError("Whoops".to_string())
+        }
+
         #[derive(codec::Encode)]
         struct HasBadTypeInfo;
         impl scale_info::TypeInfo for HasBadTypeInfo {
@@ -974,12 +978,13 @@ mod test {
             type Error = DecodeError;
             type TypeResolver = PortableRegistry;
 
-            fn visit_composite<'scale, 'resolver>(
-                    self,
-                    _value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
-                    _type_id: TypeIdFor<Self>,
+            fn visit_unexpected<'scale, 'resolver>(
+                self,
+                _unexpected: Unexpected,
             ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
-                Err(DecodeError::TypeResolvingError("Whoops".to_string()))
+                // Our visitor just returns a specific error, so we can check that
+                // we get it back when trying to decode.
+                Err(visitor_err())
             }
         }
 
@@ -990,12 +995,32 @@ mod test {
             c: Vec<u8>
         }
 
-        let input_encoded = SomeComposite { a: true, b: HasBadTypeInfo, c: vec![1,2,3] }.encode();
-        let (ty_id, types) = make_type::<SomeComposite>();
+        #[derive(codec::Encode, scale_info::TypeInfo)]
+        enum SomeVariant {
+            Foo(u32, HasBadTypeInfo, String)
+        }
 
-        let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
-        assert_eq!(err, DecodeError::TypeResolvingError("Whoops".to_string()));
+        fn assert_visitor_err<E: codec::Encode + scale_info::TypeInfo + 'static>(input: E) {
+            let input_encoded = input.encode();
+            let (ty_id, types) = make_type::<E>();
+            let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
+            assert_eq!(err, visitor_err());
+        }
 
+        // Test composites:
+        assert_visitor_err(SomeComposite { a: true, b: HasBadTypeInfo, c: vec![1,2,3] });
+
+        // Test arrays:
+        assert_visitor_err([HasBadTypeInfo, HasBadTypeInfo]);
+
+        // Test sequences:
+        assert_visitor_err(vec![HasBadTypeInfo, HasBadTypeInfo]);
+
+        // Test tuples
+        assert_visitor_err((32u64, HasBadTypeInfo, true));
+
+        // Test variants
+        assert_visitor_err(SomeVariant::Foo(32, HasBadTypeInfo, "hi".to_owned()));
     }
 
     #[test]
