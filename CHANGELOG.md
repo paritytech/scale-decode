@@ -4,7 +4,15 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
-## 0.13.0 - 2023-05-15
+## 0.13.1 - 2024-06-07
+
+Useful visitor errors can be hidden in some cases when a `skip_decoding` error is also emitted. This patch release fixes that.
+
+## Fixed
+
+- Don't hide visitor error when a skip_decode error is also emitted ([#58](https://github.com/paritytech/scale-decode/pull/58))
+
+## 0.13.0 - 2024-05-15
 
 This minor release avoids a couple of panics in the case of invalid bytes being interpreted as BitVecs or strings.
 
