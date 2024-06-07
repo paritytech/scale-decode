@@ -959,6 +959,9 @@ mod test {
     // up to the user. with some types (Sequence/Composite/Tuple/Array/Variant), we skip over
     // undecoded items after the visitor runs, and want to ensure that any error skipping over
     // things doesn't mask any visitor error.
+    //
+    // These tests all fail prior to https://github.com/paritytech/scale-decode/pull/58 and pass
+    // after it.
     macro_rules! decoding_returns_error_first {
         ($name:ident $expr:expr) => {
             #[test]
