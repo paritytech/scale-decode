@@ -107,7 +107,7 @@ macro_rules! skip_decoding_and_return {
             (_, Err(e)) => Err(e.into()),
             (Ok(v), _) => Ok(v),
         }
-    }}
+    }};
 }
 
 impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>

@@ -997,13 +997,14 @@ mod test {
                 fn assert_visitor_err<E: codec::Encode + scale_info::TypeInfo + 'static>(input: E) {
                     let input_encoded = input.encode();
                     let (ty_id, types) = make_type::<E>();
-                    let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
+                    let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl)
+                        .unwrap_err();
                     assert_eq!(err, visitor_err());
                 }
 
                 assert_visitor_err($expr);
             }
-        }
+        };
     }
 
     decoding_returns_error_first!(decode_composite_returns_error_first {
