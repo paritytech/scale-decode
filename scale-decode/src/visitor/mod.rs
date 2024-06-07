@@ -955,39 +955,58 @@ mod test {
         );
     }
 
-    #[test]
-    fn decoding_returns_visitor_error_first() {
-        fn visitor_err() -> DecodeError {
-            DecodeError::TypeResolvingError("Whoops".to_string())
-        }
+    // We want to make sure that if the visitor returns an error, then that error is propagated
+    // up to the user. with some types (Sequence/Composite/Tuple/Array/Variant), we skip over
+    // undecoded items after the visitor runs, and want to ensure that any error skipping over
+    // things doesn't mask any visitor error.
+    macro_rules! decoding_returns_error_first {
+        ($name:ident $expr:expr) => {
+            #[test]
+            fn $name() {
+                fn visitor_err() -> DecodeError {
+                    DecodeError::TypeResolvingError("Whoops".to_string())
+                }
 
-        #[derive(codec::Encode)]
-        struct HasBadTypeInfo;
-        impl scale_info::TypeInfo for HasBadTypeInfo {
-            type Identity = Self;
-            fn type_info() -> scale_info::Type {
-                // The actual struct is zero bytes but the type info says it is 1 byte,
-                // so using type info to decode it will lead to failures.
-                scale_info::meta_type::<u8>().type_info()
+                #[derive(codec::Encode)]
+                struct HasBadTypeInfo;
+                impl scale_info::TypeInfo for HasBadTypeInfo {
+                    type Identity = Self;
+                    fn type_info() -> scale_info::Type {
+                        // The actual struct is zero bytes but the type info says it is 1 byte,
+                        // so using type info to decode it will lead to failures.
+                        scale_info::meta_type::<u8>().type_info()
+                    }
+                }
+
+                struct VisitorImpl;
+                impl Visitor for VisitorImpl {
+                    type Value<'scale, 'resolver> = ();
+                    type Error = DecodeError;
+                    type TypeResolver = PortableRegistry;
+
+                    fn visit_unexpected<'scale, 'resolver>(
+                        self,
+                        _unexpected: Unexpected,
+                    ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+                        // Our visitor just returns a specific error, so we can check that
+                        // we get it back when trying to decode.
+                        Err(visitor_err())
+                    }
+                }
+
+                fn assert_visitor_err<E: codec::Encode + scale_info::TypeInfo + 'static>(input: E) {
+                    let input_encoded = input.encode();
+                    let (ty_id, types) = make_type::<E>();
+                    let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
+                    assert_eq!(err, visitor_err());
+                }
+
+                assert_visitor_err($expr);
             }
         }
+    }
 
-        struct VisitorImpl;
-        impl Visitor for VisitorImpl {
-            type Value<'scale, 'resolver> = ();
-            type Error = DecodeError;
-            type TypeResolver = PortableRegistry;
-
-            fn visit_unexpected<'scale, 'resolver>(
-                self,
-                _unexpected: Unexpected,
-            ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
-                // Our visitor just returns a specific error, so we can check that
-                // we get it back when trying to decode.
-                Err(visitor_err())
-            }
-        }
-
+    decoding_returns_error_first!(decode_composite_returns_error_first {
         #[derive(codec::Encode, scale_info::TypeInfo)]
         struct SomeComposite {
             a: bool,
@@ -995,33 +1014,29 @@ mod test {
             c: Vec<u8>
         }
 
+        SomeComposite { a: true, b: HasBadTypeInfo, c: vec![1,2,3] }
+    });
+
+    decoding_returns_error_first!(decode_variant_returns_error_first {
         #[derive(codec::Encode, scale_info::TypeInfo)]
         enum SomeVariant {
             Foo(u32, HasBadTypeInfo, String)
         }
 
-        fn assert_visitor_err<E: codec::Encode + scale_info::TypeInfo + 'static>(input: E) {
-            let input_encoded = input.encode();
-            let (ty_id, types) = make_type::<E>();
-            let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
-            assert_eq!(err, visitor_err());
-        }
+        SomeVariant::Foo(32, HasBadTypeInfo, "hi".to_owned())
+    });
 
-        // Test composites:
-        assert_visitor_err(SomeComposite { a: true, b: HasBadTypeInfo, c: vec![1,2,3] });
+    decoding_returns_error_first!(decode_array_returns_error_first {
+        [HasBadTypeInfo, HasBadTypeInfo]
+    });
 
-        // Test arrays:
-        assert_visitor_err([HasBadTypeInfo, HasBadTypeInfo]);
+    decoding_returns_error_first!(decode_sequence_returns_error_first {
+        vec![HasBadTypeInfo, HasBadTypeInfo]
+    });
 
-        // Test sequences:
-        assert_visitor_err(vec![HasBadTypeInfo, HasBadTypeInfo]);
-
-        // Test tuples
-        assert_visitor_err((32u64, HasBadTypeInfo, true));
-
-        // Test variants
-        assert_visitor_err(SomeVariant::Foo(32, HasBadTypeInfo, "hi".to_owned()));
-    }
+    decoding_returns_error_first!(decode_tuple_returns_error_first {
+        (32u64, HasBadTypeInfo, true)
+    });
 
     #[test]
     fn zero_copy_string_decoding() {
