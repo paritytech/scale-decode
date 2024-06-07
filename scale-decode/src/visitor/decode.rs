@@ -90,6 +90,26 @@ impl<'a, 'scale, 'resolver, V: Visitor> Decoder<'a, 'scale, 'resolver, V> {
     }
 }
 
+// Our types like Composite/Variant/Sequence/Array/Tuple all use the same
+// approach to skip over any bytes that the visitor didn't consume, so this
+// macro performs that logic.
+macro_rules! skip_decoding_and_return {
+    ($self:ident, $visit_result:ident, $visitor_ty:ident) => {{
+        // Skip over any bytes that the visitor chose not to decode:
+        let skip_res = $visitor_ty.skip_decoding();
+        if skip_res.is_ok() {
+            *$self.data = $visitor_ty.bytes_from_undecoded();
+        }
+
+        // Prioritize returning visitor errors over skip_decoding errors.
+        match ($visit_result, skip_res) {
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e.into()),
+            (Ok(v), _) => Ok(v),
+        }
+    }};
+}
+
 impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
     for Decoder<'temp, 'scale, 'resolver, V>
 {
@@ -122,11 +142,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let mut items = Composite::new(path, self.data, &mut fields, self.types, self.is_compact);
         let res = self.visitor.visit_composite(&mut items, self.type_id);
 
-        // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
-
-        res
+        skip_decoding_and_return!(self, res, items)
     }
 
     fn visit_variant<Path, Fields, Var>(self, _path: Path, variants: Var) -> Self::Value
@@ -142,11 +158,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let mut variant = Variant::new(self.data, variants, self.types)?;
         let res = self.visitor.visit_variant(&mut variant, self.type_id);
 
-        // Skip over any bytes that the visitor chose not to decode:
-        variant.skip_decoding()?;
-        *self.data = variant.bytes_from_undecoded();
-
-        res
+        skip_decoding_and_return!(self, res, variant)
     }
 
     fn visit_sequence<Path>(self, _path: Path, inner_type_id: Self::TypeId) -> Self::Value
@@ -160,11 +172,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let mut items = Sequence::new(self.data, inner_type_id, self.types)?;
         let res = self.visitor.visit_sequence(&mut items, self.type_id);
 
-        // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
-
-        res
+        skip_decoding_and_return!(self, res, items)
     }
 
     fn visit_array(self, inner_type_id: Self::TypeId, len: usize) -> Self::Value {
@@ -175,11 +183,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let mut arr = Array::new(self.data, inner_type_id, len, self.types);
         let res = self.visitor.visit_array(&mut arr, self.type_id);
 
-        // Skip over any bytes that the visitor chose not to decode:
-        arr.skip_decoding()?;
-        *self.data = arr.bytes_from_undecoded();
-
-        res
+        skip_decoding_and_return!(self, res, arr)
     }
 
     fn visit_tuple<TypeIds>(self, type_ids: TypeIds) -> Self::Value
@@ -195,11 +199,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         let mut items = Tuple::new(self.data, &mut fields, self.types, self.is_compact);
         let res = self.visitor.visit_tuple(&mut items, self.type_id);
 
-        // Skip over any bytes that the visitor chose not to decode:
-        items.skip_decoding()?;
-        *self.data = items.bytes_from_undecoded();
-
-        res
+        skip_decoding_and_return!(self, res, items)
     }
 
     fn visit_primitive(self, primitive: Primitive) -> Self::Value {
