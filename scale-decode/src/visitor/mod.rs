@@ -956,6 +956,49 @@ mod test {
     }
 
     #[test]
+    fn decoding_returns_visitor_error_first() {
+        #[derive(codec::Encode)]
+        struct HasBadTypeInfo;
+        impl scale_info::TypeInfo for HasBadTypeInfo {
+            type Identity = Self;
+            fn type_info() -> scale_info::Type {
+                // The actual struct is zero bytes but the type info says it is 1 byte,
+                // so using type info to decode it will lead to failures.
+                scale_info::meta_type::<u8>().type_info()
+            }
+        }
+
+        struct VisitorImpl;
+        impl Visitor for VisitorImpl {
+            type Value<'scale, 'resolver> = ();
+            type Error = DecodeError;
+            type TypeResolver = PortableRegistry;
+
+            fn visit_composite<'scale, 'resolver>(
+                    self,
+                    _value: &mut Composite<'scale, 'resolver, Self::TypeResolver>,
+                    _type_id: TypeIdFor<Self>,
+            ) -> Result<Self::Value<'scale, 'resolver>, Self::Error> {
+                Err(DecodeError::TypeResolvingError("Whoops".to_string()))
+            }
+        }
+
+        #[derive(codec::Encode, scale_info::TypeInfo)]
+        struct SomeComposite {
+            a: bool,
+            b: HasBadTypeInfo,
+            c: Vec<u8>
+        }
+
+        let input_encoded = SomeComposite { a: true, b: HasBadTypeInfo, c: vec![1,2,3] }.encode();
+        let (ty_id, types) = make_type::<SomeComposite>();
+
+        let err = decode_with_visitor(&mut &*input_encoded, ty_id, &types, VisitorImpl).unwrap_err();
+        assert_eq!(err, DecodeError::TypeResolvingError("Whoops".to_string()));
+
+    }
+
+    #[test]
     fn zero_copy_string_decoding() {
         let input = ("hello", "world");
 
