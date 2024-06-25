@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// https://github.com/rust-lang/rust-clippy/issues/12643.
+// related to `darling::default` attribute expansion
+#![allow(clippy::manual_unwrap_or_default)]
+
 extern crate alloc;
 
 use alloc::string::ToString;
@@ -539,11 +543,11 @@ impl TopLevelAttrs {
 
         // look at each top level attr. parse any for decode_as_type.
         for attr in attrs {
-            if !attr.path.is_ident(ATTR_NAME) {
+            if !attr.path().is_ident(ATTR_NAME) {
                 continue;
             }
-            let meta = attr.parse_meta()?;
-            let parsed_attrs = TopLevelAttrsInner::from_meta(&meta)?;
+            let meta = &attr.meta;
+            let parsed_attrs = TopLevelAttrsInner::from_meta(meta)?;
 
             res.trait_bounds = parsed_attrs.trait_bounds;
             if let Some(crate_path) = parsed_attrs.crate_path {
