@@ -116,16 +116,16 @@ pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
     #[from]
-    #[display(fmt = "Error decoding bytes given the type ID and registry provided: {_0}")]
+    #[display("Error decoding bytes given the type ID and registry provided: {_0}")]
     VisitorDecodeError(DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
-    #[display(fmt = "Number {value} is out of range")]
+    #[display("Number {value} is out of range")]
     NumberOutOfRange {
         /// A string representation of the numeric value that was out of range.
         value: String,
     },
     /// We cannot find the variant we're trying to decode from in the target type.
-    #[display(fmt = "Cannot find variant {got}; expects one of {expected:?}")]
+    #[display("Cannot find variant {got}; expects one of {expected:?}")]
     CannotFindVariant {
         /// The variant that we are given back from the encoded bytes.
         got: String,
@@ -134,7 +134,7 @@ pub enum ErrorKind {
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
     #[display(
-        fmt = "Cannot decode from type; expected length {expected_len} but got length {actual_len}"
+        "Cannot decode from type; expected length {expected_len} but got length {actual_len}"
     )]
     WrongLength {
         /// Length of the type we are trying to decode from
@@ -143,14 +143,14 @@ pub enum ErrorKind {
         expected_len: usize,
     },
     /// Cannot find a field that we need to decode to our target type
-    #[display(fmt = "Field {name} does not exist in our encoded data")]
+    #[display("Field {name} does not exist in our encoded data")]
     CannotFindField {
         /// Name of the field which was not provided.
         name: String,
     },
     /// A custom error.
     #[from]
-    #[display(fmt = "Custom error: {_0}")]
+    #[display("Custom error: {_0}")]
     Custom(Box<dyn CustomError>),
 }
 
