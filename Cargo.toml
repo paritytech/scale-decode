@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.13.2"
+version = "0.14.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -17,5 +17,5 @@ keywords = ["parity", "scale", "decoding"]
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
 
 [workspace.dependencies]
-scale-decode = { version = "0.13.2", path = "scale-decode" }
-scale-decode-derive = { version = "0.13.2", path = "scale-decode-derive" }
+scale-decode = { version = "0.14.0", path = "scale-decode" }
+scale-decode-derive = { version = "0.14.0", path = "scale-decode-derive" }
