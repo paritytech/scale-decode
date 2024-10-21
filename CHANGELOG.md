@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.13.2 - 2024-10-21
+
+### Changed
+
+- chore(deps): bump syn from 1.0 to 2.0 ([#60](https://github.com/paritytech/scale-decode/pull/60))
+- chore(deps): bump primitives types from 0.12.0 to 0.13.1 ([#61](https://github.com/paritytech/scale-decode/pull/61))
+- chore(deps): chore(deps): bump derive_more from 0.99 to 1.0.0 ([#62](https://github.com/paritytech/scale-decode/pull/62))
+
 ## 0.13.1 - 2024-06-07
 
 Useful visitor errors can be hidden in some cases when a `skip_decoding` error is also emitted. This patch release fixes that.
