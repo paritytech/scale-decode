@@ -244,32 +244,32 @@ pub trait Visitor: Sized {
 #[derive(Debug, Clone, PartialEq, Eq, derive_more::From, derive_more::Display)]
 pub enum DecodeError {
     /// Type ID was not found
-    #[display(fmt = "Could not find type with ID '{_0}'")]
+    #[display("Could not find type with ID '{_0}'")]
     TypeIdNotFound(String),
     /// A low level error trying to resolve a type.
-    #[display(fmt = "Failed to resolve type: {_0}")]
+    #[display("Failed to resolve type: {_0}")]
     TypeResolvingError(String),
     /// The type we're trying to decode is supposed to be compact encoded, but that is not possible.
-    #[display(fmt = "Could not decode compact encoded type: compact types can only have 1 field")]
+    #[display("Could not decode compact encoded type: compact types can only have 1 field")]
     CannotDecodeCompactIntoType,
     /// Failure to decode bytes into a string.
     #[from]
-    #[display(fmt = "Could not decode string: {_0}")]
+    #[display("Could not decode string: {_0}")]
     InvalidStr(alloc::str::Utf8Error),
     /// We could not convert the [`u32`] that we found into a valid [`char`].
-    #[display(fmt = "{_0} is expected to be a valid char, but is not")]
+    #[display("{_0} is expected to be a valid char, but is not")]
     InvalidChar(u32),
     /// We expected more bytes to finish decoding, but could not find them.
-    #[display(fmt = "Ran out of data during decoding")]
+    #[display("Ran out of data during decoding")]
     NotEnoughInput,
     /// We found a variant that does not match with any in the type we're trying to decode from.
-    #[display(fmt = "Could not find variant with index {_0}")]
+    #[display("Could not find variant with index {_0}")]
     VariantNotFound(u8),
     /// Some error emitted from a [`codec::Decode`] impl.
     #[from]
     CodecError(codec::Error),
     /// This is returned by default if a visitor function is not implemented.
-    #[display(fmt = "Unexpected type {_0}")]
+    #[display("Unexpected type {_0}")]
     Unexpected(Unexpected),
 }
 
@@ -280,47 +280,47 @@ impl std::error::Error for DecodeError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, derive_more::Display)]
 #[allow(missing_docs)]
 pub enum Unexpected {
-    #[display(fmt = "bool")]
+    #[display("bool")]
     Bool,
-    #[display(fmt = "char")]
+    #[display("char")]
     Char,
-    #[display(fmt = "u8")]
+    #[display("u8")]
     U8,
-    #[display(fmt = "u16")]
+    #[display("u16")]
     U16,
-    #[display(fmt = "u32")]
+    #[display("u32")]
     U32,
-    #[display(fmt = "u64")]
+    #[display("u64")]
     U64,
-    #[display(fmt = "u128")]
+    #[display("u128")]
     U128,
-    #[display(fmt = "u256")]
+    #[display("u256")]
     U256,
-    #[display(fmt = "i8")]
+    #[display("i8")]
     I8,
-    #[display(fmt = "i16")]
+    #[display("i16")]
     I16,
-    #[display(fmt = "i32")]
+    #[display("i32")]
     I32,
-    #[display(fmt = "i64")]
+    #[display("i64")]
     I64,
-    #[display(fmt = "i128")]
+    #[display("i128")]
     I128,
-    #[display(fmt = "i256")]
+    #[display("i256")]
     I256,
-    #[display(fmt = "sequence")]
+    #[display("sequence")]
     Sequence,
-    #[display(fmt = "composite")]
+    #[display("composite")]
     Composite,
-    #[display(fmt = "tuple")]
+    #[display("tuple")]
     Tuple,
-    #[display(fmt = "str")]
+    #[display("str")]
     Str,
-    #[display(fmt = "variant")]
+    #[display("variant")]
     Variant,
-    #[display(fmt = "array")]
+    #[display("array")]
     Array,
-    #[display(fmt = "bitsequence")]
+    #[display("bitsequence")]
     Bitsequence,
 }
 
