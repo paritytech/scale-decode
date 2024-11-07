@@ -257,7 +257,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u8::decode(data)
                 }
-                .map_err(|e| e.into())?;
+                .map_err(Into::into)?;
                 visitor.visit_u8(n, type_id)
             }
             Primitive::U16 => {
