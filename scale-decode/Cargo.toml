@@ -12,12 +12,10 @@ repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
 include.workspace = true
+rust-version.workspace = true
 
 [features]
-default = ["std", "derive", "primitive-types"]
-
-# Activates std feature.
-std = []
+default = ["derive", "primitive-types"]
 
 # Impls for primitive-types.
 primitive-types = ["dep:primitive-types"]
@@ -31,8 +29,8 @@ scale-bits = { version = "0.6.0", default-features = false }
 scale-decode-derive = { workspace = true, optional = true }
 primitive-types = { version = "0.13.1", optional = true, default-features = false }
 smallvec = "1.10.0"
-derive_more = { version = "1.0.0", default-features = false, features = ["from", "display"] }
 scale-type-resolver = { version = "0.2.0", default-features = false }
+thiserror = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 scale-info = { version = "2.7.0", default-features = false, features = ["bit-vec", "derive"] }

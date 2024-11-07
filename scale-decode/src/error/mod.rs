@@ -29,8 +29,7 @@ pub struct Error {
     kind: ErrorKind,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl Error {
     /// Construct a new error given an error kind.
@@ -38,24 +37,22 @@ impl Error {
         Error { context: Context::new(), kind }
     }
     /// Construct a new, custom error.
-    pub fn custom(error: impl CustomError) -> Error {
+    pub fn custom(error: impl core::error::Error + Send + Sync + 'static) -> Error {
         Error::new(ErrorKind::Custom(Box::new(error)))
     }
     /// Construct a custom error from a static string.
     pub fn custom_str(error: &'static str) -> Error {
-        #[derive(derive_more::Display, Debug)]
+        #[derive(Debug, thiserror::Error)]
+        #[error("{0}")]
         pub struct StrError(pub &'static str);
-        #[cfg(feature = "std")]
-        impl std::error::Error for StrError {}
 
         Error::new(ErrorKind::Custom(Box::new(StrError(error))))
     }
     /// Construct a custom error from an owned string.
     pub fn custom_string(error: String) -> Error {
-        #[derive(derive_more::Display, Debug)]
+        #[derive(Debug, thiserror::Error)]
+        #[error("{0}")]
         pub struct StringError(String);
-        #[cfg(feature = "std")]
-        impl std::error::Error for StringError {}
 
         Error::new(ErrorKind::Custom(Box::new(StringError(error))))
     }
@@ -111,21 +108,20 @@ impl From<codec::Error> for Error {
 }
 
 /// The underlying nature of the error.
-#[derive(Debug, derive_more::From, derive_more::Display)]
+#[derive(Debug, thiserror::Error)]
 pub enum ErrorKind {
     /// Something went wrong decoding the bytes based on the type
     /// and type registry provided.
-    #[from]
-    #[display("Error decoding bytes given the type ID and registry provided: {_0}")]
-    VisitorDecodeError(DecodeError),
+    #[error("Error decoding bytes given the type ID and registry provided: {_0}")]
+    VisitorDecodeError(#[from] DecodeError),
     /// We cannot decode the number seen into the target type; it's out of range.
-    #[display("Number {value} is out of range")]
+    #[error("Number {value} is out of range")]
     NumberOutOfRange {
         /// A string representation of the numeric value that was out of range.
         value: String,
     },
     /// We cannot find the variant we're trying to decode from in the target type.
-    #[display("Cannot find variant {got}; expects one of {expected:?}")]
+    #[error("Cannot find variant {got}; expects one of {expected:?}")]
     CannotFindVariant {
         /// The variant that we are given back from the encoded bytes.
         got: String,
@@ -133,9 +129,7 @@ pub enum ErrorKind {
         expected: Vec<&'static str>,
     },
     /// The types line up, but the expected length of the target type is different from the length of the input value.
-    #[display(
-        "Cannot decode from type; expected length {expected_len} but got length {actual_len}"
-    )]
+    #[error("Cannot decode from type; expected length {expected_len} but got length {actual_len}")]
     WrongLength {
         /// Length of the type we are trying to decode from
         actual_len: usize,
@@ -143,44 +137,12 @@ pub enum ErrorKind {
         expected_len: usize,
     },
     /// Cannot find a field that we need to decode to our target type
-    #[display("Field {name} does not exist in our encoded data")]
+    #[error("Field {name} does not exist in our encoded data")]
     CannotFindField {
         /// Name of the field which was not provided.
         name: String,
     },
     /// A custom error.
-    #[from]
-    #[display("Custom error: {_0}")]
-    Custom(Box<dyn CustomError>),
-}
-
-/// Anything implementing this trait can be used in [`ErrorKind::Custom`].
-#[cfg(feature = "std")]
-pub trait CustomError: std::error::Error + Send + Sync + 'static {}
-#[cfg(feature = "std")]
-impl<T: std::error::Error + Send + Sync + 'static> CustomError for T {}
-
-/// Anything implementing this trait can be used in [`ErrorKind::Custom`].
-#[cfg(not(feature = "std"))]
-pub trait CustomError: core::fmt::Debug + core::fmt::Display + Send + Sync + 'static {}
-#[cfg(not(feature = "std"))]
-impl<T: core::fmt::Debug + core::fmt::Display + Send + Sync + 'static> CustomError for T {}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[derive(Debug, derive_more::Display)]
-    enum MyError {
-        Foo,
-    }
-
-    #[cfg(feature = "std")]
-    impl std::error::Error for MyError {}
-
-    #[test]
-    fn custom_error() {
-        // Just a compile-time check that we can ergonomically provide an arbitrary custom error:
-        Error::custom(MyError::Foo);
-    }
+    #[error("Custom error: {0}")]
+    Custom(Box<dyn core::error::Error + Send + Sync + 'static>),
 }

@@ -241,86 +241,90 @@ pub trait Visitor: Sized {
 }
 
 /// An error decoding SCALE bytes.
-#[derive(Debug, Clone, PartialEq, Eq, derive_more::From, derive_more::Display)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum DecodeError {
     /// Type ID was not found
-    #[display("Could not find type with ID '{_0}'")]
+    #[error("Could not find type with ID '{0}'")]
     TypeIdNotFound(String),
     /// A low level error trying to resolve a type.
-    #[display("Failed to resolve type: {_0}")]
+    #[error("Failed to resolve type: {0}")]
     TypeResolvingError(String),
     /// The type we're trying to decode is supposed to be compact encoded, but that is not possible.
-    #[display("Could not decode compact encoded type: compact types can only have 1 field")]
+    #[error("Could not decode compact encoded type: compact types can only have 1 field")]
     CannotDecodeCompactIntoType,
     /// Failure to decode bytes into a string.
-    #[from]
-    #[display("Could not decode string: {_0}")]
+    #[error("Could not decode string: {0}")]
     InvalidStr(alloc::str::Utf8Error),
     /// We could not convert the [`u32`] that we found into a valid [`char`].
-    #[display("{_0} is expected to be a valid char, but is not")]
+    #[error("{_0} is expected to be a valid char, but is not")]
     InvalidChar(u32),
     /// We expected more bytes to finish decoding, but could not find them.
-    #[display("Ran out of data during decoding")]
+    #[error("Ran out of data during decoding")]
     NotEnoughInput,
     /// We found a variant that does not match with any in the type we're trying to decode from.
-    #[display("Could not find variant with index {_0}")]
+    #[error("Could not find variant with index {_0}")]
     VariantNotFound(u8),
     /// Some error emitted from a [`codec::Decode`] impl.
-    #[from]
+    #[error("Decode error: {0}")]
     CodecError(codec::Error),
     /// This is returned by default if a visitor function is not implemented.
-    #[display("Unexpected type {_0}")]
-    Unexpected(Unexpected),
+    #[error("Unexpected type {_0}")]
+    Unexpected(#[from] Unexpected),
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for DecodeError {}
+// TODO(niklasad1): when `codec::Error` implements `core::error::Error` we can remove this impl
+// and use thiserror::Error #[from] instead.
+impl From<codec::Error> for DecodeError {
+    fn from(e: codec::Error) -> Self {
+        DecodeError::CodecError(e)
+    }
+}
 
 /// This is returned by default when a visitor function isn't implemented.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, derive_more::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 #[allow(missing_docs)]
 pub enum Unexpected {
-    #[display("bool")]
+    #[error("bool")]
     Bool,
-    #[display("char")]
+    #[error("char")]
     Char,
-    #[display("u8")]
+    #[error("u8")]
     U8,
-    #[display("u16")]
+    #[error("u16")]
     U16,
-    #[display("u32")]
+    #[error("u32")]
     U32,
-    #[display("u64")]
+    #[error("u64")]
     U64,
-    #[display("u128")]
+    #[error("u128")]
     U128,
-    #[display("u256")]
+    #[error("u256")]
     U256,
-    #[display("i8")]
+    #[error("i8")]
     I8,
-    #[display("i16")]
+    #[error("i16")]
     I16,
-    #[display("i32")]
+    #[error("i32")]
     I32,
-    #[display("i64")]
+    #[error("i64")]
     I64,
-    #[display("i128")]
+    #[error("i128")]
     I128,
-    #[display("i256")]
+    #[error("i256")]
     I256,
-    #[display("sequence")]
+    #[error("sequence")]
     Sequence,
-    #[display("composite")]
+    #[error("composite")]
     Composite,
-    #[display("tuple")]
+    #[error("tuple")]
     Tuple,
-    #[display("str")]
+    #[error("str")]
     Str,
-    #[display("variant")]
+    #[error("variant")]
     Variant,
-    #[display("array")]
+    #[error("array")]
     Array,
-    #[display("bitsequence")]
+    #[error("bitsequence")]
     Bitsequence,
 }
 
@@ -1209,7 +1213,6 @@ mod test {
 
     // A couple of tests to check that invalid input doesn't lead to panics
     // when we attempt to decode it to certain types.
-    #[cfg(feature = "std")]
     mod proptests {
         use super::*;
         use proptest::prelude::*;

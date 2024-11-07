@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 /*!
 `parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those
@@ -315,6 +315,6 @@ pub trait IntoVisitor {
 /// - `#[decode_as_type(skip)]` (or `#[codec(skip)]`):
 ///   Any fields annotated with this will be skipped when attempting to decode into the
 ///   type, and instead will be populated with their default value (and therefore must
-///   implement [`std::default::Default`]).
+///   implement [`core::default::Default`]).
 #[cfg(feature = "derive")]
 pub use scale_decode_derive::DecodeAsType;

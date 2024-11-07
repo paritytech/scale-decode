@@ -15,6 +15,7 @@ repository = "https://github.com/paritytech/scale-decode"
 homepage = "https://www.parity.io/"
 keywords = ["parity", "scale", "decoding"]
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "LICENSE"]
+rust-version = "1.81.0"
 
 [workspace.dependencies]
 scale-decode = { version = "0.14.0", path = "scale-decode" }
