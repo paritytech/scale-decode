@@ -284,7 +284,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u64::decode(data)
                 }
-                .map_err(|e| e.into())?;
+                .map_err(Into::into)?;
                 visitor.visit_u64(n, type_id)
             }
             Primitive::U128 => {
