@@ -315,6 +315,6 @@ pub trait IntoVisitor {
 /// - `#[decode_as_type(skip)]` (or `#[codec(skip)]`):
 ///   Any fields annotated with this will be skipped when attempting to decode into the
 ///   type, and instead will be populated with their default value (and therefore must
-///   implement [`std::default::Default`]).
+///   implement [`core::default::Default`]).
 #[cfg(feature = "derive")]
 pub use scale_decode_derive::DecodeAsType;
