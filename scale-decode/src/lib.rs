@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 /*!
 `parity-scale-codec` provides a `Decode` trait which allows bytes to be scale decoded into types based on the shape of those
 types. This crate builds on this, and allows bytes to be decoded into types based on type information, rather than the shape

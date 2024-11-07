@@ -257,7 +257,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u8::decode(data)
                 }
-                .map_err(Into::into)?;
+                .map_err(|e| e.into())?;
                 visitor.visit_u8(n, type_id)
             }
             Primitive::U16 => {
@@ -266,7 +266,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u16::decode(data)
                 }
-                .map_err(Into::into)?;
+                .map_err(|e| e.into())?;
                 visitor.visit_u16(n, type_id)
             }
             Primitive::U32 => {
@@ -275,7 +275,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u32::decode(data)
                 }
-                .map_err(Into::into)?;
+                .map_err(|e| e.into())?;
                 visitor.visit_u32(n, type_id)
             }
             Primitive::U64 => {
@@ -284,7 +284,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u64::decode(data)
                 }
-                .map_err(Into::into)?;
+                .map_err(|e| e.into())?;
                 visitor.visit_u64(n, type_id)
             }
             Primitive::U128 => {
@@ -293,7 +293,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
                 } else {
                     u128::decode(data)
                 }
-                .map_err(Into::into)?;
+                .map_err(|e| e.into())?;
                 visitor.visit_u128(n, type_id)
             }
             Primitive::U256 => {
