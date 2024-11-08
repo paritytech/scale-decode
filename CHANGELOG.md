@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.15.0 - 2024-11-08
+
+This release makes scale-decode `no_std` which is now using `core::error::Error` instead of `std::error::Error` as it was using before behind
+the `std feature`. Because of that the `std feature` is now removed and the MSRV is bumped to 1.81.0.
+
+### Changed
+- chore(deps): use core::error::Error and make no_std ([#67](https://github.com/paritytech/scale-decode/pull/67))
+
 ## 0.14.0 - 2024-10-21
 
 ### Changed
