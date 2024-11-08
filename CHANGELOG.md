@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog].
 
 ## 0.15.0 - 2024-11-08
 
-This release makes scale-decode `no_std` which is now using `core::error::Error` instead of `std::error::Error` as it was using before behind
+This release makes scale-decode entirely `no_std` which is now using `core::error::Error` instead of `std::error::Error` as it was using before behind
 the `std feature`. Because of that the `std feature` is now removed and the MSRV is bumped to 1.81.0.
 
 ### Changed
