@@ -25,7 +25,7 @@ derive = ["dep:scale-decode-derive"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-scale-bits = { version = "0.6.0", default-features = false }
+scale-bits = { version = "0.7.0", default-features = false }
 scale-decode-derive = { workspace = true, optional = true }
 primitive-types = { version = "0.13.1", optional = true, default-features = false }
 smallvec = "1.10.0"
@@ -38,7 +38,7 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 bitvec = { version = "1.0.1", default-features = false }
 trybuild = "1.0.72"
 # Enable the scale-info feature for testing.
-scale-bits = { version = "0.6.0", default-features = false, features = ["scale-info"] }
+scale-bits = { version = "0.7.0", default-features = false, features = ["scale-info"] }
 primitive-types = { version = "0.13.1", default-features = false, features = ["scale-info"] }
 scale-type-resolver = { version = "0.2.0", default-features = false, features = ["scale-info"] }
 proptest = "1.4.0"
