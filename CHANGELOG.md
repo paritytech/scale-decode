@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.16.0 - 2024-11-15
+
+This release updates scale-bits to 0.7.0 which is exposed in the public API of scale-decode.
+
 ## 0.15.0 - 2024-11-08
 
 This release makes scale-decode entirely `no_std` which is now using `core::error::Error` instead of `std::error::Error` as it was using before behind
