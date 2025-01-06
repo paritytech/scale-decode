@@ -19,23 +19,23 @@ use crate::{
     DecodeAsType,
 };
 use codec::{Compact, Decode};
-use scale_info::PortableRegistry;
+use scale_type_resolver::TypeResolver;
 
 /// This enables a visitor to decode items from a sequence type.
-pub struct Sequence<'scale, 'info> {
+pub struct Sequence<'scale, 'resolver, R: TypeResolver> {
     bytes: &'scale [u8],
     // Mostly we just delegate to our Array logic for working with sequences.
     // The only thing we need to do otherwise is decode the compact encoded
     // length from the beginning and keep track of the bytes including that.
-    values: Array<'scale, 'info>,
+    values: Array<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'info> Sequence<'scale, 'info> {
+impl<'scale, 'resolver, R: TypeResolver> Sequence<'scale, 'resolver, R> {
     pub(crate) fn new(
         bytes: &'scale [u8],
-        type_id: u32,
-        types: &'info PortableRegistry,
-    ) -> Result<Sequence<'scale, 'info>, DecodeError> {
+        type_id: R::TypeId,
+        types: &'resolver R,
+    ) -> Result<Sequence<'scale, 'resolver, R>, DecodeError> {
         // Sequences are prefixed with their length in bytes. Make a note of this,
         // as well as the number of bytes
         let item_bytes = &mut &*bytes;
@@ -62,43 +62,54 @@ impl<'scale, 'info> Sequence<'scale, 'info> {
         self.values.remaining()
     }
     /// Decode an item from the sequence by providing a visitor to handle it.
-    pub fn decode_item<V: Visitor>(
+    pub fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.values.decode_item(visitor)
     }
 }
 
 // Iterating returns a representation of each field in the tuple type.
-impl<'scale, 'info> Iterator for Sequence<'scale, 'info> {
-    type Item = Result<SequenceItem<'scale, 'info>, DecodeError>;
+impl<'scale, 'resolver, R: TypeResolver> Iterator for Sequence<'scale, 'resolver, R> {
+    type Item = Result<SequenceItem<'scale, 'resolver, R>, DecodeError>;
     fn next(&mut self) -> Option<Self::Item> {
         Some(self.values.next()?.map(|item| SequenceItem { item }))
     }
 }
 
 /// A single item in the Sequence.
-#[derive(Copy, Clone)]
-pub struct SequenceItem<'scale, 'info> {
+pub struct SequenceItem<'scale, 'resolver, R: TypeResolver> {
     // Same implementation under the hood as ArrayItem:
-    item: ArrayItem<'scale, 'info>,
+    item: ArrayItem<'scale, 'resolver, R>,
 }
 
-impl<'scale, 'info> SequenceItem<'scale, 'info> {
+impl<'scale, 'resolver, R> Copy for SequenceItem<'scale, 'resolver, R>
+where
+    R: TypeResolver,
+    R::TypeId: Copy,
+{
+}
+impl<'scale, 'resolver, R: TypeResolver> Clone for SequenceItem<'scale, 'resolver, R> {
+    fn clone(&self) -> Self {
+        SequenceItem { item: self.item.clone() }
+    }
+}
+
+impl<'scale, 'resolver, R: TypeResolver> SequenceItem<'scale, 'resolver, R> {
     /// The bytes associated with this item.
     pub fn bytes(&self) -> &'scale [u8] {
         self.item.bytes()
     }
     /// The type ID associated with this item.
-    pub fn type_id(&self) -> u32 {
+    pub fn type_id(&self) -> &R::TypeId {
         self.item.type_id()
     }
     /// Decode this item using a visitor.
-    pub fn decode_with_visitor<V: Visitor>(
+    pub fn decode_with_visitor<V: Visitor<TypeResolver = R>>(
         &self,
         visitor: V,
-    ) -> Result<V::Value<'scale, 'info>, V::Error> {
+    ) -> Result<V::Value<'scale, 'resolver>, V::Error> {
         self.item.decode_with_visitor(visitor)
     }
     /// Decode this item into a specific type via [`DecodeAsType`].
@@ -107,11 +118,13 @@ impl<'scale, 'info> SequenceItem<'scale, 'info> {
     }
 }
 
-impl<'scale, 'info> crate::visitor::DecodeItemIterator<'scale, 'info> for Sequence<'scale, 'info> {
-    fn decode_item<'a, V: Visitor>(
+impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'resolver, R>
+    for Sequence<'scale, 'resolver, R>
+{
+    fn decode_item<V: Visitor<TypeResolver = R>>(
         &mut self,
         visitor: V,
-    ) -> Option<Result<V::Value<'scale, 'info>, V::Error>> {
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
         self.decode_item(visitor)
     }
 }
