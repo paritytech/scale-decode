@@ -42,8 +42,8 @@ pub trait Visitor: Sized {
     type TypeResolver: TypeResolver;
 
     /// This method is called immediately upon running [`decode_with_visitor()`]. By default we ignore
-    /// this call and return our visitor back (ie [`DecodeAsTypeResult::Skipped(visitor)`]). If you choose to
-    /// do some decoding at this stage, return [`DecodeAsTypeResult::Decoded(result)`]. In either case, any bytes
+    /// this call and return our visitor back (ie [`DecodeAsTypeResult::Skipped`]). If you choose to
+    /// do some decoding at this stage, return [`DecodeAsTypeResult::Decoded`]. In either case, any bytes
     /// that you consume from the input (by altering what it points to) will be consumed for any subsequent visiting.
     ///
     /// # Warning

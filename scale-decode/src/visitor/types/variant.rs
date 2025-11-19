@@ -22,6 +22,7 @@ pub struct Variant<'scale, 'resolver, R: TypeResolver> {
     variant_name: &'resolver str,
     variant_index: u8,
     fields: Composite<'scale, 'resolver, R>,
+    path: smallvec::SmallVec<[&'resolver str; 5]>,
 }
 
 impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
@@ -29,10 +30,12 @@ impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
         Fields: FieldIter<'resolver, R::TypeId>,
         Variants: VariantIter<'resolver, Fields>,
     >(
+        path: impl Iterator<Item = &'resolver str>,
         bytes: &'scale [u8],
         mut variants: Variants,
         types: &'resolver R,
     ) -> Result<Variant<'scale, 'resolver, R>, DecodeError> {
+        let path = smallvec::SmallVec::from_iter(path);
         let index = *bytes.first().ok_or(DecodeError::NotEnoughInput)?;
         let item_bytes = &bytes[1..];
 
@@ -49,11 +52,19 @@ impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
             false,
         );
 
-        Ok(Variant { bytes, variant_index: index, variant_name: variant.name, fields })
+        Ok(Variant { path, bytes, variant_index: index, variant_name: variant.name, fields })
     }
 }
 
 impl<'scale, 'resolver, R: TypeResolver> Variant<'scale, 'resolver, R> {
+    /// Return the name of the enum type that this variant belongs to, if one was given.
+    pub fn enum_name(&self) -> Option<&'resolver str> {
+        self.path.iter().last().copied()
+    }
+    /// Return the full path to the variant type (including the enum name) if one was given.
+    pub fn path(&self) -> impl Iterator<Item = &'resolver str> + '_ {
+        self.path.iter().copied()
+    }
     /// Skip over all bytes associated with this variant. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this variant.
     pub fn skip_decoding(&mut self) -> Result<(), DecodeError> {

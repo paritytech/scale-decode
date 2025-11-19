@@ -42,7 +42,7 @@ impl Context {
 }
 
 /// The current path that we're trying to encode.
-pub struct Path<'a>(Cow<'a, Vec<Location>>);
+pub struct Path<'a>(Cow<'a, [Location]>);
 
 impl<'a> Path<'a> {
     /// Cheaply convert the path to an owned version.
