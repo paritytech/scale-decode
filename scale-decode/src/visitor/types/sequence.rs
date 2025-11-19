@@ -28,20 +28,32 @@ pub struct Sequence<'scale, 'resolver, R: TypeResolver> {
     // The only thing we need to do otherwise is decode the compact encoded
     // length from the beginning and keep track of the bytes including that.
     values: Array<'scale, 'resolver, R>,
+    path: smallvec::SmallVec<[&'resolver str; 5]>,
 }
 
 impl<'scale, 'resolver, R: TypeResolver> Sequence<'scale, 'resolver, R> {
     pub(crate) fn new(
+        path: impl Iterator<Item = &'resolver str>,
         bytes: &'scale [u8],
         type_id: R::TypeId,
         types: &'resolver R,
     ) -> Result<Sequence<'scale, 'resolver, R>, DecodeError> {
+        let path = smallvec::SmallVec::from_iter(path);
+
         // Sequences are prefixed with their length in bytes. Make a note of this,
         // as well as the number of bytes
         let item_bytes = &mut &*bytes;
         let len = <Compact<u64>>::decode(item_bytes)?.0 as usize;
 
-        Ok(Sequence { bytes, values: Array::new(item_bytes, type_id, len, types) })
+        Ok(Sequence { path, bytes, values: Array::new(item_bytes, type_id, len, types) })
+    }
+    /// Return the name of the sequence type, if one was given.
+    pub fn name(&self) -> Option<&'resolver str> {
+        self.path.iter().last().copied()
+    }
+    /// Return the full path to the sequence type (including the name) if one was given.
+    pub fn path(&self) -> impl Iterator<Item = &'resolver str> + '_ {
+        self.path.iter().copied()
     }
     /// Skip over all bytes associated with this sequence. After calling this,
     /// [`Self::bytes_from_undecoded()`] will represent the bytes after this sequence.

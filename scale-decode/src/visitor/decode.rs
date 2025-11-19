@@ -145,7 +145,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
         skip_decoding_and_return!(self, res, items)
     }
 
-    fn visit_variant<Path, Fields, Var>(self, _path: Path, variants: Var) -> Self::Value
+    fn visit_variant<Path, Fields, Var>(self, path: Path, variants: Var) -> Self::Value
     where
         Path: PathIter<'resolver>,
         Fields: FieldIter<'resolver, Self::TypeId>,
@@ -155,13 +155,13 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut variant = Variant::new(self.data, variants, self.types)?;
+        let mut variant = Variant::new(path, self.data, variants, self.types)?;
         let res = self.visitor.visit_variant(&mut variant, self.type_id);
 
         skip_decoding_and_return!(self, res, variant)
     }
 
-    fn visit_sequence<Path>(self, _path: Path, inner_type_id: Self::TypeId) -> Self::Value
+    fn visit_sequence<Path>(self, path: Path, inner_type_id: Self::TypeId) -> Self::Value
     where
         Path: PathIter<'resolver>,
     {
@@ -169,7 +169,7 @@ impl<'temp, 'scale, 'resolver, V: Visitor> ResolvedTypeVisitor<'resolver>
             return Err(DecodeError::CannotDecodeCompactIntoType.into());
         }
 
-        let mut items = Sequence::new(self.data, inner_type_id, self.types)?;
+        let mut items = Sequence::new(path, self.data, inner_type_id, self.types)?;
         let res = self.visitor.visit_sequence(&mut items, self.type_id);
 
         skip_decoding_and_return!(self, res, items)
