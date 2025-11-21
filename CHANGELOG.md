@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog].
 
 [Keep a Changelog]: http://keepachangelog.com/en/1.0.0/
 
+## 0.16.2 - 2025-11-21
+
+- Implement `DecodeItemIterator` on `&mut T`s as well, so that we can use it more easily from visitors.
+
 ## 0.16.1 - 2025-11-19
 
 - Expose path information in sequences and variants, too, where possible.
