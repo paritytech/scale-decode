@@ -140,3 +140,13 @@ impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'sca
         self.decode_item(visitor)
     }
 }
+impl<'scale, 'resolver, R: TypeResolver> crate::visitor::DecodeItemIterator<'scale, 'resolver, R>
+    for &mut Sequence<'scale, 'resolver, R>
+{
+    fn decode_item<V: Visitor<TypeResolver = R>>(
+        &mut self,
+        visitor: V,
+    ) -> Option<Result<V::Value<'scale, 'resolver>, V::Error>> {
+        (*self).decode_item(visitor)
+    }
+}
